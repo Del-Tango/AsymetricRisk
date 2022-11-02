@@ -1,8 +1,8 @@
 {
     "AR_SCRIPT_NAME":            "AsymetricRisk",
+    "AR_SCRIPT_DESCRIPTION":     "Crypto Trading Bot",
     "AR_VERSION":                "AR15",
     "AR_VERSION_NO":             "1.0",
-    "AR_DIRECTORY":              "/home/risky/Projects/AsymetricRisk",
     "AR_DEFAULT": {
          "project-path":         "/home/risky/Projects/AsymetricRisk",
          "home-dir":             "/home",
@@ -14,30 +14,16 @@
          "dta-dir":              "/home/risky/Projects/AsymetricRisk/data",
          "bin-dir":              "/usr/local/sbin",
          "tmp-dir":              "/tmp",
-         "cron-dir":             "/var/spool/cron/crontabs/head",
+         "cron-dir":             "/var/spool/cron/crontabs/risky",
          "log-file":             "asymetric_risk.log",
          "conf-file":            "asymetric_risk.conf.json",
-         "init-file":            "/home/risky/Projects/AsymetricRisk/asymetric_risk.py",
-         "log-format":           "[",
+         "log-format":           "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
          "timestamp-format":     "%d/%m/%Y-%H:%M:%S",
-         "silence":              false,
-         "action":               "price-history",
-         "ticker-symbol":        "MSFT",
-         "watch-interval":       2,
-         "watch-cleanup":        "on",
-         "watch-flag":           false,
-         "watch-anchor-file":    ".ng_watch.anch",
-         "period":               "1w",
-         "period-start":         "2010-1-1",
-         "period-end":           "2020-1-1",
-         "action-header":        true,
-         "write-flag":           false,
-         "write-mode":           "a",
-         "out-file":             "asymetric_risk.out",
-         "rate-sx-url":          "rate.sx",
-         "action-target":        "stock",
-         "base-currency":        "USD",
-         "exchange-currency":    "BTC",
-         "quantity":             "1"
+         "api-key":              "yxdLHNgKWzka2HjzR5jZF0ZXTCZaHp2V1X9EgXjKBxLsfKoClFvET1PqIUW9ctAw",
+         "api-secret":           "oPyuIoqWHBt5pvfCk1YLIslViuH87DJvRTgtOsLylGB58LRsEuHvu4KuZOv0DAv5",
+         "api-url":              "https://testnet.binance.vision/api",
+         "debug":                false,
+         "silence":              false
     }
 }
+

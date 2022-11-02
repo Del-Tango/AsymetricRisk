@@ -5,13 +5,17 @@
 # ASYMETRIC RISK - (A)Risk
 
 import os
-import btalib
-import pandas as pd
+import logging
+import pysnooper
 
 from time import sleep
-from binance.client import Client
-from binance import ThreadedWebsocketManager
-
+from src.backpack.bp_log import log_init
+from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exist
+from src.backpack.bp_shell import shell_cmd
+from src.backpack.bp_checkers import check_file_exists
+from src.backpack.bp_general import stdout_msg, clear_screen
+from src.ar_market import TradingMarket
+from src.ar_bot import TradingBot
 
 AR_SCRIPT_NAME = "AsymetricRisk",
 AR_SCRIPT_DESCRIPTION = "Crypto Trading Bot"
@@ -40,10 +44,21 @@ AR_DEFAULT = {
     "api-key": os.environ.get('binance_api'),
     "api-secret": os.environ.get('binance_secret'),
     "api-url": 'https://testnet.binance.vision/api',
+    "base-currency": 'BTC',
+    "quote-currency": 'ETH',
+    "period-start": '01-10-2022',
+    "period-end": '01-11-2022',
+    "debug": False,
+    "silence": False,
 }
 
-client = Client(AR_DEFAUL['api-key'], AR_DEFAULT['api-secret'])
-client.API_URL = AR_DEFAULT['api-url']
+log = log_init(
+    '/'.join([AR_DEFAULT['log-dir'], AR_DEFAULT['log-file']]),
+    AR_DEFAULT['log-format'], AR_DEFAULT['timestamp-format'],
+    AR_DEFAULT['debug'], log_name=str(AR_SCRIPT_NAME)
+)
+trading_market = TradingMarket(AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT)
+trading_bot = TradingBot(trading_market, **AR_DEFAULT)
 
 # FETCHERS
 
@@ -51,23 +66,313 @@ client.API_URL = AR_DEFAULT['api-url']
 
 # CHECKERS
 
-# GENERAL
+def check_preconditions():
+    log.debug('')
+    checkers = {
+        'preconditions-conf': check_config_file(),
+        'preconditions-log': check_log_file(),
+    }
+    if False in checkers.values():
+        return len([item for item in checkers.values() if item is False])
+    return 0
+
+def check_config_file():
+    log.debug('')
+    conf_file_path = AR_DEFAULT['conf-dir'] + "/" + AR_DEFAULT['conf-file']
+    conf_dir = ensure_directories_exist(AR_DEFAULT['conf-dir'])
+    exit_code = 0
+    if not check_file_exists(conf_file_path):
+        cmd_out, cmd_err, exit_code = shell_cmd(
+            'touch ' + conf_file_path + ' &> /dev/null'
+        )
+    return False if exit_code != 0 else True
+
+def check_log_file():
+    log.debug('')
+    log_file_path = AR_DEFAULT['log-dir'] + "/" + AR_DEFAULT['log-file']
+    log_dir = ensure_directories_exist(AR_DEFAULT['log-dir'])
+    exit_code = 0
+    if not check_file_exists(log_file_path):
+        cmd_out, cmd_err, exit_code = shell_cmd(
+            'touch ' + log_file_path + ' &> /dev/null'
+        )
+    return False if exit_code != 0 else True
 
 # ACTIONS
 
 # HANDLERS
 
+# TODO
+#@pysnooper.snoop()
+def handle_actions(actions=[], *args, **kwargs):
+    log.debug('')
+    failure_count = 0
+#   handlers = {
+#       'open-gates': action_open_gates,
+#   }
+#   for action_label in actions:
+#       stdout_msg('INFO: Processing action... ({})'.format(action_label))
+#       if action_label not in handlers.keys():
+#           stdout_msg(
+#               'NOK: Invalid action label specified! ({})'.format(action_label)
+#           )
+#           continue
+#       handle = handlers[action_label](*args, **kwargs)
+#       if isinstance(handle, int) and handle != 0:
+#           stdout_msg(
+#               'NOK: Action ({}) failures detected! ({})'.format(action_label, handle)
+#           )
+#           failure_count += 1
+#           continue
+#       stdout_msg("OK: Action executed successfully! ({})".format(action_label))
+#   return True if failure_count == 0 else failure_count
+
+# CREATORS
+
+# TODO
+def create_command_line_parser():
+    log.debug('')
+#   help_msg = format_header_string() + '''
+#   [ EXAMPLE ]: Setup FloodGate NODE unit -
+
+#       ~$ %prog \\
+#           -S  | --setup \\
+#           -c  | --config-file /etc/conf/fg-node.conf.json \\
+#           -l  | --log-file /etc/log/fg-node.log
+
+#   [ EXAMPLE ]: Open flood gates 1, 2 and 3 with no STDOUT output -
+
+#       ~$ %prog \\
+#           -a  | --action open-gates \\
+#           -g  | --gate 1,2,3 \\
+#           -s  | --silence \\
+#           -c  | --config-file /etc/conf/fg-node.conf.json \\
+#           -l  | --log-file /etc/log/fg-node.log
+
+#   [ EXAMPLE ]: Turn on ACT lights for gates 1, 2 and 3 in DEBUG mode -
+
+#       ~$ %prog \\
+#           -a  | --action lights-on \\
+#           -L  | --light 1,2,3 \\
+#           -D  | --debug \\
+#           -c  | --config-file /etc/conf/fg-node.conf.json \\
+#           -l  | --log-file /etc/log/fg-node.log'''
+#   parser = optparse.OptionParser(help_msg)
+#   return parser
+
+# PROCESSORS
+
+# TODO
+def process_command_line_options(parser):
+    '''
+    [ NOTE ]: In order to avoid a bad time in STDOUT land, please process the
+              silence flag before all others.
+    '''
+    log.debug('')
+#   (options, args) = parser.parse_args()
+#   processed = {
+#       'silence_flag': process_silence_argument(parser, options),
+#       'log_file': process_log_file_argument(parser, options),
+#       'setup_flag': process_setup_argument(parser, options),
+#       'action_csv': process_action_csv_argument(parser, options),
+#       'light_csv': process_light_csv_argument(parser, options),
+#       'gate_csv': process_gate_csv_argument(parser, options),
+#       'flash_count': process_flash_count_argument(parser, options),
+#       'identity': process_identity_argument(parser, options),
+#       'config_file': process_config_file_argument(parser, options),
+#       'debug_flag': process_debug_mode_argument(parser, options),
+#   }
+#   return processed
+
+def process_config_file_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    file_path = options.config_file_path
+    if file_path == None:
+        log.warning(
+            'No config file provided. Defaulting to ({}/{}).'\
+            .format(AR_DEFAULT['conf-dir'], AR_DEFAULT['conf-file'])
+        )
+        return False
+    AR_DEFAULT['conf-dir'] = filter_directory_from_path(file_path)
+    AR_DEFAULT['conf-file'] = filter_file_name_from_path(file_path)
+    load_config_file()
+    stdout_msg(
+        '[ + ]: Config file setup ({})'.format(AR_DEFAULT['conf-file'])
+    )
+    return True
+
+def process_debug_mode_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    debug_mode = options.debug_mode
+    if debug_mode == None:
+        log.warning(
+            'Debug mode flag not specified. '
+            'Defaulting to ({}).'.format(AR_DEFAULT['debug'])
+        )
+        return False
+    AR_DEFAULT['debug'] = debug_mode
+    stdout_msg(
+        '[ + ]: Debug mode setup ({})'.format(AR_DEFAULT['debug'])
+    )
+    return True
+
+def process_log_file_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    file_path = options.log_file_path
+    if file_path == None:
+        log.warning(
+            'No log file provided. Defaulting to ({}/{}).'\
+            .format(AR_DEFAULT['log-dir'], AR_DEFAULT['log-file'])
+        )
+        return False
+    AR_DEFAULT['log-dir'] = filter_directory_from_path(file_path)
+    AR_DEFAULT['log-file'] = filter_file_name_from_path(file_path)
+    stdout_msg(
+        '[ + ]: Log file setup ({})'.format(AR_DEFAULT['log-file'])
+    )
+    return True
+
+def process_warning(warning):
+    log.warning(warning['msg'])
+    print('[ WARNING ]:', warning['msg'], 'Details:', warning['details'])
+    return warning
+
+def process_error(error):
+    log.error(error['msg'])
+    print('[ ERROR ]:', error['msg'], 'Details:', error['details'])
+    return error
+
 # PARSERS
 
 # TODO
+def add_command_line_parser_options(parser):
+    log.debug('')
+    parser.add_option(
+        '-s', '--silence', dest='silence', action='store_true',
+        help='Eliminates all STDOUT messages.'
+    )
+#   parser.add_option(
+#       '-a', '--action', dest='action_csv', type='string', metavar='ACTION-CSV',
+#       help='Action to execute - valid values include one or more of the '
+#            'following labels given as a CSV string: (open-gates | close-gates '
+#            '| set-id | setup | lights-on | lights-off | spl-r2p | spl-mon)'
+#   )
+    parser.add_option(
+        '-c', '--config-file', dest='config_file_path', type='string',
+        help='Configuration file to load default values from.', metavar='FILE_PATH'
+    )
+    parser.add_option(
+        '-D', '--debug-mode', dest='debug_mode', action='store_true',
+        help='Display more verbose output and log messages.'
+    )
+    parser.add_option(
+        '-l', '--log-file', dest='log_file_path', type='string',
+        help='Path to the log file.', metavar='FILE_PATH'
+    )
+
 def parse_command_line_arguments():
+    log.debug('')
+    parser = create_command_line_parser()
+    add_command_line_parser_options(parser)
+    return process_command_line_options(parser)
+
+# GENERAL
+
+# TODO
+def cleanup():
     pass
+
+#@pysnooper.snoop()
+def load_config_json():
+    log.debug('')
+    global AR_DEFAULT
+    global AR_SCRIPT_NAME
+    global AR_SCRIPT_DESCRIPTION
+    global AR_VERSION
+    global AR_VERSION_NO
+    stdout_msg('[ INFO ]: Loading config file...')
+    conf_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
+    if not os.path.isfile(conf_file_path):
+        stdout_msg('[ NOK ]: File not found! ({})'.format(conf_file_path))
+        return False
+    with open(conf_file_path, 'r', encoding='utf-8', errors='ignore') as conf_file:
+        try:
+            content = json.load(conf_file_path)
+            AR_DEFAULT.update(content['AR_DEFAULT'])
+            AR_CARGO.update(content['AR_CARGO'])
+            AR_SCRIPT_NAME = content['AR_SCRIPT_NAME']
+            AR_SCRIPT_DESCRIPTION = content['AR_SCRIPT_DESCRIPTION']
+            AR_VERSION = content['AR_VERSION']
+            AR_VERSION_NO = content['AR_VERSION_NO']
+        except Exception as e:
+            log.error(e)
+            stdout_msg('[ NOK ]: Could not load config file! ({})'.format(conf_file_path))
+            return False
+    stdout_msg('[ OK ]: Settings loaded from config file! ({})'.format(conf_file_path))
+    return True
+
+# SETUP
+
+def setup_trading_market():
+    global trading_market
+    trading_market = TradingMarket(
+        AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT
+    )
+    trading_market.API_URL = AR_DEFAULT['api-url']
+    return trading_market
+
+def setup_trading_bot():
+    global trading_bot
+    trading_bot = TradingBot(trading_market, **AR_DEFAULT)
+    return trading_bot
+
+# FORMATTERS
+
+def format_header_string():
+    header = '''
+    ___________________________________________________________________________
+
+     *                          *  Asymetric Risk  *                         *
+    ___________________________________________________________________________
+                     Regards, the Alveare Solutions #!/Society -x
+    '''
+    return header
+
+# DISPLAY
+
+def display_header():
+    if AR_DEFAULT['silence']:
+        return False
+    print(format_header_string())
+    return True
 
 # INIT
 
-# TODO
-def init_asymetric_risk():
-    pass
+def init_asymetric_risk(*args, **kwargs):
+    log.debug('')
+    exit_code = 0
+    display_header()
+    config_setup = load_config_json()
+    if not config_setup:
+        stdout_msg('[ WARNING ]: Could not load config file!')
+    market_setup = setup_trading_market()
+    if not market_setup:
+        stdout_msg('[ WARNING ]: Could not set up trading market!')
+    bot_setup = setup_trading_bot()
+    if not bot_setup:
+        stdout_msg('[ WARNING ]: Could not set up trading bot!')
+    stdout_msg('[ INFO ]: Verifying action preconditions...')
+    check = check_preconditions()
+    if not isinstance(check, int) or check != 0:
+        stdout_msg('[ ERROR ]: Preconditions not met!')
+        return check
+    handle = handle_actions(*args, **kwargs)
+    if not handle:
+        stdout_msg('[ WARNING ]: Action not have been handled properly!')
+    return 0 if handle is True else handle
 
 # MISCELLANEOUS
 
@@ -93,6 +398,15 @@ if __name__ == '__main__':
 
 
 # CODE DUMP
+
+# trading_bot = TradingBot(TradingMarket(**AR_DEFAULT), **AR_DEFAULT)
+# trade = trading_bot.trade({
+#   'crypto': 'ETH', 'buy-price': N, 'sell-price': N, 'take-profit': 30%,
+#   'stop-loss': 10%, trailing-stop-loss: 10%,
+# })
+# if not trade or isinstance(trade, dict) and trade['error']:
+#   print('trade failed')
+
 
 #   # get balances for all assets & some account information
 #   print(client.get_account())
@@ -520,3 +834,673 @@ if __name__ == '__main__':
 
 #   # properly stop and terminate WebSocket
 #   bsm.stop()
+
+
+#   |
+#   |  get_account(self, **params)
+#   |      Get current account information.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#account-information-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "makerCommission": 15,
+#   |              "takerCommission": 15,
+#   |              "buyerCommission": 0,
+#   |              "sellerCommission": 0,
+#   |              "canTrade": true,
+#   |              "canWithdraw": true,
+#   |              "canDeposit": true,
+#   |              "balances": [
+#   |                  {
+#   |                      "asset": "BTC",
+#   |                      "free": "4723846.89208129",
+#   |                      "locked": "0.00000000"
+#   |                  },
+#   |                  {
+#   |                      "asset": "LTC",
+#   |                      "free": "4763368.68006011",
+#   |                      "locked": "0.00000000"
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+
+#   |  get_account_api_permissions(self, **params)
+#   |      Fetch api key permissions.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#get-api-key-permission-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |             "ipRestrict": false,
+#   |             "createTime": 1623840271000,
+#   |             "enableWithdrawals": false,   // This option allows you to withdraw via API. You must apply the IP Access Restriction filter in order to enable withdrawals
+#   |             "enableInternalTransfer": true,  // This option authorizes this key to transfer funds between your master account and your sub account instantly
+#   |             "permitsUniversalTransfer": true,  // Authorizes this key to be used for a dedicated universal transfer API to transfer multiple supported currencies. Each business's own transfer API rights are not affected by this authorization
+#   |             "enableVanillaOptions": false,  //  Authorizes this key to Vanilla options trading
+#   |             "enableReading": true,
+#   |             "enableFutures": false,  //  API Key created before your futures account opened does not support futures API service
+#   |             "enableMargin": false,   //  This option can be adjusted after the Cross Margin account transfer is completed
+#   |             "enableSpotAndMarginTrading": false, // Spot and margin trading
+#   |             "tradingAuthorityExpirationTime": 1628985600000  // Expiration time for spot and margin trading permission
+#   |          }
+
+
+#   |
+#   |  get_account_api_trading_status(self, **params)
+#   |      Fetch account api trading status detail.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#account-api-trading-status-sapi-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "data": {          // API trading status detail
+#   |                  "isLocked": false,   // API trading function is locked or not
+#   |                  "plannedRecoverTime": 0,  // If API trading function is locked, this is the planned recover time
+#   |                  "triggerCondition": {
+#   |                          "GCR": 150,  // Number of GTC orders
+#   |                          "IFER": 150, // Number of FOK/IOC orders
+#   |                          "UFR": 300   // Number of orders
+#   |                  },
+#   |                  "indicators": {  // The indicators updated every 30 seconds
+#   |                       "BTCUSDT": [  // The symbol
+#   |                          {
+#   |                              "i": "UFR",  // Unfilled Ratio (UFR)
+#   |                              "c": 20,     // Count of all orders
+#   |                              "v": 0.05,   // Current UFR value
+#   |                              "t": 0.995   // Trigger UFR value
+#   |                          },
+#   |                          {
+#   |                              "i": "IFER", // IOC/FOK Expiration Ratio (IFER)
+#   |                              "c": 20,     // Count of FOK/IOC orders
+#   |                              "v": 0.99,   // Current IFER value
+#   |                              "t": 0.99    // Trigger IFER value
+#   |                          },
+#   |                          {
+#   |                              "i": "GCR",  // GTC Cancellation Ratio (GCR)
+#   |                              "c": 20,     // Count of GTC orders
+#   |                              "v": 0.99,   // Current GCR value
+#   |                              "t": 0.99    // Trigger GCR value
+#   |                          }
+#   |                      ],
+#   |                      "ETHUSDT": [
+#   |                          {
+#   |                              "i": "UFR",
+#   |                              "c": 20,
+#   |                              "v": 0.05,
+#   |                              "t": 0.995
+#   |                          },
+#   |                          {
+#   |                              "i": "IFER",
+#   |                              "c": 20,
+#   |                              "v": 0.99,
+#   |                              "t": 0.99
+#   |                          },
+#   |                          {
+#   |                              "c": 20,
+#   |                              "v": 0.99,
+#   |                              "t": 0.99
+#   |                          }
+#   |                      ]
+#   |                  },
+#   |                  "updateTime": 1547630471725
+#   |              }
+#   |          }
+
+
+#   |  get_account_snapshot(self, **params)
+#   |      Get daily account snapshot of specific type.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#daily-account-snapshot-user_data
+#   |
+#   |      :param type: required. Valid values are SPOT/MARGIN/FUTURES.
+#   |      :type type: string
+#   |      :param startTime: optional
+#   |      :type startTime: int
+#   |      :param endTime: optional
+#   |      :type endTime: int
+#   |      :param limit: optional
+#   |      :type limit: int
+#   |      :param recvWindow: optional
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |             "code":200, // 200 for success; others are error codes
+#   |             "msg":"", // error message
+#   |             "snapshotVos":[
+#   |                {
+#   |                   "data":{
+#   |                      "balances":[
+#   |                         {
+#   |                            "asset":"BTC",
+#   |                            "free":"0.09905021",
+#   |                            "locked":"0.00000000"
+#   |                         },
+#   |                         {
+#   |                            "asset":"USDT",
+#   |                            "free":"1.89109409",
+#   |                            "locked":"0.00000000"
+#   |                         }
+#   |                      ],
+#   |                      "totalAssetOfBtc":"0.09942700"
+#   |                   },
+#   |                   "type":"spot",
+#   |                   "updateTime":1576281599000
+#   |                }
+#   |             ]
+#   |          }
+#   |
+
+
+#   |  get_account_status(self, **params)
+#   |      Get account status detail.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#account-status-sapi-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "data": "Normal"
+#   |          }
+#   |
+
+#   |  get_all_coins_info(self, **params)
+#   |      Get information of coins (available for deposit and withdraw) for user.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#all-coins-39-information-user_data
+#   |
+#   |      :param recvWindow: optional
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "coin": "BTC",
+#   |              "depositAllEnable": true,
+#   |              "withdrawAllEnable": true,
+#   |              "name": "Bitcoin",
+#   |              "free": "0",
+#   |              "locked": "0",
+#   |              "freeze": "0",
+#   |              "withdrawing": "0",
+#   |              "ipoing": "0",
+#   |              "ipoable": "0",
+#   |              "storage": "0",
+#   |              "isLegalMoney": false,
+#   |              "trading": true,
+#   |              "networkList": [
+#   |                  {
+#   |                      "network": "BNB",
+#   |                      "coin": "BTC",
+#   |                      "withdrawIntegerMultiple": "0.00000001",
+#   |                      "isDefault": false,
+#   |                      "depositEnable": true,
+#   |                      "withdrawEnable": true,
+#   |                      "depositDesc": "",
+#   |                      "withdrawDesc": "",
+#   |                      "specialTips": "Both a MEMO and an Address are required to successfully deposit your BEP2-BTCB tokens to Binance.",
+#   |                      "name": "BEP2",
+#   |                      "resetAddressStatus": false,
+#   |                      "addressRegex": "^(bnb1)[0-9a-z]{38}$",
+#   |                      "memoRegex": "^[0-9A-Za-z-_]{1,120}$",
+#   |                      "withdrawFee": "0.0000026",
+#   |                      "withdrawMin": "0.0000052",
+#   |                      "withdrawMax": "0",
+#   |                      "minConfirm": 1,
+#   |                      "unLockConfirm": 0
+#   |                  },
+#   |                  {
+#   |                      "network": "BTC",
+#   |                      "coin": "BTC",
+#   |                      "withdrawIntegerMultiple": "0.00000001",
+#   |                      "isDefault": true,
+#   |                      "depositEnable": true,
+#   |                      "withdrawEnable": true,
+#   |                      "depositDesc": "",
+#   |                      "withdrawDesc": "",
+#   |                      "specialTips": "",
+#   |                      "name": "BTC",
+#   |                      "resetAddressStatus": false,
+#   |                      "addressRegex": "^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^(bc1)[0-9A-Za-z]{39,59}$",
+
+#   |                      "memoRegex": "",
+#   |                      "withdrawFee": "0.0005",
+#   |                      "withdrawMin": "0.001",
+#   |                      "withdrawMax": "0",
+#   |                      "minConfirm": 1,
+#   |                      "unLockConfirm": 2
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+#   |  withdraw(self, **params)
+#   |      Submit a withdraw request.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#withdraw-sapi
+#   |
+#   |      Assumptions:
+#   |
+#   |      - You must have Withdraw permissions enabled on your API key
+#   |      - You must have withdrawn to the address specified through the website and approved the transaction via email
+#   |
+#   |      :param coin: required
+#   |      :type coin: str
+#   |      :param withdrawOrderId: optional - client id for withdraw
+#   |      :type withdrawOrderId: str
+#   |      :param network: optional
+#   |      :type network: str
+#   |      :param address: optional
+#   |      :type address: str
+#   |      :type addressTag: optional - Secondary address identifier for coins like XRP,XMR etc.
+#   |      :param amount: required
+#   |      :type amount: decimal
+#   |      :param transactionFeeFlag: required - When making internal transfer, true for returning the fee to the destination account; false for returning the fee back to the departure account. Default false.
+#   |      :type transactionFeeFlag: bool
+#   |      :param name: optional - Description of the address, default asset value passed will be used
+#   |      :type name: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "id":"7213fea8e94b4a5593d507237e5a555b"
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  order_market_buy(self, **params)
+#   |      Send in a new market buy order
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param quoteOrderQty: the amount the user wants to spend of the quote asset
+#   |      :type quoteOrderQty: decimal
+#   |      :param newClientOrderId: A unique id for the order. Automatically generated if not sent.
+#   |      :type newClientOrderId: str
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; default: RESULT.
+#   |      :type newOrderRespType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      See order endpoint for full response options
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException, BinanceOrderException, BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, BinanceOrderUnknownSymbolException, BinanceOrderInactiveSym
+#   bolException
+#   |
+#   |  order_market_sell(self, **params)
+#   |      Send in a new market sell order
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param quoteOrderQty: the amount the user wants to receive of the quote asset
+#   |      :type quoteOrderQty: decimal
+#   |      :param newClientOrderId: A unique id for the order. Automatically generated if not sent.
+#   |      :type newClientOrderId: str
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; default: RESULT.
+#   |      :type newOrderRespType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      See order endpoint for full response options
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException, BinanceOrderException, BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, BinanceOrderUnknownSymbolException, BinanceOrderInactiveSym
+#   bolException
+
+
+#   |
+#   |  get_trade_fee(self, **params)
+#   |      Get trade fee.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#trade-fee-sapi-user_data
+#   |
+#   |      :param symbol: optional
+#   |      :type symbol: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "ADABNB",
+#   |                  "makerCommission": "0.001",
+#   |                  "takerCommission": "0.001"
+#   |              },
+#   |              {
+#   |                  "symbol": "BNBBTC",
+#   |                  "makerCommission": "0.001",
+#   |                  "takerCommission": "0.001"
+#   |              }
+#   |          ]
+#   |
+
+
+#   |  get_ticker(self, **params)
+#   |      24 hour price change statistics.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#24hr-ticker-price-change-statistics
+#   |
+#   |      :param symbol:
+#   |      :type symbol: str
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "priceChange": "-94.99999800",
+#   |              "priceChangePercent": "-95.960",
+#   |              "weightedAvgPrice": "0.29628482",
+#   |              "prevClosePrice": "0.10002000",
+#   |              "lastPrice": "4.00000200",
+#   |              "bidPrice": "4.00000000",
+#   |              "askPrice": "4.00000200",
+#   |              "openPrice": "99.00000000",
+#   |              "highPrice": "100.00000000",
+#   |              "lowPrice": "0.10000000",
+#   |              "volume": "8913.30000000",
+#   |              "openTime": 1499783499040,
+#   |              "closeTime": 1499869899040,
+#   |              "fristId": 28385,   # First tradeId
+#   |              "lastId": 28460,    # Last tradeId
+#   |              "count": 76         # Trade count
+#   |          }
+#   |
+#   |      OR
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "priceChange": "-94.99999800",
+#   |                  "priceChangePercent": "-95.960",
+#   |                  "weightedAvgPrice": "0.29628482",
+#   |                  "prevClosePrice": "0.10002000",
+#   |                  "lastPrice": "4.00000200",
+#   |                  "bidPrice": "4.00000000",
+#   |                  "askPrice": "4.00000200",
+#   |                  "openPrice": "99.00000000",
+#   |                  "highPrice": "100.00000000",
+#   |                  "lowPrice": "0.10000000",
+#   |                  "volume": "8913.30000000",
+#   |                  "openTime": 1499783499040,
+#   |                  "closeTime": 1499869899040,
+#   |                  "fristId": 28385,   # First tradeId
+#   |                  "lastId": 28460,    # Last tradeId
+#   |                  "count": 76         # Trade count
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+
+
+#   |
+#   |  get_system_status(self)
+#   |      Get system status detail.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#system-status-sapi-system
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "status": 0,        # 0: normal，1：system maintenance
+#   |              "msg": "normal"     # normal or System maintenance.
+#   |          }
+#   |
+#   |      :raises: BinanceAPIException
+
+
+#   |
+#   |  get_symbol_ticker(self, **params)
+#   |      Latest price for a symbol or symbols.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker
+#   |
+#   |      :param symbol:
+#   |      :type symbol: str
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "LTCBTC",
+#   |              "price": "4.00000200"
+#   |          }
+#   |
+#   |      OR
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "price": "4.00000200"
+#   |              },
+#   |              {
+#   |                  "symbol": "ETHBTC",
+#   |                  "price": "0.07946600"
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+
+
+#   |
+#   |  get_symbol_info(self, symbol) -> Optional[Dict]
+#   |      Return information about a symbol
+#   |
+#   |      :param symbol: required e.g BNBBTC
+#   |      :type symbol: str
+#   |
+#   |      :returns: Dict if found, None if not
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "ETHBTC",
+#   |              "status": "TRADING",
+#   |              "baseAsset": "ETH",
+#   |              "baseAssetPrecision": 8,
+#   |              "quoteAsset": "BTC",
+#   |              "quotePrecision": 8,
+#   |              "orderTypes": ["LIMIT", "MARKET"],
+#   |              "icebergAllowed": false,
+#   |              "filters": [
+#   |                  {
+#   |                      "filterType": "PRICE_FILTER",
+#   |                      "minPrice": "0.00000100",
+#   |                      "maxPrice": "100000.00000000",
+#   |                      "tickSize": "0.00000100"
+#   |                  }, {
+#   |                      "filterType": "LOT_SIZE",
+#   |                      "minQty": "0.00100000",
+#   |                      "maxQty": "100000.00000000",
+#   |                      "stepSize": "0.00100000"
+#   |                  }, {
+#   |                      "filterType": "MIN_NOTIONAL",
+#   |                      "minNotional": "0.00100000"
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_recent_trades(self, **params) -> Dict
+#   |      Get recent trades (up to last 500).
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#recent-trades-list
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param limit:  Default 500; max 1000.
+#   |      :type limit: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "id": 28457,
+#   |                  "price": "4.00000100",
+#   |                  "qty": "12.00000000",
+#   |                  "time": 1499865549590,
+#   |                  "isBuyerMaker": true,
+#   |                  "isBestMatch": true
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+#   |
+#   |  get_server_time(self) -> Dict
+#   |      Test connectivity to the Rest API and get the current server time.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#check-server-time
+#   |
+#   |      :returns: Current server time
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "serverTime": 1499827319559
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+
+
+
+#   |  get_orderbook_tickers(self) -> Dict
+#   |      Best price/qty on the order book for all symbols.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#symbol-order-book-ticker
+#   |
+#   |      :param symbol: optional
+#   |      :type symbol: str
+#   |
+#   |      :returns: List of order book market entries
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "bidPrice": "4.00000000",
+#   |                  "bidQty": "431.00000000",
+#   |                  "askPrice": "4.00000200",
+#   |                  "askQty": "9.00000000"
+#   |              },
+#   |              {
+#   |                  "symbol": "ETHBTC",
+#   |                  "bidPrice": "0.07946700",
+#   |                  "bidQty": "9.00000000",
+#   |                  "askPrice": "100000.00000000",
+#   |                  "askQty": "1000.00000000"
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_deposit_address(self, coin: str, network: Optional[str] = None, **params)
+#   |      Fetch a deposit address for a symbol
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#deposit-address-supporting-network-user_data
+#   |
+#   |      :param coin: required
+#   |      :type coin: str
+#   |      :param network: optional
+#   |      :type network: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "address": "1HPn8Rx2y6nNSfagQBKy27GB99Vbzg89wv",
+#   |              "coin": "BTC",
+#   |              "tag": "",
+#   |              "url": "https://btc.com/1HPn8Rx2y6nNSfagQBKy27GB99Vbzg89wv"
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+#   |
+
+#   |  get_avg_price(self, **params)
+#   |      Current average price for a symbol.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#current-average-price
+#   |
+#   |      :param symbol:
+#   |      :type symbol: str
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "mins": 5,
+#   |              "price": "9.35751834"
+#   |          }
+#   |
+
