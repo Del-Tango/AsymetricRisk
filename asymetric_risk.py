@@ -14,7 +14,6 @@ from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exi
 from src.backpack.bp_shell import shell_cmd
 from src.backpack.bp_checkers import check_file_exists
 from src.backpack.bp_general import stdout_msg, clear_screen
-from src.ar_market import TradingMarket
 from src.ar_bot import TradingBot
 
 AR_SCRIPT_NAME = "AsymetricRisk",
@@ -48,6 +47,8 @@ AR_DEFAULT = {
     "quote-currency": 'ETH',
     "period-start": '01-10-2022',
     "period-end": '01-11-2022',
+    "strategy": 'vwap',
+    "risk-tolerance": 1,
     "debug": False,
     "silence": False,
 }
@@ -57,7 +58,6 @@ log = log_init(
     AR_DEFAULT['log-format'], AR_DEFAULT['timestamp-format'],
     AR_DEFAULT['debug'], log_name=str(AR_SCRIPT_NAME)
 )
-trading_market = TradingMarket(AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT)
 trading_bot = TradingBot(trading_market, **AR_DEFAULT)
 
 # FETCHERS
@@ -316,17 +316,10 @@ def load_config_json():
 
 # SETUP
 
-def setup_trading_market():
-    global trading_market
-    trading_market = TradingMarket(
-        AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT
-    )
-    trading_market.API_URL = AR_DEFAULT['api-url']
-    return trading_market
-
 def setup_trading_bot():
     global trading_bot
-    trading_bot = TradingBot(trading_market, **AR_DEFAULT)
+    trading_bot = TradingBot(**AR_DEFAULT)
+    enter_market = trading_bot.enter_market(**AR_DEFAULT)
     return trading_bot
 
 # FORMATTERS
@@ -358,9 +351,6 @@ def init_asymetric_risk(*args, **kwargs):
     config_setup = load_config_json()
     if not config_setup:
         stdout_msg('[ WARNING ]: Could not load config file!')
-    market_setup = setup_trading_market()
-    if not market_setup:
-        stdout_msg('[ WARNING ]: Could not set up trading market!')
     bot_setup = setup_trading_bot()
     if not bot_setup:
         stdout_msg('[ WARNING ]: Could not set up trading bot!')
@@ -398,6 +388,26 @@ if __name__ == '__main__':
 
 
 # CODE DUMP
+
+#   market_setup = setup_trading_market()
+#   if not market_setup:
+#       stdout_msg('[ WARNING ]: Could not set up trading market!')
+
+#from src.ar_market import TradingMarket
+
+# trading_market = TradingMarket(AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT)
+
+
+# TODO - DEPRECATED
+#   def setup_trading_market():
+#       global trading_market
+#       trading_market = TradingMarket(
+#           AR_DEFAULT['api-key'], AR_DEFAULT['api-secret'], sync=True, **AR_DEFAULT
+#       )
+#       trading_market.API_URL = AR_DEFAULT['api-url']
+#       return trading_market
+
+
 
 # trading_bot = TradingBot(TradingMarket(**AR_DEFAULT), **AR_DEFAULT)
 # trade = trading_bot.trade({
@@ -1503,4 +1513,934 @@ if __name__ == '__main__':
 #   |              "price": "9.35751834"
 #   |          }
 #   |
+
+
+#   |  create_margin_oco_order(self, **params)
+#   |      Post a new OCO trade for margin account.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#margin-account-new-oco-trade
+#   |
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param isIsolated: for isolated margin or not, "TRUE", "FALSE"，default "FALSE"
+#   |      :type symbol: str
+#   |      :param listClientOrderId: A unique id for the list order. Automatically generated if not sent.
+#   |      :type listClientOrderId: str
+#   |      :param side: required
+#   |      :type side: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param limitClientOrderId: A unique id for the limit order. Automatically generated if not sent.
+#   |      :type limitClientOrderId: str
+#   |      :param price: required
+#   |      :type price: str
+#   |      :param limitIcebergQty: Used to make the LIMIT_MAKER leg an iceberg order.
+#   |      :type limitIcebergQty: decimal
+#   |      :param stopClientOrderId: A unique Id for the stop loss/stop loss limit leg. Automatically generated if not sent.
+#   |      :type stopClientOrderId: str
+#   |      :param stopPrice: required
+#   |      :type stopPrice: str
+#   |      :param stopLimitPrice: If provided, stopLimitTimeInForce is required.
+#   |      :type stopLimitPrice: str
+#   |      :param stopIcebergQty: Used with STOP_LOSS_LIMIT leg to make an iceberg order.
+#   |      :type stopIcebergQty: decimal
+#   |      :param stopLimitTimeInForce: Valid values are GTC/FOK/IOC.
+#   |      :type stopLimitTimeInForce: str
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; default: RESULT.
+#   |      :type newOrderRespType: str
+#   |      :param sideEffectType: NO_SIDE_EFFECT, MARGIN_BUY, AUTO_REPAY; default NO_SIDE_EFFECT.
+#   |      :type sideEffectType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "orderListId": 0,
+#   |              "contingencyType": "OCO",
+#   |              "listStatusType": "EXEC_STARTED",
+#   |              "listOrderStatus": "EXECUTING",
+#   |              "listClientOrderId": "JYVpp3F0f5CAG15DhtrqLp",
+#   |              "transactionTime": 1563417480525,
+#   |              "symbol": "LTCBTC",
+#   |              "marginBuyBorrowAmount": "5",       // will not return if no margin trade happens
+#   |              "marginBuyBorrowAsset": "BTC",    // will not return if no margin trade happens
+#   |              "isIsolated": false,       // if isolated margin
+#   |              "orders": [
+#   |                  {
+#   |                      "symbol": "LTCBTC",
+#   |                      "orderId": 2,
+#   |                      "clientOrderId": "Kk7sqHb9J6mJWTMDVW7Vos"
+#   |                  },
+#   |                  {
+#   |                      "symbol": "LTCBTC",
+#   |                      "orderId": 3,
+#   |                      "clientOrderId": "xTXKaGYd4bluPVp78IVRvl"
+#   |                  }
+#   |              ],
+#   |              "orderReports": [
+#   |                  {
+#   |                      "symbol": "LTCBTC",
+#   |                      "orderId": 2,
+#   |                      "orderListId": 0,
+#   |                      "clientOrderId": "Kk7sqHb9J6mJWTMDVW7Vos",
+#   |                      "transactTime": 1563417480525,
+#   |                      "price": "0.000000",
+#   |                      "origQty": "0.624363",
+#   |                      "executedQty": "0.000000",
+#   |                      "cummulativeQuoteQty": "0.000000",
+#   |                      "status": "NEW",
+#   |                      "timeInForce": "GTC",
+#   |                      "type": "STOP_LOSS",
+#   |                      "side": "BUY",
+#   |                      "stopPrice": "0.960664"
+#   |                  },
+#   |                  {
+#   |                      "symbol": "LTCBTC",
+#   |                      "orderId": 3,
+#   |                      "orderListId": 0,
+#   |                      "clientOrderId": "xTXKaGYd4bluPVp78IVRvl",
+#   |                      "transactTime": 1563417480525,
+#   |                      "price": "0.036435",
+#   |                      "origQty": "0.624363",
+#   |                      "executedQty": "0.000000",
+#   |                      "cummulativeQuoteQty": "0.000000",
+#   |                      "status": "NEW",
+#   |                      "timeInForce": "GTC",
+#   |                      "type": "LIMIT_MAKER",
+#   |                      "side": "BUY"
+#   |                  }
+#   |              ]
+#   |          }
+
+
+#   |  create_margin_order(self, **params)
+#   |      Post a new order for margin account.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#margin-account-new-order-trade
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param isIsolated: set to 'TRUE' for isolated margin (default 'FALSE')
+#   |      :type isIsolated: str
+#   |      :param side: required
+#   |      :type side: str
+#   |      :param type: required
+#   |      :type type: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param price: required
+#   |      :type price: str
+#   |      :param stopPrice: Used with STOP_LOSS, STOP_LOSS_LIMIT, TAKE_PROFIT, and TAKE_PROFIT_LIMIT orders.
+#   |      :type stopPrice: str
+#   |      :param timeInForce: required if limit order GTC,IOC,FOK
+#   |      :type timeInForce: str
+#   |      :param newClientOrderId: A unique id for the order. Automatically generated if not sent.
+#   |      :type newClientOrderId: str
+#   |      :param icebergQty: Used with LIMIT, STOP_LOSS_LIMIT, and TAKE_PROFIT_LIMIT to create an iceberg order.
+#   |      :type icebergQty: str
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; MARKET and LIMIT order types default to
+#   |          FULL, all other orders default to ACK.
+#   |      :type newOrderRespType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      Response ACK:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "BTCUSDT",
+#   |              "orderId": 28,
+#   |              "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",
+#   |              "transactTime": 1507725176595
+#   |          }
+#   |
+#   |      Response RESULT:
+#   |      Response RESULT:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "BTCUSDT",
+#   |              "orderId": 28,
+#   |              "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",
+#   |              "transactTime": 1507725176595,
+#   |              "price": "1.00000000",
+#   |              "origQty": "10.00000000",
+#   |              "executedQty": "10.00000000",
+#   |              "cummulativeQuoteQty": "10.00000000",
+#   |              "status": "FILLED",
+#   |              "timeInForce": "GTC",
+#   |              "type": "MARKET",
+#   |              "side": "SELL"
+#   |          }
+#   |
+#   |      Response FULL:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "BTCUSDT",
+#   |              "orderId": 28,
+#   |              "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",
+#   |              "transactTime": 1507725176595,
+#   |              "price": "1.00000000",
+#   |              "origQty": "10.00000000",
+#   |              "executedQty": "10.00000000",
+#   |              "cummulativeQuoteQty": "10.00000000",
+#   |              "status": "FILLED",
+#   |              "timeInForce": "GTC",
+#   |              "type": "MARKET",
+#   |              "side": "SELL",
+#   |              "fills": [
+#   |                  {
+#   |                      "price": "4000.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "4.00000000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3999.00000000",
+#   |                      "qty": "5.00000000",
+#   |                      "commission": "19.99500000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3998.00000000",
+#   |                      "qty": "2.00000000",
+#   |                      "commission": "7.99600000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3997.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "3.99700000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3995.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "3.99500000",
+#   |                      "commissionAsset": "USDT"
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException, BinanceOrderException, BinanceOrderMinAmountException,
+#   |          BinanceOrderMinPriceException, BinanceOrderMinTotalException, BinanceOrderUnknownSymbolException,
+#   |          BinanceOrderInactiveSymbolException
+
+
+
+
+#   |  create_oco_order(self, **params)
+#   |      Send in a new OCO order
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#new-oco-trade
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param listClientOrderId: A unique id for the list order. Automatically generated if not sent.
+#   |      :type listClientOrderId: str
+#   |      :param side: required
+#   |      :type side: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param limitClientOrderId: A unique id for the limit order. Automatically generated if not sent.
+#   |      :type limitClientOrderId: str
+#   |      :param price: required
+#   |      :type price: str
+#   |      :param limitIcebergQty: Used to make the LIMIT_MAKER leg an iceberg order.
+#   |      :type limitIcebergQty: decimal
+#   |      :param stopClientOrderId: A unique id for the stop order. Automatically generated if not sent.
+#   |      :type stopClientOrderId: str
+#   |      :param stopPrice: required
+#   |      :type stopPrice: str
+#   |      :param stopLimitPrice: If provided, stopLimitTimeInForce is required.
+#   |      :type stopLimitPrice: str
+#   |      :param stopIcebergQty: Used with STOP_LOSS_LIMIT leg to make an iceberg order.
+#   |      :type stopIcebergQty: decimal
+#   |      :param stopLimitTimeInForce: Valid values are GTC/FOK/IOC.
+#   |      :type stopLimitTimeInForce: str
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; default: RESULT.
+#   |      :type newOrderRespType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      Response ACK:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |          }
+#   |
+#   |      Response RESULT:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |          }
+#   |
+#   |      Response FULL:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException, BinanceOrderException, BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, BinanceOrderUnknownSymbolException, BinanceOrderInactiveSymbolException
+
+
+#   |  create_order(self, **params)
+#   |      Send in a new order
+#   |
+#   |      Any order with an icebergQty MUST have timeInForce set to GTC.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#new-order-trade
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param side: required
+#   |      :type side: str
+#   |      :param type: required
+#   |      :type type: str
+#   |      :param timeInForce: required if limit order
+#   |      :type timeInForce: str
+#   |      :param quantity: required
+#   |      :type quantity: decimal
+#   |      :param quoteOrderQty: amount the user wants to spend (when buying) or receive (when selling)
+#   |          of the quote asset, applicable to MARKET orders
+#   |      :type quoteOrderQty: decimal
+#   |      :param price: required
+#   |      :type price: str
+#   |      :param newClientOrderId: A unique id for the order. Automatically generated if not sent.
+#   |      :type newClientOrderId: str
+#   |      :param icebergQty: Used with LIMIT, STOP_LOSS_LIMIT, and TAKE_PROFIT_LIMIT to create an iceberg order.
+#   |      :type icebergQty: decimal
+#   |      :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL; default: RESULT.
+#   |      :type newOrderRespType: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      Response ACK:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol":"LTCBTC",
+#   |              "orderId": 1,
+#   |              "clientOrderId": "myOrder1" # Will be newClientOrderId
+#   |              "transactTime": 1499827319559
+#   |          }
+#   |
+#   |      Response RESULT:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "BTCUSDT",
+#   |              "orderId": 28,
+#   |              "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",
+#   |              "transactTime": 1507725176595,
+#   |              "price": "0.00000000",
+#   |              "origQty": "10.00000000",
+#   |              "executedQty": "10.00000000",
+#   |              "cummulativeQuoteQty": "10.00000000",
+#   |              "status": "FILLED",
+#   |              "timeInForce": "GTC",
+#   |              "type": "MARKET",
+#   |              "side": "SELL"
+#   |          }
+#   |
+#   |      Response FULL:
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "BTCUSDT",
+#   |              "orderId": 28,
+#   |              "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",
+#   |              "transactTime": 1507725176595,
+#   |              "price": "0.00000000",
+#   |              "origQty": "10.00000000",
+#   |              "executedQty": "10.00000000",
+#   |              "cummulativeQuoteQty": "10.00000000",
+#   |              "status": "FILLED",
+#   |              "timeInForce": "GTC",
+#   |              "type": "MARKET",
+#   |              "side": "SELL",
+#   |              "fills": [
+#   |                  {
+#   |                      "price": "4000.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "4.00000000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3999.00000000",
+#   |                      "qty": "5.00000000",
+#   |                      "commission": "19.99500000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3998.00000000",
+#   |                      "qty": "2.00000000",
+#   |                      "commission": "7.99600000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3997.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "3.99700000",
+#   |                      "commissionAsset": "USDT"
+#   |                  },
+#   |                  {
+#   |                      "price": "3995.00000000",
+#   |                      "qty": "1.00000000",
+#   |                      "commission": "3.99500000",
+#   |                      "commissionAsset": "USDT"
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException, BinanceOrderException, BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, BinanceOrderUnknownSymbolException, BinanceOrderInactiveSymbolException
+
+
+#   |  get_all_orders(self, **params)
+#   |      Get all account orders; active, canceled, or filled.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#all-orders-user_data
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param orderId: The unique order id
+#   |      :type orderId: int
+#   |      :param startTime: optional
+#   |      :type startTime: int
+#   |      :param endTime: optional
+#   |      :type endTime: int
+#   |      :param limit: Default 500; max 1000.
+#   |      :type limit: int
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "orderId": 1,
+#   |                  "clientOrderId": "myOrder1",
+#   |                  "price": "0.1",
+#   |                  "origQty": "1.0",
+#   |                  "executedQty": "0.0",
+#   |                  "status": "NEW",
+#   |                  "timeInForce": "GTC",
+#   |                  "type": "LIMIT",
+#   |                  "side": "BUY",
+#   |                  "stopPrice": "0.0",
+#   |                  "icebergQty": "0.0",
+#   |                  "time": 1499827319559
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+#   |
+
+
+#   |  get_all_tickers(self) -> List[Dict[str, str]]
+#   |      Latest price for all symbols.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker
+#   |
+#   |      :returns: List of market tickers
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "price": "4.00000200"
+#   |              },
+#   |              {
+#   |                  "symbol": "ETHBTC",
+#   |                  "price": "0.07946600"
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+#   |
+
+
+#   |  get_asset_balance(self, asset, **params)
+#   |      Get current asset balance.
+#   |
+#   |      :param asset: required
+#   |      :type asset: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: dictionary or None if not found
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "asset": "BTC",
+#   |              "free": "4723846.89208129",
+#   |              "locked": "0.00000000"
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_asset_details(self, **params)
+#   |      Fetch details on assets.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#asset-detail-sapi-user_data
+#   |
+#   |      :param asset: optional
+#   |      :type asset: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |                  "CTR": {
+#   |                      "minWithdrawAmount": "70.00000000", //min withdraw amount
+#   |                      "depositStatus": false,//deposit status (false if ALL of networks' are false)
+#   |                      "withdrawFee": 35, // withdraw fee
+#   |                      "withdrawStatus": true, //withdraw status (false if ALL of networks' are false)
+#   |                      "depositTip": "Delisted, Deposit Suspended" //reason
+#   |                  },
+#   |                  "SKY": {
+#   |                      "minWithdrawAmount": "0.02000000",
+#   |                      "depositStatus": true,
+#   |                      "withdrawFee": 0.01,
+#   |                      "withdrawStatus": true
+#   |                  }
+#   |          }
+
+
+#   |  get_asset_dividend_history(self, **params)
+#   |      Query asset dividend record.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#asset-dividend-record-user_data
+#   |
+#   |      :param asset: optional
+#   |      :type asset: str
+#   |      :param startTime: optional
+#   |      :type startTime: long
+#   |      :param endTime: optional
+#   |      :type endTime: long
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      .. code:: python
+#   |
+#   |          result = client.get_asset_dividend_history()
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "rows":[
+#   |                  {
+#   |                      "amount":"10.00000000",
+#   |                      "asset":"BHFT",
+#   |                      "divTime":1563189166000,
+#   |                      "enInfo":"BHFT distribution",
+#   |                      "tranId":2968885920
+#   |                  },
+#   |                  {
+#   |                      "amount":"10.00000000",
+#   |                      "asset":"BHFT",
+#   |                      "divTime":1563189165000,
+#   |                      "enInfo":"BHFT distribution",
+#   |                      "tranId":2968885920
+#   |                  }
+#   |              ],
+#   |              "total":2
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_deposit_history(self, **params)
+#   |      Fetch deposit history.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#deposit-history-supporting-network-user_data
+#   |
+#   |      :param coin: optional
+#   |      :type coin: str
+#   |      :type status: optional - 0(0:pending,1:success) optional
+#   |      :type status: int
+#   |      :param startTime: optional
+#   |      :type startTime: long
+#   |      :param endTime: optional
+#   |      :type endTime: long
+#   |      :param offset: optional - default:0
+#   |      :type offset: long
+#   |      :param limit: optional
+#   |      :type limit: long
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "amount":"0.00999800",
+#   |                  "coin":"PAXG",
+#   |                  "network":"ETH",
+#   |                  "status":1,
+#   |                  "address":"0x788cabe9236ce061e5a892e1a59395a81fc8d62c",
+#   |                  "addressTag":"",
+#   |                  "txId":"0xaad4654a3234aa6118af9b4b335f5ae81c360b2394721c019b5d1e75328b09f3",
+#   |                  "insertTime":1599621997000,
+#   |                  "transferType":0,
+#   |                  "confirmTimes":"12/12"
+#   |              },
+#   |              {
+#   |                  "amount":"0.50000000",
+#   |                  "coin":"IOTA",
+#   |                  "network":"IOTA",
+#   |                  "status":1,
+#   |                  "address":"SIZ9VLMHWATXKV99LH99CIGFJFUMLEHGWVZVNNZXRJJVWBPHYWPPBOSDORZ9EQSHCZAMPVAPGFYQAUUV9DROOXJLNW",
+#   |                  "addressTag":"",
+#   |                  "txId":"ESBFVQUTPIWQNJSPXFNHNYHSQNTGKRVKPRABQWTAXCDWOAKDKYWPTVG9BGXNVNKTLEJGESAVXIKIZ9999",
+#   |                  "insertTime":1599620082000,
+#   |                  "transferType":0,
+#   |                  "confirmTimes":"1/1"
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |
+#   |  cancel_order(self, **params)
+#   |      Cancel an active order. Either orderId or origClientOrderId must be sent.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#cancel-order-trade
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param orderId: The unique order id
+#   |      :type orderId: int
+#   |      :param origClientOrderId: optional
+#   |      :type origClientOrderId: str
+#   |      :param newClientOrderId: Used to uniquely identify this cancel. Automatically generated by default.
+#   |      :type newClientOrderId: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "symbol": "LTCBTC",
+#   |              "origClientOrderId": "myOrder1",
+#   |              "orderId": 1,
+#   |              "clientOrderId": "cancelMyOrder1"
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+#   |  get_account(self, **params)
+#   |      Get current account information.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#account-information-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "makerCommission": 15,
+#   |              "takerCommission": 15,
+#   |              "buyerCommission": 0,
+#   |              "sellerCommission": 0,
+#   |              "canTrade": true,
+#   |              "canWithdraw": true,
+#   |              "canDeposit": true,
+#   |              "balances": [
+#   |                  {
+#   |                      "asset": "BTC",
+#   |                      "free": "4723846.89208129",
+#   |                      "locked": "0.00000000"
+#   |                  },
+#   |                  {
+#   |                      "asset": "LTC",
+#   |                      "free": "4763368.68006011",
+#   |                      "locked": "0.00000000"
+#   |                  }
+#   |              ]
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_account_snapshot(self, **params)
+#   |      Get daily account snapshot of specific type.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#daily-account-snapshot-user_data
+#   |
+#   |      :param type: required. Valid values are SPOT/MARGIN/FUTURES.
+#   |      :type type: string
+#   |      :param startTime: optional
+#   |      :type startTime: int
+#   |      :param endTime: optional
+#   |      :type endTime: int
+#   |      :param limit: optional
+#   |      :type limit: int
+#   |      :param recvWindow: optional
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |             "code":200, // 200 for success; others are error codes
+#   |             "msg":"", // error message
+#   |             "snapshotVos":[
+#   |                {
+#   |                   "data":{
+#   |                      "balances":[
+#   |                         {
+#   |                            "asset":"BTC",
+#   |                            "free":"0.09905021",
+#   |                            "locked":"0.00000000"
+#   |                         },
+#   |                         {
+#   |                            "asset":"USDT",
+#   |                            "free":"1.89109409",
+#   |                            "locked":"0.00000000"
+#   |                         }
+#   |                      ],
+#   |                      "totalAssetOfBtc":"0.09942700"
+#   |                   },
+#   |                   "type":"spot",
+#   |                   "updateTime":1576281599000
+#   |                }
+#   |             ]
+#   |          }
+#   |
+#   |      OR
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |             "code":200, // 200 for success; others are error codes
+#   |             "msg":"", // error message
+#   |             "snapshotVos":[
+#   |                {
+#   |                   "data":{
+#   |                      "marginLevel":"2748.02909813",
+#   |                      "totalAssetOfBtc":"0.00274803",
+#   |                      "totalLiabilityOfBtc":"0.00000100",
+#   |                      "totalNetAssetOfBtc":"0.00274750",
+#   |                      "userAssets":[
+#   |                         {
+#   |                            "asset":"XRP",
+#   |                            "borrowed":"0.00000000",
+#   |                            "free":"1.00000000",
+#   |                            "interest":"0.00000000",
+#   |                            "locked":"0.00000000",
+#   |                            "netAsset":"1.00000000"
+#   |                         }
+#   |                      ]
+#   |                   },
+#   |                   "type":"margin",
+#   |                   "updateTime":1576281599000
+#   |                }
+#   |             ]
+#   |          }
+#   |
+#   |      OR
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |             "code":200, // 200 for success; others are error codes
+#   |             "msg":"", // error message
+#   |             "snapshotVos":[
+#   |                {
+#   |                   "data":{
+#   |                      "assets":[
+#   |                         {
+#   |                            "asset":"USDT",
+#   |                            "marginBalance":"118.99782335",
+#   |                            "walletBalance":"120.23811389"
+#   |                         }
+#   |                      ],
+#   |                      "position":[
+#   |                         {
+#   |                            "entryPrice":"7130.41000000",
+#   |                            "markPrice":"7257.66239673",
+#   |                            "positionAmt":"0.01000000",
+#   |                            "symbol":"BTCUSDT",
+#   |                            "unRealizedProfit":"1.24029054"
+#   |                         }
+#   |                      ]
+#   |                   },
+#   |                   "type":"futures",
+#   |                   "updateTime":1576281599000
+#   |                }
+
+
+#   |
+#   |  get_account_status(self, **params)
+#   |      Get account status detail.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#account-status-sapi-user_data
+#   |
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "data": "Normal"
+#   |          }
+
+
+#   |  get_all_orders(self, **params)
+#   |      Get all account orders; active, canceled, or filled.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#all-orders-user_data
+#   |
+#   |      :param symbol: required
+#   |      :type symbol: str
+#   |      :param orderId: The unique order id
+#   |      :type orderId: int
+#   |      :param startTime: optional
+#   |      :type startTime: int
+#   |      :param endTime: optional
+#   |      :type endTime: int
+#   |      :param limit: Default 500; max 1000.
+#   |      :type limit: int
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "orderId": 1,
+#   |                  "clientOrderId": "myOrder1",
+#   |                  "price": "0.1",
+#   |                  "origQty": "1.0",
+#   |                  "executedQty": "0.0",
+#   |                  "status": "NEW",
+#   |                  "timeInForce": "GTC",
+#   |                  "type": "LIMIT",
+#   |                  "side": "BUY",
+#   |                  "stopPrice": "0.0",
+#   |                  "icebergQty": "0.0",
+#   |                  "time": 1499827319559
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+#   |  get_all_tickers(self) -> List[Dict[str, str]]
+#   |      Latest price for all symbols.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker
+#   |
+#   |      :returns: List of market tickers
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          [
+#   |              {
+#   |                  "symbol": "LTCBTC",
+#   |                  "price": "4.00000200"
+#   |              },
+#   |              {
+#   |                  "symbol": "ETHBTC",
+#   |                  "price": "0.07946600"
+#   |              }
+#   |          ]
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+
+
+#   |  get_asset_balance(self, asset, **params)
+#   |      Get current asset balance.
+#   |
+#   |      :param asset: required
+#   |      :type asset: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: dictionary or None if not found
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |              "asset": "BTC",
+#   |              "free": "4723846.89208129",
+#   |              "locked": "0.00000000"
+#   |          }
+#   |
+#   |      :raises: BinanceRequestException, BinanceAPIException
+#   |
+
+
+#   |  get_asset_details(self, **params)
+#   |      Fetch details on assets.
+#   |
+#   |      https://binance-docs.github.io/apidocs/spot/en/#asset-detail-sapi-user_data
+#   |
+#   |      :param asset: optional
+#   |      :type asset: str
+#   |      :param recvWindow: the number of milliseconds the request is valid for
+#   |      :type recvWindow: int
+#   |
+#   |      :returns: API response
+#   |
+#   |      .. code-block:: python
+#   |
+#   |          {
+#   |                  "CTR": {
+#   |                      "minWithdrawAmount": "70.00000000", //min withdraw amount
+#   |                      "depositStatus": false,//deposit status (false if ALL of networks' are false)
+#   |                      "withdrawFee": 35, // withdraw fee
+#   |                      "withdrawStatus": true, //withdraw status (false if ALL of networks' are false)
+#   |                      "depositTip": "Delisted, Deposit Suspended" //reason
+#   |                  },
+#   |                  "SKY": {
+#   |                      "minWithdrawAmount": "0.02000000",
+#   |                      "depositStatus": true,
+#   |                      "withdrawFee": 0.01,
+#   |                      "withdrawStatus": true
+#   |                  }
+#   |          }
 

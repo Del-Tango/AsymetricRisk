@@ -9,13 +9,15 @@ class TestARMarket(unittest.TestCase):
     def setUpClass(cls):
         cls.api_key = 'yxdLHNgKWzka2HjzR5jZF0ZXTCZaHp2V1X9EgXjKBxLsfKoClFvET1PqIUW9ctAw'
         cls.api_secret = 'oPyuIoqWHBt5pvfCk1YLIslViuH87DJvRTgtOsLylGB58LRsEuHvu4KuZOv0DAv5'
+        cls.taapi_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjM2MmRkNThmYzVhOGFkZmVjM2ZhMmEzIiwiaWF0IjoxNjY3NzAxNzg5LCJleHAiOjMzMTcyMTY1Nzg5fQ.33yXXi5RK1oupATjS-RFMLKfD7grZdJ2r7GT4gH-tAE'
         cls.trading_market = TradingMarket(
             cls.api_key, cls.api_secret, sync=True, **{
-                'crypto': 'BTC',
+                'base-currency': 'BTC',
                 'api-url': 'https://testnet.binance.vision/api',
                 'api-key': cls.api_key,
                 'api-secret': cls.api_secret,
-                'exchange-crypto': 'ETH',
+                'taapi-key': cls.taapi_key,
+                'quote-currency': 'ETH',
             }
         )
         cls.buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
@@ -23,6 +25,13 @@ class TestARMarket(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         pass
+
+    def test_ar_market_close_position(cls):
+        buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
+        close_ok, close_nok = cls.trading_market.close_position(buy_order.get('orderId'))
+        cls.assertTrue(isinstance(close_ok, list))
+        cls.assertTrue(isinstance(close_nok, list))
+        cls.assertFalse(close_nok)
 
     def test_ar_market_buy(cls):
         buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
@@ -32,16 +41,8 @@ class TestARMarket(unittest.TestCase):
         sell_order = cls.trading_market.sell(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
         cls.assertTrue(isinstance(sell_order, dict))
 
-    def test_ar_market_indicators(cls):
-        indicators = cls.trading_market.indicators('rsi', 'macd', 'adx', 'ma', 'vwap')
-        cls.assertTrue(isinstance(indicators, dict))
-
-    def test_ar_market_close_position(cls):
-        close_position = cls.trading_market.close_position()
-        cls.assertTrue(isinstance(close_position, dict))
-
     def test_ar_market_update_details(cls):
-        update_details = cls.trading_market.update_details()
+        update_details = cls.trading_market.update_details('all')
         cls.assertTrue(isinstance(update_details, dict))
 
     def test_ar_market_synced(cls):

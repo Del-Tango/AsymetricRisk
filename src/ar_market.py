@@ -7,8 +7,8 @@
 import os
 import logging
 import time
-# import pandas as pd
-# import ta-lib
+import datetime
+import json
 import pysnooper
 
 from binance.client import Client
@@ -28,10 +28,19 @@ class TradingMarket(Client):
             self.API_KEY = kwargs.get('api-key', os.environ.get('binance_api'))
         if not self.API_SECRET:
             self.API_SECRET = kwargs.get('api-secret', os.environ.get('binance_secret'))
-        self.quote_currency = kwargs.get('quote-currency', 'ETH')
-        self.period_start = kwargs.get('period-start', '1/09/2022')
-        self.period_end = kwargs.get('period-end', '1/10/2022')
+        self.taapi_key = kwargs.get('taapi-key', os.environ.get('taapi_api'))
+        self.quote_currency = kwargs.get('quote-currency', 'USDT')
+        self.ticker_symbol = kwargs.get(
+            'ticker-symbol', self.compute_ticker_symbol(
+                base=self.base_currency, quote=self.quote_currency
+            ) # 'BTC/USDT'
+        )
+        self.period_interval = kwargs.get('period-interval', '1h')
         self.cache_size_limit = kwargs.get('cache-size-limit', 20)
+        self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # seconds
+        # WARNING: Longer delays between indicator api calls will result in
+        # longer execution time. Delays that are too short may not retreive all
+        # necessary data (depending on chosen taapi api plan specifications)
         self.indicator = TradingIndicator(**kwargs)
         self.time_offset = 0
         self.buy_price = None
@@ -39,31 +48,177 @@ class TradingMarket(Client):
         self.volume = None
         self.adx = None
         self.macd = None
+        self.macd_signal = None
+        self.macd_hist = None
         self.ma = None
+        self.ema = None
         self.rsi = None
         self.vwap = None
-        self.active_trades = {} #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
-        self.trades_to_report = {} # {id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.last_indicator_update_timestamp = None
         self.success_count = 0
         self.failure_count = 0
-        self.update_details()
+        self.active_trades = {} #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.trades_to_report = {} # {id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.recent_trades_cache = {}
         self.account_cache = {}
         self.coin_info_cache = {}
+        self.ticker_info_cache = {}
         self.trade_fee_cache = {}
         if sync:
             self.time_offset = self._fetch_time_offset()
+        self.update_details()
         return calling_all_ancestors_from_beyond_the_grave
 
     # FETCHERS
 
+    # TODO
+    def fetch_details(self, *args, **kwargs):
+        log.debug('TODO - Under construction, building...')
+
+    def fetch_active_trades(self, *args, **kwargs):
+        log.debug('')
+        all_trades = self.fetch_all_trades(*args, **kwargs)
+        active_trades = {}
+        for key in all_trades:
+            active_trades[key] = [
+                item for item in all_trades[key] if item.get('status') == 'NEW'
+            ]
+        return active_trades
+
+    def fetch_all_trades(self, *args, **kwargs):
+        '''
+        [ INPUT ]: *args - ticker symbols to get trades for
+                   **kwargs - orderId (type int) - Unique order ID
+                            - startTime (type int) - Optional
+                            - endTime (type int) - Optional
+                            - limit (type int) - Default 500, max 1000
+        [ RETURN ]: Dict with all trades grouped by ticker symbol
+        '''
+        log.debug('')
+        records = {}
+        for ticker_symbol in args:
+            timestamp = str(time.time())
+            self.update_cache(
+                self.get_all_orders(symbol=ticker_symbol, recvWindow=60000, **kwargs),
+                self.recent_trades_cache, label=timestamp,
+            )
+            records.update({ticker_symbol: self.recent_trades_cache[timestamp]})
+        return records
+
+    def fetch_asset_balance(self, *args, **kwargs):
+        log.debug('')
+        timestamp = str(time.time())
+        self.update_cache(
+            self.get_account(recvWindow=60000), self.account_cache,
+            label=timestamp
+        )
+        return self.account_cache[timestamp].get('balances', False)
+
+    def fetch_macd_values(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.macd(**self.format_macd_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        value_dict = self.raw_api_response_to_dict(raw_value)
+        return value_dict.get('valueMACD', False), \
+            value_dict.get('valueMACDSignal', False), \
+            value_dict.get('valueMACDHist', False)
+
+    def fetch_adx_value(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.adx(**self.format_adx_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        return self.raw_api_response_to_dict(raw_value).get('value', False)
+
+    def fetch_ma_value(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.ma(**self.format_ma_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        return self.raw_api_response_to_dict(raw_value).get('value', False)
+
+    def fetch_ema_value(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.ema(**self.format_ema_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        return self.raw_api_response_to_dict(raw_value).get('value', False)
+
+    def fetch_rsi_value(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.rsi(**self.format_rsi_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        return self.raw_api_response_to_dict(raw_value).get('value', False)
+
+    def fetch_vwap_value(self):
+        log.debug('')
+        self.ensure_indicator_delay()
+        raw_value = self.indicator.vwap(**self.format_vwap_indicator_kwargs())
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        return self.raw_api_response_to_dict(raw_value).get('value', False)
+
     def _fetch_time_offset(self):
+        log.debug('')
         res = self.get_server_time()
         return res.get('serverTime') - int(time.time() * 1000)
 
+    # FORMATTERS
+
+    def format_general_indicator_kwargs(self):
+        log.debug('')
+        return {
+            'exchange': 'binance',
+            'symbol': self.ticker_symbol,
+            'interval': self.period_interval,
+        }
+
+    def format_macd_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
+    def format_adx_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
+    def format_ma_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
+    def format_ema_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
+    def format_rsi_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
+    def format_vwap_indicator_kwargs(self):
+        log.debug('')
+        return self.format_general_indicator_kwargs()
+
     # UPDATERS
 
+    def update_indicator_timestamp(self):
+        log.debug('')
+        self.last_indicator_update_timestamp = datetime.datetime.now()
+        return self.last_indicator_update_timestamp
+
     def update_cache(self, element, cache_dict, **kwargs):
+        log.debug('')
         size_limit = kwargs.get('size_limit', self.cache_size_limit)
         if len(cache_dict.keys()) > size_limit:
             truncate_cache = truncate_cache(cache_dict, size_limit - 1)
@@ -75,8 +230,53 @@ class TradingMarket(Client):
 
     # GENERAL
 
+    # TODO - add take profit and stop loss / trailing stop limits
+#   @pysnooper.snoop()
+    def buy(self, amount, *args, take_profit=None, stop_loss=None,
+            trailing_stop=None, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        sanitized_ticker = self.ticker_symbol.replace('/', '')
+#       order = self.create_order(
+        order = self.create_test_order(
+            symbol=sanitized_ticker,
+            side=self.SIDE_BUY,
+            type=self.ORDER_TYPE_MARKET,
+            quoteOrderQty=amount,
+            newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+            recvWindow=kwargs.get('recvWindow', 60000),
+        )
+        return order
+
+    # TODO - add take profit and stop loss / trailing stop limits
+#   @pysnooper.snoop()
+    def sell(self, amount, *args, take_profit=None, stop_loss=None,
+             trailing_stop=None,  **kwargs):
+        log.debug('TODO - Under construction, building...')
+        sanitized_ticker = self.ticker_symbol.replace('/', '')
+#       order = self.create_order(
+        order = self.create_test_order(
+            symbol=sanitized_ticker,
+            side=self.SIDE_SELL,
+            type=self.ORDER_TYPE_MARKET,
+            quoteOrderQty=amount,
+            newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+            recvWindow=kwargs.get('recvWindow', 60000),
+        )
+        return order
+
+    def compute_ticker_symbol(self, base=None, quote=None):
+        log.debug('')
+        return str(base) + '/' + str(quote)
+
+    def raw_api_response_to_dict(self, raw_value):
+        log.debug('')
+        sanitized = ''.join(list(raw_value)[1:]).replace("'", '')
+        return json.loads(sanitized)
+
     def truncate_cache(cache_dict, size_limit):
-        if not cache_dict or not isinstance(size_limit, int) or size_limit > len(cache_dict):
+        log.debug('')
+        if not cache_dict or not isinstance(size_limit, int) \
+                or size_limit > len(cache_dict):
             return False
         size_limit -= 1
         keys_to_remove = list(reversed(sorted(cache_dict)))[size_limit:]
@@ -84,70 +284,200 @@ class TradingMarket(Client):
             del cache_dict[key]
 
     def synced(self, func_name, **args):
+        log.debug('')
         args['timestamp'] = int(time.time() - self.time_offset)
         return getattr(self, func_name)(**args)
 
-    # TODO
-    def buy(self, amount, *args, take_profit=None, stop_loss=None, trailing_stop=None, **kwargs):
-        return {}
+    def close_position(self, *args, **kwargs):
+        '''
+        [ INPUT ]: *args    - trade ID's (type int)
+                   **kwargs - symbol (type str) - ticker symbol, default is
+                              active market
+                            - recvWindow (type int) - binance API response
+                              window, default is 60000
+        [ RETURN ]: Closed trades (type lst), failed closes (type lst)
+        '''
+        log.debug('')
+        if not args:
+            return False
+        closed_trade, failed_close = [], []
+        for trade_id in args:
+            close = cancel_order(**{
+                'symbol': kwargs.get('symbol', self.ticker_symbol),
+                'orderId': trade_id,
+                'recvWindow': kwargs.get('recvWindow', 60000),
+            })
+            if not close:
+                failed_close.append(trade_id)
+                continue
+            closed_trade.append(trade_id)
+        return closed_trade, failed_close
 
-    # TODO
-    def sell(self, amount, *args, take_profit=None, stop_loss=None, trailing_stop=None,  **kwargs):
-        return {}
+    # ENSURANCE
 
-    # TODO
-    def indicators(self, *indicators):
-        return {}
+    def ensure_indicator_delay(self):
+        log.debug('')
+        if not self.last_indicator_update_timestamp:
+            return True
+        while True:
+            now = datetime.datetime.now()
+            difference = now - self.last_indicator_update_timestamp
+            if difference.seconds < self.indicator_update_delay:
+                continue
+            break
+        return True
 
-    # TODO
-    def close_position(self, *trade_ids):
-        return {}
+    # UPDATERS
 
-    # TODO
-    @pysnooper.snoop()
-    def update_details(self):
-        log.debug('TODO - Compute indicators')
-        timestamp = str(time.time())
-        ticker_symbol = str(self.base_currency) \
-            + str(self.quote_currency)
+    def update_coin_details(self, timestamp=str(time.time())):
+        log.debug('')
         self.update_cache(
             self.get_all_coins_info(recvWindow=60000),
             self.coin_info_cache, label=timestamp,
         )
-        for coin_dict in self.coin_info_cache[timestamp]:
-            if coin_dict['coin'] != self.base_currency:
-                continue
-            self.buy_price = coin_dict['bidPrice']
-            self.sell_price = coin_dict['askPrice']
-            self.volume = coin_dict['volume']
+        return {'coin-info-cache': self.coin_info_cache}
+
+    def update_trade_fee_details(self, timestamp=str(time.time())):
+        log.debug('')
         self.update_cache(
-            self.get_trade_fee(symbol=ticker_symbol, recvWindow=60000),
+            self.get_trade_fee(symbol=self.ticker_symbol, recvWindow=60000),
             self.trade_fee_cache, label=timestamp,
         )
-#       self.adx = None
-#       self.macd = None
-#       self.ma = None
-#       self.rsi = None
-#       self.vwap = None
-        return {
-            'ticker-symbol': ticker_symbol,
-            'buy-price': self.buy_price,
-            'sell-price': self.sell_price,
-            'volume': self.volume,
-            'indicators': {
-                'adx': self.adx,
-                'macd': self.macd,
-                'ma': self.ma,
-                'rsi': self.rsi,
-                'vwap': self.vwap,
-            },
-            'caches': {
-                'coin-info-cache': self.coin_info_cache,
-                'trade-fee-cache': self.trade_fee_cache
-            }
-        }
+        return {'trade-fee-cache': self.trade_fee_cache}
+
+    def update_price_volume_details(self, *update_targets, timestamp=str(time.time())):
+        log.debug('')
+        return_dict = {}
+        self.update_cache(
+            self.get_ticker(symbol=self.ticker_symbol.replace('/', '')),
+            self.ticker_info_cache, label=timestamp,
+        )
+        if 'all' in update_targets or 'price' in update_targets:
+            self.buy_price = float(self.ticker_info_cache[timestamp].get('bidPrice'))
+            self.sell_price = float(self.ticker_info_cache[timestamp].get('askPrice'))
+            return_dict.update(
+                {'buy-price': self.buy_price, 'sell-price': self.sell_price}
+            )
+        if 'all' in update_targets or 'volume' in update_targets:
+            self.volume = float(self.ticker_info_cache[timestamp].get('volume'))
+            return_dict.update({'volume': self.volume})
+        return return_dict
+
+    def update_indicator_details(self, *update_targets, timestamp=str(time.time())):
+        log.debug('')
+        return_dict = {'indicators': {}}
+        if 'all' in update_targets or 'indicators' in update_targets or 'adx' in update_targets:
+            self.adx = self.fetch_adx_value()
+            return_dict['indicators'].update({'adx': self.adx})
+        if 'all' in update_targets or 'indicators' in update_targets or 'macd' in update_targets:
+            self.macd, self.macd_signal, self.macd_hist = self.fetch_macd_values()
+            return_dict['indicators'].update({
+                'macd': self.macd, 'macd-signal': self.macd_signal,
+                'macd-hist': self.macd_hist
+            })
+        if 'all' in update_targets or 'indicators' in update_targets or 'ma' in update_targets:
+            self.ma = self.fetch_ma_value()
+            return_dict['indicators'].update({'ma': self.ma})
+        if 'all' in update_targets or 'indicators' in update_targets or 'ema' in update_targets:
+            self.ema = self.fetch_ema_value()
+            return_dict['indicators'].update({'ema': self.ema})
+        if 'all' in update_targets or 'indicators' in update_targets or 'rsi' in update_targets:
+            self.rsi = self.fetch_rsi_value()
+            return_dict['indicators'].update({'rsi': self.rsi})
+        if 'all' in update_targets or 'indicators' in update_targets or 'vwap' in update_targets:
+            self.vwap = self.fetch_vwap_value()
+            return_dict['indicators'].update({'vwap': self.vwap})
+        return return_dict
+
+#   @pysnooper.snoop()
+    def update_details(self, *args):
+        '''
+        [ INPUT  ]: Args can be - coin, price, volume, trade-fee, indicators,
+                    macd, adx, vwap, rsi, ma, ema, all
+        [ RETURN ]: Dict with updated values - {'ticker-symbol': 'BTC/USDT',
+            'buy-price': 20903.77, 'sell-price': 20904.5, 'volume': 7270.56273,
+            'indicators': {'adx': 25.79249660682844, 'macd': -55.08962670456458,
+            'macd-signal': -18.088430567653305, 'macd-hist': -37.001196136911275,
+            'ma': 21216.220666666643, 'ema': 21216.220700066643,
+            'rsi': 25.931456303405913, 'vwap': 20592.650164735693}}
+        '''
+        log.debug('')
+        timestamp = str(time.time())
+        return_dict = {'ticker-symbol': self.ticker_symbol}
+        update_targets = args or ('price', 'volume', 'trade-fee')
+        if 'all' in update_targets or 'coin' in update_targets:
+            self.update_coin_details(timestamp=timestamp)
+        if 'all' in update_targets or 'price' in update_targets or 'volume' in update_targets:
+            return_dict.update(
+                self.update_price_volume_details(*args, timestamp=timestamp)
+            )
+        if 'all' in update_targets or 'trade-fee' in update_targets:
+            self.update_trade_fee_details(timestamp=timestamp)
+        if 'all' in update_targets or 'indicators' in update_targets:
+            return_dict.update(
+                self.update_indicator_details(*args, timestamp=timestamp)
+            )
+        return return_dict
 
 # CODE DUMP
+
+        # Get coin price
+#       price = client.get_symbol_ticker(symbol=sanitized_ticker)
+#       # Calculate how much coin specified amount can buy
+#       buy_quantity = round(amount / float(price['price']))
+
+#           quantity=buy_quantity,
+
+
+#       self.order_market_buy(
+#           symbol=self.ticker_symbol, quantity=amount, newOrderRespType='JSON',
+#           recvWindow=60000
+#       )
+
+
+#       self.period_start = kwargs.get('period-start', '1/09/2022')
+#       self.period_end = kwargs.get('period-end', '1/10/2022')
+
+#           'caches': {
+#               'coin-info': self.coin_info_cache,
+#               'ticker-info': self.ticker_info_cache,
+#               'trade-fee': self.trade_fee_cache
+#           }
+
+#       ticker_symbol = str(self.base_currency) \
+#           + str(self.quote_currency)
+
+#       for coin_dict in self.coin_info_cache[timestamp]:
+#           if coin_dict['coin'] != self.base_currency:
+#               continue
+#           print('DEBUG: coin_dict', coin_dict)
+#           self.buy_price = coin_dict.get('bidPrice')
+#           self.sell_price = coin_dict.get('askPrice')
+#           self.volume = coin_dict.get('volume')
+#           break
+
+
+# Coin Info Dict - {'coin': 'BTC', 'depositAllEnable': True,
+# 'withdrawAllEnable': True, 'name': 'Bitcoin', 'free': '0', 'locked': '0',
+# 'freeze': '0', 'withdrawing': '0', 'ipoing': '0', 'ipoable': '0', 'storage':
+# '0', 'isLegalMoney': False, '
+#   trading': True, 'networkList': [{'network': 'BSC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': '', 'specia
+#   lWithdrawTips': 'The network you have selected is BSC. Please ensure that the withdrawal address supports the Binance Smart Chain network. You will lose your assets if the chosen platform does not support retrievals.', 'name': 'BNB Smart C
+#   hain (BEP20)', 'resetAddressStatus': False, 'addressRegex': '^(0x)[0-9A-Fa-f]{40}$', 'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.0000049', 'withdrawMin': '0.0000098', 'withdrawMax': '10000000000', 'minConfirm': 15, 'unLockConfirm
+#   ': 0, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False, 'country': 'AE,BINANCE_BAHRAIN_BSC,custody'}, {'network': 'BTC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': True, 'depositEnable': True, 'withd
+#   rawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': '', 'specialWithdrawTips': '', 'name': 'Bitcoin', 'resetAddressStatus': False, 'addressRegex': '^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^[(bc1q)|(bc1p)][0-9A-Za-z]{37,62}$',
+#   'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.0002', 'withdrawMin': '0.001', 'withdrawMax': '7500', 'minConfirm': 1, 'unLockConfirm': 2, 'sameAddress': False, 'estimatedArrivalTime': 60, 'busy': False, 'country': 'AE,BINANCE_BAHRA
+#   IN_BSC,custody'}, {'network': 'BNB', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': 'Please enter both MEMO a
+#   nd Address data, which are required to deposit BEP2-BTCB tokens to your Binance account.', 'name': 'BNB Beacon Chain (BEP2)', 'resetAddressStatus': False, 'addressRegex': '^(bnb1)[0-9a-z]{38}$', 'addressRule': '', 'memoRegex': '^[0-9A-Za-z
+#                                                                                                                                                                                                                                       \\-_]{1,120}$', 'withdrawFee': '0.0000082', 'withdrawMin': '0.000016', 'withdrawMax': '10000000000', 'depositDust': '0.00001', 'minConfirm': 1, 'unLockConfirm': 0, 'sameAddress': True, 'estimatedArrivalTime': 5, 'busy': False, 'country': '
+#   AE,BINANCE_BAHRAIN_BSC'}, {'network': 'SEGWITBTC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': False, 'depositDesc': '', 'withdrawDesc': 'The wallet is currently unde
+#   rgoing maintenance. Withdrawals for this asset will be resumed shortly.', 'specialTips': '', 'specialWithdrawTips': '', 'name': 'BTC(SegWit)', 'resetAddressStatus': False, 'addressRegex': '', 'addressRule': '', 'memoRegex': '', 'withdrawFe
+#   e': '0.0005', 'withdrawMin': '0.001', 'withdrawMax': '10000000000', 'minConfirm': 1, 'unLockConfirm': 2, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False}, {'network': 'ETH', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000
+#   001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': 'This deposit address supports ERC20 BBTC tokens. Please ensure your destination address supports BBTC tokens un
+#   der the contract address ending in 22541.', 'specialWithdrawTips': 'You are withdrawing Binance Wrapped BTC (BBTC). Please ensure that the receiving platform supports this token or you might potentially risk losing your asset.', 'name': 'E
+#   thereum (ERC20)', 'resetAddressStatus': False, 'addressRegex': '^(0x)[0-9A-Fa-f]{40}$', 'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.00018', 'withdrawMin': '0.00036', 'withdrawMax': '10000000000', 'minConfirm': 12, 'unLockConfirm'
+#   : 0, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False, 'country': 'AE,BINANCE_BAHRAIN_BSC,custody'}]}
+
 
 #   >>> tmarket.get_symbol_info(symbol='BTCBUSD')
 #   {'symbol': 'BTCBUSD', 'status': 'TRADING', 'baseAsset': 'BTC', 'baseAssetPrecision': 8, 'quoteAsset': 'BUSD', 'quotePrecision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteOrderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': False, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '1000000.00000000', 'tickSize': '0.01000000'}, {'filterType': 'PERCENT_PRICE', 'multiplierUp': '5', 'multiplierDown': '0.2', 'avgPriceMins': 1}, {'filterType': 'LOT_SIZE', 'minQty': '0.00000100', 'maxQty': '900.00000000', 'stepSize': '0.00000100'}, {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty': '0.00000000', 'maxQty': '100.00000000', 'stepSize': '0.00000000'}, {'filterType': 'TRAILING_DELTA', 'minTrailingAboveDelta': 10, 'maxTrailingAboveDelta': 2000, 'minTrailingBelowDelta': 10, 'maxTrailingBelowDelta': 2000}, {'filterType': 'MAX_NUM_ORDERS', 'maxNumOrders': 200}, {'filterType': 'MAX_NUM_ALGO_ORDERS', 'maxNumAlgoOrders': 5}], 'permissions': ['SPOT']}
