@@ -17,7 +17,7 @@ class TestARMarket(unittest.TestCase):
                 'api-key': cls.api_key,
                 'api-secret': cls.api_secret,
                 'taapi-key': cls.taapi_key,
-                'quote-currency': 'ETH',
+                'quote-currency': 'USDT',
             }
         )
         cls.buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
@@ -27,23 +27,30 @@ class TestARMarket(unittest.TestCase):
         pass
 
     def test_ar_market_close_position(cls):
-        buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
+        buy_order = cls.trading_market.buy(0.0002, **{
+            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+        })
         close_ok, close_nok = cls.trading_market.close_position(buy_order.get('orderId'))
         cls.assertTrue(isinstance(close_ok, list))
         cls.assertTrue(isinstance(close_nok, list))
         cls.assertFalse(close_nok)
 
     def test_ar_market_buy(cls):
-        buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
+        buy_order = cls.trading_market.buy(0.0002, **{
+            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+        })
         cls.assertTrue(isinstance(buy_order, dict))
 
     def test_ar_market_sell(cls):
-        sell_order = cls.trading_market.sell(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
+        sell_order = cls.trading_market.sell(0.0002, **{
+            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+        })
         cls.assertTrue(isinstance(sell_order, dict))
 
     def test_ar_market_update_details(cls):
         update_details = cls.trading_market.update_details('all')
         cls.assertTrue(isinstance(update_details, dict))
+        cls.assertFalse(update_detauls.get('error', False))
 
     def test_ar_market_synced(cls):
         account_info = cls.trading_market.synced('get_account', recvWindow=60000)

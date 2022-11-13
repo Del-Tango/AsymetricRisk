@@ -43,6 +43,13 @@ class TradingIndicator():
             'exchange': kwargs.get('exchange', 'binance'),
             'symbol': kwargs.get('symbol', 'BTC/USDT'),
             'interval': kwargs.get('interval', '1h'),
+            'period': kwargs.get('period'),
+            'backtrack': kwargs.get('backtrack'),
+            'backtracks': kwargs.get('backtracks'),
+            'chart': kwargs.get('chart'),
+            'optInFastPeriod': kwargs.get('macd-fast-period'),
+            'optInSlowPeriod': kwargs.get('macd-slow-period'),
+            'optInSignalPeriod': kwargs.get('macd-signal-period'),
         }
         action_variables = [
             (str(item) + '=' + str(action_data[item])) for item in action_data
@@ -84,42 +91,80 @@ class TradingIndicator():
         [ RETURN ]: Example - 'b\'{"value":27.163106189421097}\''
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('adx', **kwargs))
+        return self.api_call(self.format_target_url('adx', **{
+            'period': kwargs.get('adx-period', kwargs.get('period')),
+            'backtrack': kwargs.get('adx-backtrack'),
+            'backtracks': kwargs.get('adx-backtracks'),
+            'chart': kwargs.get('adx-chart'),
+            'interval': kwargs.get('adx-interval', kwargs.get('interval'))
+        }))
 
     def macd(self, **kwargs):
         '''
         [ RETURN ]: Example - 'b\'{"valueMACD":47.481220348032366,"valueMACDSignal":78.66025805066222,"valueMACDHist":-31.179037702629856}\''
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('macd', **kwargs))
+        return self.api_call(self.format_target_url('macd',  **{
+            'backtrack': kwargs.get('macd-backtrack'),
+            'backtracks': kwargs.get('macd-backtracks'),
+            'chart': kwargs.get('macd-chart'),
+            'interval': kwargs.get('macd-interval', kwargs.get('interval')),
+            'macd-fast-period': kwargs.get('macd-fast-period'),
+            'macd-slow-period': kwargs.get('macd-slow-period'),
+            'macd-signal-period': kwargs.get('macd-signal-period'),
+        }))
 
     def ma(self, **kwargs):
         '''
         [ RETURN ]: Example - 'b\'{"value":21315.933999999987}\''
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('ma', **kwargs))
+        return self.api_call(self.format_target_url('ma', **{
+            'period': kwargs.get('ma-period', kwargs.get('period')),
+            'backtrack': kwargs.get('ma-backtrack'),
+            'backtracks': kwargs.get('ma-backtracks'),
+            'chart': kwargs.get('ma-chart'),
+            'interval': kwargs.get('ma-interval', kwargs.get('interval'))
+        }))
 
     def ema(self, **kwargs):
         '''
         [ RETURN ]: Example - 'b\'{"value":20884.645666666664}\''
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('ema', **kwargs))
+        return self.api_call(self.format_target_url('ema', **{
+            'period': kwargs.get('ema-period', kwargs.get('period')),
+            'backtrack': kwargs.get('ema-backtrack'),
+            'backtracks': kwargs.get('ema-backtracks'),
+            'chart': kwargs.get('ema-chart'),
+            'interval': kwargs.get('ema-interval', kwargs.get('interval'))
+        }))
 
     def rsi(self, **kwargs):
         '''
         [ RETURN ]: Example - 'b\'{"value":50.978938548271955}\''
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('rsi', **kwargs))
+        return self.api_call(self.format_target_url('rsi', **{
+            'period': kwargs.get('rsi-period', kwargs.get('period')),
+            'backtrack': kwargs.get('rsi-backtrack'),
+            'backtracks': kwargs.get('rsi-backtracks'),
+            'chart': kwargs.get('rsi-chart'),
+            'interval': kwargs.get('rsi-interval', kwargs.get('interval'))
+        }))
 
     def vwap(self, **kwargs):
         '''
         [ RETURN ]: Example - "b\"{"value":20513.436047490202}\""
         '''
         log.debug('')
-        return self.api_call(self.format_target_url('vwap', **kwargs))
+        return self.api_call(self.format_target_url('vwap', **{
+            'period': kwargs.get('vwap-period', kwargs.get('period')),
+            'backtrack': kwargs.get('vwap-backtrack'),
+            'backtracks': kwargs.get('vwap-backtracks'),
+            'chart': kwargs.get('vwap-chart'),
+            'interval': kwargs.get('vwap-interval', kwargs.get('interval'))
+        }))
 
 # CODE DUMP
 

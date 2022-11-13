@@ -5,6 +5,7 @@
 # ASYMETRIC RISK TRADING BOT
 
 import os
+import time
 import logging
 
 from .ar_reporter import TradingReporter
@@ -19,8 +20,11 @@ class TradingBot():
     def __init__(self, *args, **kwargs):
         log.debug('')
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
-        self.market = {} # {'BTC/USDT': TradingMarket()}
-        self.markets = {} # {'BTC/USDT': TradingMarket(), ...}
+        self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
+        self.markets = {
+            args[arg_index].ticker_symbol: args[arg_index] for arg_index in args
+        }                                         # {'BTC/USDT': TradingMarket(), ...}
+        self.markets.update(self.market)
         self.reporter = self.setup_reporter(**kwargs)
         self.analyzer = self.setup_analyzer(**kwargs)
 
@@ -70,21 +74,69 @@ class TradingBot():
 
     def trade(self, *args, **kwargs):
         '''
-        [ INPUT ]: *args    - strategy labels (type str) - default vwap
-                   **kwargs - analyze-risk (type bool) - default True
-                            - strategy (type str) - default vwap
-                            - side (type str) - <buy, sell, auto> default auto
+        [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
+            **{
+                'analyze-risk': True,                     (type bool) - default True
+                'strategy': vwap,rsi,macd,price,volume,   (type str) - default vwap
+                'side': buy,                              (type str) - <buy, sell, auto> default auto
+                'price-movement': 5%,
+                'rsi-top': 70%,
+                'rsi-bottom': 30%,
+                'interval': 5m,
+                'rsi-period': 14,
+                'rsi-backtrack': 5,
+                'rsi-backtracks': 12,
+                'rsi-chart': candles,
+                'rsi-interval': 5m,
+                'volume-movement': 5%,
+                'volume-interval': 5m,
+                'ma-period': 30,
+                'ma-backtrack': 5,
+                'ma-backtracks': 12,
+                'ma-chart': candles,
+                'ma-interval': 5m,
+                'ema-period': 30,
+                'ema-backtrack': 5,
+                'ema-backtracks': 12,
+                'ema-chart': candles,
+                'ema-interval': 5m,
+                'macd-backtrack': 5,
+                'macd-backtracks': 12,
+                'macd-chart': candles,
+                'macd-fast-period': 12,
+                'macd-slow-period': 26,
+                'macd-signal-period': 9,
+                'macd-interval': 5m,
+                'adx-period': 14,
+                'adx-backtrack': 5,
+                'adx-backtracks': 12,
+                'adx-chart': candles,
+                'adx-interval': 5m,
+                'vwap-period': 14,
+                'vwap-backtrack': 5,
+                'vwap-backtracks': 12,
+                'vwap-chart': candles,
+                'vwap-interval': 5m,
+            }
+        [ RETURN ]: {
+            'trade-id': 142324,
+        }
         '''
         log.debug('')
         market = self.fetch_active_market()
-        details = market.update_details('all')
+        details = market.update_details('all', **kwargs)
         trade_flag, risk_index, trade_amount, trade = False, 0, kwargs.get('amount', 0), None
         if kwargs.get('analyze-risk'):
             trading_strategy = (arg[0] if len(args) == 1 else ','.join(args)) \
-                if args else kwargs.get('strategy': 'vwap')
-            trade_flag, risk_index, trade_side = self.analyzer.analize_risk(
-            side=kwargs.get('side', 'auto'), strategy=trading_strategy, **details
-        )
+                if args else kwargs.get('strategy', 'vwap')
+            kwargs.update({
+                'details': details,
+                'strategy': trading_strategy,
+                'side': kwargs.get('side', 'auto'),
+            })
+            trade_flag, risk_index, trade_side = self.analyzer.analyze_risk(
+                **kwargs
+            )
         if risk_index == 0:
             # [ NOTE ]: Trading cycle should stop here according to specified
             #           risk tolerance. Do nothing, try again later.
@@ -95,9 +147,8 @@ class TradingBot():
             elif trade_side == 'sell':
                 trade = market.sell(trade_amount, **kwargs)
         else:
-            # print('Risk too high! (risk_index) Abort? [Y/N]> ')
             return False
-        return True
+        return False if (not trade or trade.get('error')) else trade
 
     def close_trade(self, *args, **kwargs):
         '''
@@ -140,7 +191,7 @@ class TradingBot():
 
     # TODO
     def generate_report(self):
-        log.debug('')
+        log.debug('TODO - Under construction, building...')
 
     # MARKET MANAGEMENT
 
@@ -159,7 +210,9 @@ class TradingBot():
         [ NOTE ]: Add new TradingMarket object to markets
         '''
         log.debug('')
-        market = TradingMarket(**kwargs)
+        market = TradingMarket(
+            kwargs.get('api-key'), kwargs.get('api-secret'), **kwargs
+        )
         if not market:
             return False
         ticker_symbol = kwargs.get('ticker-symbol') \
@@ -167,7 +220,10 @@ class TradingBot():
             + kwargs.get('quote-currency', str()))
         new_entry = {ticker_symbol: market}
         self.markets.update(new_entry)
-        return new_entry
+        return {
+            'error': False if market else True,
+            'market': market,
+        }
 
     def exit_market(self, *args, **kwargs):
         '''
@@ -175,14 +231,16 @@ class TradingBot():
         '''
         log.debug('')
         failures, failed_tickers = 0, []
+        if not args:
+            failures += 1
         for ticker_symbol in args:
             if ticker_symbol not in self.market.keys():
                 failures += 1
                 failed_tickers.append(ticker_symbol)
                 continue
             del self.market[ticker_symbol]
-        return True if not failures else {
-            'error': True,
+        return {
+            'error': False if not failures else True,
             'failures': failures,
             'failed-tickers': failed_tickers,
         }
@@ -199,4 +257,12 @@ class TradingBot():
         reporter = TradingReporter(**kwargs)
         return reporter
 
+    def setup_market(self, **kwargs):
+        log.debug('')
+        market = TradingMarket(
+            kwargs.get('api-key', str()),
+            kwargs.get('api-secret', str()),
+            **kwargs
+        )
+        return {kwargs['ticker-symbol']: market}
 

@@ -64,6 +64,7 @@ class TradingMarket(Client):
         self.coin_info_cache = {}
         self.ticker_info_cache = {}
         self.trade_fee_cache = {}
+        self.history_cache = {}
         if sync:
             self.time_offset = self._fetch_time_offset()
         self.update_details()
@@ -99,10 +100,14 @@ class TradingMarket(Client):
         for ticker_symbol in args:
             timestamp = str(time.time())
             self.update_cache(
-                self.get_all_orders(symbol=ticker_symbol, recvWindow=60000, **kwargs),
+                self.get_all_orders(
+                    symbol=ticker_symbol, recvWindow=60000, **kwargs
+                ),
                 self.recent_trades_cache, label=timestamp,
             )
-            records.update({ticker_symbol: self.recent_trades_cache[timestamp]})
+            records.update(
+                {ticker_symbol: self.recent_trades_cache[timestamp]}
+            )
         return records
 
     def fetch_asset_balance(self, *args, **kwargs):
@@ -114,10 +119,10 @@ class TradingMarket(Client):
         )
         return self.account_cache[timestamp].get('balances', False)
 
-    def fetch_macd_values(self):
+    def fetch_macd_values(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.macd(**self.format_macd_indicator_kwargs())
+        raw_value = self.indicator.macd(**self.format_macd_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
@@ -126,46 +131,46 @@ class TradingMarket(Client):
             value_dict.get('valueMACDSignal', False), \
             value_dict.get('valueMACDHist', False)
 
-    def fetch_adx_value(self):
+    def fetch_adx_value(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.adx(**self.format_adx_indicator_kwargs())
+        raw_value = self.indicator.adx(**self.format_adx_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
         return self.raw_api_response_to_dict(raw_value).get('value', False)
 
-    def fetch_ma_value(self):
+    def fetch_ma_value(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.ma(**self.format_ma_indicator_kwargs())
+        raw_value = self.indicator.ma(**self.format_ma_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
         return self.raw_api_response_to_dict(raw_value).get('value', False)
 
-    def fetch_ema_value(self):
+    def fetch_ema_value(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.ema(**self.format_ema_indicator_kwargs())
+        raw_value = self.indicator.ema(**self.format_ema_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
         return self.raw_api_response_to_dict(raw_value).get('value', False)
 
-    def fetch_rsi_value(self):
+    def fetch_rsi_value(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.rsi(**self.format_rsi_indicator_kwargs())
+        raw_value = self.indicator.rsi(**self.format_rsi_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
         return self.raw_api_response_to_dict(raw_value).get('value', False)
 
-    def fetch_vwap_value(self):
+    def fetch_vwap_value(self, **kwargs):
         log.debug('')
         self.ensure_indicator_delay()
-        raw_value = self.indicator.vwap(**self.format_vwap_indicator_kwargs())
+        raw_value = self.indicator.vwap(**self.format_vwap_indicator_kwargs(**kwargs))
         if not raw_value:
             return False
         self.update_indicator_timestamp()
@@ -178,37 +183,87 @@ class TradingMarket(Client):
 
     # FORMATTERS
 
-    def format_general_indicator_kwargs(self):
+    def format_general_indicator_kwargs(self, **kwargs):
         log.debug('')
         return {
-            'exchange': 'binance',
-            'symbol': self.ticker_symbol,
-            'interval': self.period_interval,
+            'exchange': kwargs.get('exchange', 'binance'),
+            'symbol': kwargs.get('ticker-symbol', self.ticker_symbol),
+            'interval': kwargs.get('interval', self.period_interval),
         }
 
-    def format_macd_indicator_kwargs(self):
+    def format_macd_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('macd-interval', kwargs.get('interval', self.period_interval)),
+            'backtrack': kwargs.get('macd-backtrack', 5),
+            'backtracks': kwargs.get('macd-backtracks', 12),
+            'chart': kwargs.get('macd-chart', 'candles'),
+            'optInFastPeriod': kwargs.get('macd-fast-period', 12),
+            'optInSlowPeriod': kwargs.get('macd-slow-period', 26),
+            'optInSignalPeriod': kwargs.get('macd-signal-period', 9),
+        })
+        return return_dict
 
-    def format_adx_indicator_kwargs(self):
+    def format_adx_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('adx-interval', kwargs.get('interval', self.period_interval)),
+            'period': kwargs.get('adx-period', 14),
+            'backtrack': kwargs.get('adx-backtrack', 5),
+            'backtracks': kwargs.get('adx-backtracks', 12),
+            'chart': kwargs.get('adx-chart', 'candles'),
+        })
+        return return_dict
 
-    def format_ma_indicator_kwargs(self):
+    def format_ma_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('ma-interval', kwargs.get('interval', self.period_interval)),
+            'period': kwargs.get('ma-period', 30),
+            'backtrack': kwargs.get('ma-backtrack', 5),
+            'backtracks': kwargs.get('ma-backtracks', 12),
+            'chart': kwargs.get('ma-chart', 'candles'),
+        })
+        return return_dict
 
-    def format_ema_indicator_kwargs(self):
+    def format_ema_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('ema-interval', kwargs.get('interval', self.period_interval)),
+            'period': kwargs.get('ema-period', 30),
+            'backtrack': kwargs.get('ema-backtrack', 5),
+            'backtracks': kwargs.get('ema-backtracks', 12),
+            'chart': kwargs.get('ema-chart', 'candles'),
+        })
+        return return_dict
 
-    def format_rsi_indicator_kwargs(self):
+    def format_rsi_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('rsi-interval', kwargs.get('interval', self.period_interval)),
+            'period': kwargs.get('rsi-period', 30),
+            'backtrack': kwargs.get('rsi-backtrack', 5),
+            'backtracks': kwargs.get('rsi-backtracks', 12),
+            'chart': kwargs.get('rsi-chart', 'candles'),
+        })
+        return return_dict
 
-    def format_vwap_indicator_kwargs(self):
+    def format_vwap_indicator_kwargs(self, **kwargs):
         log.debug('')
-        return self.format_general_indicator_kwargs()
+        return_dict = self.format_general_indicator_kwargs()
+        return_dict.update({
+            'interval': kwargs.get('vwap-interval', kwargs.get('interval', self.period_interval)),
+            'period': kwargs.get('vwap-period', 30),
+            'backtrack': kwargs.get('vwap-backtrack', 5),
+            'backtracks': kwargs.get('vwap-backtracks', 12),
+            'chart': kwargs.get('vwap-chart', 'candles'),
+        })
+        return return_dict
 
     # UPDATERS
 
@@ -236,15 +291,24 @@ class TradingMarket(Client):
             trailing_stop=None, **kwargs):
         log.debug('TODO - Under construction, building...')
         sanitized_ticker = self.ticker_symbol.replace('/', '')
-#       order = self.create_order(
-        order = self.create_test_order(
-            symbol=sanitized_ticker,
-            side=self.SIDE_BUY,
-            type=self.ORDER_TYPE_MARKET,
-            quoteOrderQty=amount,
-            newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-            recvWindow=kwargs.get('recvWindow', 60000),
-        )
+        if kwargs.get('test'):
+            order = self.create_test_order(
+                symbol=sanitized_ticker,
+                side=self.SIDE_BUY,
+                type=self.ORDER_TYPE_MARKET,
+                quoteOrderQty=amount,
+                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+                recvWindow=kwargs.get('recvWindow', 60000),
+            )
+        else:
+            order = self.create_order(
+                symbol=sanitized_ticker,
+                side=self.SIDE_BUY,
+                type=self.ORDER_TYPE_MARKET,
+                quoteOrderQty=amount,
+                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+                recvWindow=kwargs.get('recvWindow', 60000),
+            )
         return order
 
     # TODO - add take profit and stop loss / trailing stop limits
@@ -253,15 +317,24 @@ class TradingMarket(Client):
              trailing_stop=None,  **kwargs):
         log.debug('TODO - Under construction, building...')
         sanitized_ticker = self.ticker_symbol.replace('/', '')
-#       order = self.create_order(
-        order = self.create_test_order(
-            symbol=sanitized_ticker,
-            side=self.SIDE_SELL,
-            type=self.ORDER_TYPE_MARKET,
-            quoteOrderQty=amount,
-            newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-            recvWindow=kwargs.get('recvWindow', 60000),
-        )
+        if kwargs.get('test'):
+            order = self.create_test_order(
+                symbol=sanitized_ticker,
+                side=self.SIDE_SELL,
+                type=self.ORDER_TYPE_MARKET,
+                quoteOrderQty=amount,
+                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+                recvWindow=kwargs.get('recvWindow', 60000),
+            )
+        else:
+            order = self.create_order(
+                symbol=sanitized_ticker,
+                side=self.SIDE_SELL,
+                type=self.ORDER_TYPE_MARKET,
+                quoteOrderQty=amount,
+                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+                recvWindow=kwargs.get('recvWindow', 60000),
+            )
         return order
 
     def compute_ticker_symbol(self, base=None, quote=None):
@@ -329,7 +402,44 @@ class TradingMarket(Client):
 
     # UPDATERS
 
-    def update_coin_details(self, timestamp=str(time.time())):
+    # TODO
+    def update_indicator_history(self, *update_targets,
+                                 timestamp=str(time.time()), **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return_dict = {}
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'adx' in update_targets:
+#           return_dict['adx'] = [{}]
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'macd' in update_targets:
+#           return_dict['macd'] = [{}]
+#           return_dict['macd-hist'] = [{}]
+#           return_dict['macd-signal'] = [{}]
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'ma' in update_targets:
+#           return_dict['ma'] = [{}]
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'ema' in update_targets:
+#           return_dict['ema'] = [{}]
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'rsi' in update_targets:
+#           return_dict['rsi'] = [{}]
+#       if 'all' in update_targets or 'indicators' in update_targets \
+#               or 'vwap' in update_targets:
+#           return_dict['vwap'] = [{}]
+        return return_dict
+    def update_price_volume_history(self, *update_targets,
+                                    timestamp=str(time.time()), **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return_dict = {'buy-price': [], 'sell-price': [], 'volume': []}
+#       if 'all' in update_targets or 'price' in update_targets:
+#           return_dict['buy-price'] = [{'value':, 'backtrack': ,}]
+#           return_dict['sell-price'] = [{'value':, 'backtrack': ,}]
+#       if 'all' in update_targets or 'volume' in update_targets:
+#           return_dict['volume'] = [{'value':, 'backtrack': ,}]
+        return return_dict
+
+    def update_coin_details(self, timestamp=str(time.time()), **kwargs):
         log.debug('')
         self.update_cache(
             self.get_all_coins_info(recvWindow=60000),
@@ -337,7 +447,7 @@ class TradingMarket(Client):
         )
         return {'coin-info-cache': self.coin_info_cache}
 
-    def update_trade_fee_details(self, timestamp=str(time.time())):
+    def update_trade_fee_details(self, timestamp=str(time.time()), **kwargs):
         log.debug('')
         self.update_cache(
             self.get_trade_fee(symbol=self.ticker_symbol, recvWindow=60000),
@@ -345,7 +455,9 @@ class TradingMarket(Client):
         )
         return {'trade-fee-cache': self.trade_fee_cache}
 
-    def update_price_volume_details(self, *update_targets, timestamp=str(time.time())):
+#   @pysnooper.snoop()
+    def update_price_volume_details(self, *update_targets,
+                                    timestamp=str(time.time()), **kwargs):
         log.debug('')
         return_dict = {}
         self.update_cache(
@@ -353,69 +465,190 @@ class TradingMarket(Client):
             self.ticker_info_cache, label=timestamp,
         )
         if 'all' in update_targets or 'price' in update_targets:
-            self.buy_price = float(self.ticker_info_cache[timestamp].get('bidPrice'))
-            self.sell_price = float(self.ticker_info_cache[timestamp].get('askPrice'))
+            self.buy_price = float(
+                self.ticker_info_cache[timestamp].get('bidPrice')
+            )
+            self.sell_price = float(
+                self.ticker_info_cache[timestamp].get('askPrice')
+            )
             return_dict.update(
                 {'buy-price': self.buy_price, 'sell-price': self.sell_price}
             )
         if 'all' in update_targets or 'volume' in update_targets:
-            self.volume = float(self.ticker_info_cache[timestamp].get('volume'))
+            self.volume = float(
+                self.ticker_info_cache[timestamp].get('volume')
+            )
             return_dict.update({'volume': self.volume})
         return return_dict
 
-    def update_indicator_details(self, *update_targets, timestamp=str(time.time())):
+    def update_indicator_details(self, *update_targets,
+                                 timestamp=str(time.time()), **kwargs):
         log.debug('')
         return_dict = {'indicators': {}}
-        if 'all' in update_targets or 'indicators' in update_targets or 'adx' in update_targets:
-            self.adx = self.fetch_adx_value()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'adx' in update_targets:
+            self.adx = self.fetch_adx_value(**kwargs)
             return_dict['indicators'].update({'adx': self.adx})
-        if 'all' in update_targets or 'indicators' in update_targets or 'macd' in update_targets:
-            self.macd, self.macd_signal, self.macd_hist = self.fetch_macd_values()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'macd' in update_targets:
+            self.macd, self.macd_signal, self.macd_hist = self.fetch_macd_values(
+                **kwargs
+            )
             return_dict['indicators'].update({
                 'macd': self.macd, 'macd-signal': self.macd_signal,
                 'macd-hist': self.macd_hist
             })
-        if 'all' in update_targets or 'indicators' in update_targets or 'ma' in update_targets:
-            self.ma = self.fetch_ma_value()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'ma' in update_targets:
+            self.ma = self.fetch_ma_value(**kwargs)
             return_dict['indicators'].update({'ma': self.ma})
-        if 'all' in update_targets or 'indicators' in update_targets or 'ema' in update_targets:
-            self.ema = self.fetch_ema_value()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'ema' in update_targets:
+            self.ema = self.fetch_ema_value(**kwargs)
             return_dict['indicators'].update({'ema': self.ema})
-        if 'all' in update_targets or 'indicators' in update_targets or 'rsi' in update_targets:
-            self.rsi = self.fetch_rsi_value()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'rsi' in update_targets:
+            self.rsi = self.fetch_rsi_value(**kwargs)
             return_dict['indicators'].update({'rsi': self.rsi})
-        if 'all' in update_targets or 'indicators' in update_targets or 'vwap' in update_targets:
-            self.vwap = self.fetch_vwap_value()
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'vwap' in update_targets:
+            self.vwap = self.fetch_vwap_value(**kwargs)
             return_dict['indicators'].update({'vwap': self.vwap})
         return return_dict
 
 #   @pysnooper.snoop()
-    def update_details(self, *args):
+    def update_details(self, *args, **kwargs):
         '''
-        [ INPUT  ]: Args can be - coin, price, volume, trade-fee, indicators,
-                    macd, adx, vwap, rsi, ma, ema, all
-        [ RETURN ]: Dict with updated values - {'ticker-symbol': 'BTC/USDT',
-            'buy-price': 20903.77, 'sell-price': 20904.5, 'volume': 7270.56273,
-            'indicators': {'adx': 25.79249660682844, 'macd': -55.08962670456458,
-            'macd-signal': -18.088430567653305, 'macd-hist': -37.001196136911275,
-            'ma': 21216.220666666643, 'ema': 21216.220700066643,
-            'rsi': 25.931456303405913, 'vwap': 20592.650164735693}}
+        [ INPUT  ]: *(
+                coin, price, volume, trade-fee, indicators, macd, adx, vwap, rsi,
+                ma, ema, all, vwap
+            )
+            **{
+                'interval': 5m,
+                'rsi-period': 14,
+                'rsi-backtrack': 5,
+                'rsi-backtracks': 12,
+                'rsi-chart': candles,
+                'rsi-interval': 5m,
+                'volume-movement': 5%,
+                'volume-interval': 5m,
+                'ma-period': 30,
+                'ma-backtrack': 5,
+                'ma-backtracks': 12,
+                'ma-chart': candles,
+                'ma-interval': 5m,
+                'ema-period': 30,
+                'ema-backtrack': 5,
+                'ema-backtracks': 12,
+                'ema-chart': candles,
+                'ema-interval': 5m,
+                'macd-backtrack': 5,
+                'macd-backtracks': 12,
+                'macd-chart': candles,
+                'macd-fast-period': 12,
+                'macd-slow-period': 26,
+                'macd-signal-period': 9,
+                'macd-interval': 5m,
+                'adx-period': 14,
+                'adx-backtrack': 5,
+                'adx-backtracks': 12,
+                'adx-chart': candles,
+                'adx-interval': 5m,
+                'vwap-period': 14,
+                'vwap-backtrack': 5,
+                'vwap-backtracks': 12,
+                'vwap-chart': candles,
+                'vwap-interval': 5m,
+            }
+
+        [ RETURN ]: Dict with updated values - {
+            'ticker-symbol': 'BTC/USDT',
+            'buy-price': 20903.77,
+            'sell-price': 20904.5,
+            'volume': 7270.56273,
+            'interval': '1h'
+            'indicators': {
+                'adx': 25.79249660682844,
+                'macd': -55.08962670456458,
+                'macd-signal': -18.088430567653305,
+                'macd-hist': -37.001196136911275,
+                'ma': 21216.220666666643,
+                'ema': 21216.220700066643,
+                'rsi': 25.931456303405913,
+                'vwap': 20592.650164735693
+            },
+            'history': {
+                'adx': [{
+                    'value': 25.79249660682844,
+                    'backtrack': 1,
+                }, ...]
+                'macd': [{
+                    'value': -55.08962670456458,
+                    'backtrack': 1,
+                }, ...]
+                'macd-signal': [{
+                    'value': -18.088430567653305,
+                    'backtrack': 1,
+                }, ...]
+                'macd-hist': [{
+                    'value': -37.001196136911275,
+                    'backtrack': 1,
+                }, ...]
+                'ma': [{
+                    'value': 21216.220666666643,
+                    'backtrack': 1,
+                }, ...]
+                'ema': [{
+                    'value': 21216.220700066643,
+                    'backtrack': 1,
+                }, ...]
+                'rsi': [{
+                    'value': 25.931456303405913,
+                    'backtrack': 1,
+                }, ...]
+                'vwap': [{
+                    'value': 20592.650164735693,
+                    'backtrack': 1,
+                }, ...]
+                'buy-price': [{
+                    'value': 20903.77,
+                    'backtrack': 1,
+                }, ...]
+                'sell-price': [{
+                    'value': 20904.5,
+                    'backtrack': 1,
+                }, ...],
+                'volume': [{
+                    'value': 7270.56273,
+                    'backtrack': 1,
+                }, ...],
+            }
+        }
         '''
         log.debug('')
-        timestamp = str(time.time())
-        return_dict = {'ticker-symbol': self.ticker_symbol}
+        timestamp, return_dict = str(time.time()), {
+            'ticker-symbol': self.ticker_symbol,
+            'interval': kwargs.get('interval', self.period_interval),
+            'history': {}
+        }
         update_targets = args or ('price', 'volume', 'trade-fee')
         if 'all' in update_targets or 'coin' in update_targets:
-            self.update_coin_details(timestamp=timestamp)
+            self.update_coin_details(timestamp=timestamp, **kwargs)
         if 'all' in update_targets or 'price' in update_targets or 'volume' in update_targets:
             return_dict.update(
-                self.update_price_volume_details(*args, timestamp=timestamp)
+                self.update_price_volume_details(*args, timestamp=timestamp, **kwargs)
+            )
+            return_dict['history'].update(
+                self.update_price_volume_history(*args, timestamp=timestamp, **kwargs)
             )
         if 'all' in update_targets or 'trade-fee' in update_targets:
-            self.update_trade_fee_details(timestamp=timestamp)
+            self.update_trade_fee_details(timestamp=timestamp, **kwargs)
         if 'all' in update_targets or 'indicators' in update_targets:
             return_dict.update(
-                self.update_indicator_details(*args, timestamp=timestamp)
+                self.update_indicator_details(*args, timestamp=timestamp, **kwargs)
+            )
+            return_dict['history'].update(
+                self.update_indicator_history(*args, timestamp=timestamp, **kwargs)
             )
         return return_dict
 
@@ -543,6 +776,28 @@ class TradingMarket(Client):
 #   rderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': False, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '10000.00
 #   000000', 'tickSize': '0.01000000'}, {'filterType': 'PERCENT_PRICE', 'multiplierUp': '5', 'multiplierDown': '0.2', 'avgPriceMins': 1}, {'filterType': 'LOT_SIZE', 'minQty': '0.01000000', 'maxQty': '9000.00000000', 'stepSize': '0.01000000'},
 #   {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty
+
+
+#       return {}
+#       self.update_cache(
+#           return_dict, self.history_cache[timestamp], label=timestamp,
+#       )
+
+#           self.buy_price = float(
+#               self.ticker_info_cache[timestamp].get('bidPrice')
+#           )
+#           self.sell_price = float(
+#               self.ticker_info_cache[timestamp].get('askPrice')
+#           )
+#           return_dict.update(
+#               {'buy-price': self.buy_price, 'sell-price': self.sell_price}
+#           )
+
+#           self.volume = float(
+#               self.ticker_info_cache[timestamp].get('volume')
+#           )
+#           return_dict.update({'volume': self.volume})
+
 
 
 
