@@ -8,9 +8,17 @@ import os
 import logging
 
 from .bp_shell import shell_cmd as shell
+from .bp_convertors import dict2json
 
 log = logging.getLogger('')
 
+
+def pretty_dict_print(unpretty_dict):
+    '''
+    [ NOTE ]: json2dict wrapper for funziz
+    '''
+    log.debug('')
+    return json2dict(unpretty_dict)
 
 #@pysnooper.snoop()
 def write2file(*args, file_path=str(), mode='w', **kwargs):

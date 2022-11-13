@@ -12,6 +12,8 @@ from .ar_reporter import TradingReporter
 from .ar_market import TradingMarket
 from .ar_strategy import TradingStrategy
 
+from src.backpack.bp_computers import compute_percentage
+
 log = logging.getLogger('AsymetricRisk')
 
 
@@ -27,8 +29,33 @@ class TradingBot():
         self.markets.update(self.market)
         self.reporter = self.setup_reporter(**kwargs)
         self.analyzer = self.setup_analyzer(**kwargs)
+        account_value = self.fetch_account_value(**kwargs)
+        self.start_account_value = account_value
+        self.current_account_value = account_value
+        self.profit_baby = 0 if not self.start_account_value \
+            else compute_percentage(
+                kwargs.get('profit-baby', 10), self.start_account_value
+            )
+        self.profit_target = (self.start_account_value + self.profit_baby)
 
     # FETCHERS
+
+    def fetch_account_value(self, **kwarg):
+        log.debug('')
+        market = self.fetch_active_market()
+        base, quote = self.fetch_market_currency()
+        response = market.get_asset_balance(base)
+        if kwargs.get('free') or kwargs.get('locked'):
+            total_value = response['free'] if kwargs.get('free') \
+                else response['locked']
+        else:
+            total_value = (response['free'] + response['locked'])
+        return total_value
+
+    def fetch_market_curency(self):
+        log.debug('')
+        market = self.fetch_active_market()
+        return market.base_currency market.quote_currency
 
     def fetch_supported_trading_strategies(self):
         log.debug('')
@@ -58,6 +85,16 @@ class TradingBot():
         self.trading_strategy = strategy
         return self.trading_strategy
 
+    # UPDATERS
+
+    def update_current_account_value(self, **kwargs):
+        log.debug('')
+        value = self.fetch_account_value(**kwargs)
+        if not value:
+            return False
+        self.current_account_value = value
+        return self.current_account_value
+
     # ACTIONS
 
     def trade_watchdog(self, *args, **kwargs):
@@ -69,6 +106,10 @@ class TradingBot():
             trade = self.trade(*args, **kwargs)
             if not trade:
                 failures += 1
+            self.update_current_account_value(**kwargs)
+            if self.current_account_value >= self.profit_target:
+                self.mission_accomplished()
+                break
             time.sleep(kwargs.get('watchdog-interval', 60))
         return failures
 
@@ -160,6 +201,18 @@ class TradingBot():
         log.debug('')
         market = self.fetch_active_market()
         return market.close_position(*args, **kwargs)
+
+    # GENERAL
+
+    def mission_accomplished(self):
+        log.debug('')
+        message = 'Target acquired! PROFIT BABY!! - Started from ({}) '\
+            'now we here ({}) :>'.format(
+                self.start_account_value, self.current_account_value
+            )
+        log.info(message)
+        stdout_msg('[ DONE ]: ' + message)
+        return message
 
     # VIEWERS
 
