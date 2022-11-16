@@ -89,6 +89,15 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
+    def compute_trade_flag(self, evaluations_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
+    def compute_risk_index(self, evaluations_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
+    def compute_adx_trade_risk(self, return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
     def compute_volume_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
@@ -97,12 +106,6 @@ class TradingStrategy():
         return 0
 
     # EVALUATORS
-
-    # TODO
-    def compute_trade_flag(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-    def compute_risk_index(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
 
     def evaluate_risk(self, evaluations_dict, **kwargs):
         '''
@@ -125,12 +128,16 @@ class TradingStrategy():
         }
         '''
         log.debug('TODO - Under construction, building...')
+        log.info('evaluations_dict - {}'.format(evaluations_dict))
+        log.info('kwargs - {}'.format(kwargs))
         if not evaluations_dict:
+            stdout_msg('[ ERROR ]: Necessary data set for risk evaluation not found!')
             return False
         trade_flag, risk_index = False, 0
         risk_values = [
             int(evaluations_dict[indicator_label]['risk'])
             for indicator_label in evaluations_dict
+            if evaluations_dict[indicator_label]
         ]
         risk_index = sum(risk_values) / len(risk_values)
         trade_flag = True if risk_index <= self.risk_tolerance \
@@ -138,14 +145,18 @@ class TradingStrategy():
         return trade_flag, risk_index
     def evaluate_buy(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
-        return self.evaluate_risk(evaluations_dict, **kwargs)
+        instruction_set = kwargs
+        instruction_set.update({'side': 'buy'})
+        return self.evaluate_risk(evaluations_dict, **instruction_set)
 #       if not evaluations_dict:
 #           return False
 #       trade_flag, risk_index = False, 0
 #       return trade_flag, risk_index
     def evaluate_sell(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
-        return self.evaluate_risk(evaluations_dict, **kwargs)
+        instruction_set = kwargs
+        instruction_set.update({'side': 'sell'})
+        return self.evaluate_risk(evaluations_dict, **instruction_set)
 #       if not evaluations_dict:
 #           return False
 #       trade_flag, risk_index = False, 0
@@ -230,14 +241,13 @@ class TradingStrategy():
     def strategy_adx(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
         return_dict = {
-#           'volume-movement': self.check_large_volume_movement(*args, **kwargs),
             'interval': kwargs.get('interval'),
             'value': kwargs.get('volume'),
             'risk': 0,
             'trade': False,
             'description': 'Volume Strategy',
         }
-        return_dict['risk'] = self.compute_volume_trade_risk(return_dict, **kwargs)
+        return_dict['risk'] = self.compute_adx_trade_risk(return_dict, **kwargs)
         return_dict['trade'] = False if return_dict['risk'] \
             > self.risk_tolerance else True
         return return_dict

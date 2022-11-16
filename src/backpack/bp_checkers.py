@@ -11,6 +11,20 @@ import logging
 log = logging.getLogger('')
 
 
+def check_pid_running(pid):
+    '''
+    [ NOTE ]: Sending signal 0 to a PID will raise an OSError exception if the
+              PID is not running and do nothing otherwise.
+    '''
+    log.debug('')
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    else:
+        return True
+
+
 def check_superuser():
     log.debug('')
     return False if os.geteuid() != 0 else True

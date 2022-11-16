@@ -7,55 +7,72 @@
 import os
 import time
 import logging
+import pysnooper
 
 from .ar_reporter import TradingReporter
 from .ar_market import TradingMarket
 from .ar_strategy import TradingStrategy
 
+from src.backpack.bp_ensurance import ensure_files_exist
 from src.backpack.bp_computers import compute_percentage
+from src.backpack.bp_general import stdout_msg
 
 log = logging.getLogger('AsymetricRisk')
 
 
 class TradingBot():
 
+    @pysnooper.snoop()
     def __init__(self, *args, **kwargs):
         log.debug('')
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
-        self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
-        self.markets = {
-            args[arg_index].ticker_symbol: args[arg_index] for arg_index in args
-        }                                         # {'BTC/USDT': TradingMarket(), ...}
+        self.market = {}
+        self.start_account_value = float()
+        self.current_account_value = float()
+        self.profit_baby = float()
+        self.trade_amount = float()
+        self.profit_target = float()
+        if kwargs.get('api-key') and kwargs.get('api-secret'):
+            try:
+                self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
+                self.compute_profit_baby(kwargs.get('profit-baby', 10), **kwargs)
+                self.compute_trade_amount(kwargs.get('trade-amount', 1), **kwargs)
+            except Exception as w:
+                stdout_msg(
+                    '[ WARNING ]: Could not setup trading bot market! Details: ({})'
+                    .format(w)
+                )
+        self.markets = {arg.ticker_symbol: arg for arg in args}                                         # {'BTC/USDT': TradingMarket(), ...}
         self.markets.update(self.market)
         self.reporter = self.setup_reporter(**kwargs)
         self.analyzer = self.setup_analyzer(**kwargs)
-        account_value = self.fetch_account_value(**kwargs)
-        self.start_account_value = account_value
-        self.current_account_value = account_value
-        self.profit_baby = 0 if not self.start_account_value \
-            else compute_percentage(
-                kwargs.get('profit-baby', 10), self.start_account_value
-            )
-        self.profit_target = (self.start_account_value + self.profit_baby)
 
     # FETCHERS
 
-    def fetch_account_value(self, **kwarg):
+#   @pysnooper.snoop()
+    def fetch_account_value(self, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
         base, quote = self.fetch_market_currency()
-        response = market.get_asset_balance(base)
+        response = market.get_asset_balance(
+            base, recvWindow=kwargs.get('recvWindow', 60000)
+        )
         if kwargs.get('free') or kwargs.get('locked'):
-            total_value = response['free'] if kwargs.get('free') \
-                else response['locked']
+            total_value = float(response['free']) if kwargs.get('free') \
+                else float(response['locked'])
         else:
-            total_value = (response['free'] + response['locked'])
+            total_value = (float(response['free']) + float(response['locked']))
         return total_value
 
-    def fetch_market_curency(self):
+    def fetch_market_currency(self):
         log.debug('')
         market = self.fetch_active_market()
-        return market.base_currency market.quote_currency
+        if not market:
+            log.error(
+                'Could not fetch active market! Details: ({})'.format(market)
+            )
+            return False
+        return market.base_currency, market.quote_currency
 
     def fetch_supported_trading_strategies(self):
         log.debug('')
@@ -64,6 +81,9 @@ class TradingBot():
     def fetch_active_market(self):
         log.debug('')
         if not self.market or not isinstance(self.market, dict):
+            log.error(
+                'Active market not set up! Details: ({})'.format(self.market)
+            )
             return False
         return list(self.market.values())[0]
 
@@ -97,9 +117,13 @@ class TradingBot():
 
     # ACTIONS
 
+    @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
-        failures, anchor_file = 0, kwargs.get('anchor-file', '')
+        failures, anchor_file = 0, kwargs.get(
+            'watchdog-anchor-file', '.art-bot.anch'
+        )
+        ensure_files_exist(anchor_file)
         while True:
             if anchor_file and not os.path.exists(anchor_file):
                 break
@@ -107,7 +131,7 @@ class TradingBot():
             if not trade:
                 failures += 1
             self.update_current_account_value(**kwargs)
-            if self.current_account_value >= self.profit_target:
+            if self.profit_target and self.current_account_value >= self.profit_target:
                 self.mission_accomplished()
                 break
             time.sleep(kwargs.get('watchdog-interval', 60))
@@ -163,27 +187,43 @@ class TradingBot():
             'trade-id': 142324,
         }
         '''
-        log.debug('')
+        log.debug('TODO - Make trade amount a computed percentage of account value.')
         market = self.fetch_active_market()
-        details = market.update_details('all', **kwargs)
-        trade_flag, risk_index, trade_amount, trade = False, 0, kwargs.get('amount', 0), None
+        if not market:
+            stdout_msg('[ ERROR ]: Trading market not set up!')
+            return False
+        stdout_msg(
+            '[ INFO ]: Looking for trades... ({})'.format(market.ticker_symbol)
+        )
+        trading_strategy = (arg[0] if len(args) == 1 else ','.join(args)) \
+            if args else kwargs.get('strategy', '')
+        stdout_msg(
+            '[ INFO ]: Updating market details applicable to strategy... ({})'
+            .format(trading_strategy)
+        )
+        details = market.update_details(*trading_strategy, **kwargs)
+        trade_flag, risk_index, trade = False, 0, None
+        trade_amount = self.compute_trade_amount(
+            kwargs.get('trade-amount', 1), **kwargs
+        )
         if kwargs.get('analyze-risk'):
-            trading_strategy = (arg[0] if len(args) == 1 else ','.join(args)) \
-                if args else kwargs.get('strategy', 'vwap')
             kwargs.update({
                 'details': details,
                 'strategy': trading_strategy,
+                'amount': trade_amount,
                 'side': kwargs.get('side', 'auto'),
             })
-            trade_flag, risk_index, trade_side = self.analyzer.analyze_risk(
+            trade_flag, risk_index, trade_side, failures= self.analyzer.analyze_risk(
                 **kwargs
             )
         if risk_index == 0:
             # [ NOTE ]: Trading cycle should stop here according to specified
             #           risk tolerance. Do nothing, try again later.
+            stdout_msg('[ N/A ]: Skipping trade, not a good ideea right now.')
             return False
         if trade_flag:
             if trade_side == 'buy':
+
                 trade = market.buy(trade_amount, **kwargs)
             elif trade_side == 'sell':
                 trade = market.sell(trade_amount, **kwargs)
@@ -201,6 +241,28 @@ class TradingBot():
         log.debug('')
         market = self.fetch_active_market()
         return market.close_position(*args, **kwargs)
+
+    # COMPUTERS
+
+    def compute_trade_amount(self, percentage, **kwargs):
+        log.debug('')
+        self.trade_amount = 1 if not self.current_account_value \
+            else compute_percentage(
+                percentage, self.current_account_value
+            )
+        return True
+
+    def compute_profit_baby(self, percentage, **kwargs):
+        log.debug('')
+        account_value = self.fetch_account_value(**kwargs)
+        self.start_account_value = account_value
+        self.current_account_value = account_value
+        self.profit_baby = 0 if not self.start_account_value \
+            else compute_percentage(
+                percentage, self.start_account_value
+            )
+        self.profit_target = (self.start_account_value + self.profit_baby)
+        return True
 
     # GENERAL
 
@@ -318,4 +380,20 @@ class TradingBot():
             **kwargs
         )
         return {kwargs['ticker-symbol']: market}
+
+
+# CODE DUMP
+
+#       strategy = ['all'] if not kwargs.get('strategy') else kwargs['strategy'].split(',')
+#           trading_strategy = (arg[-1] if len(args) == 1 else ','.join(args)) \
+#               if args else kwargs.get('strategy', 'vwap')
+
+#               account_value = self.fetch_account_value(**kwargs)
+#               self.start_account_value = account_value
+#               self.current_account_value = account_value
+#               self.profit_baby = 0 if not self.start_account_value \
+#                   else compute_percentage(
+#                       kwargs.get('profit-baby', 10), self.start_account_value
+#                   )
+#               self.profit_target = (self.start_account_value + self.profit_baby)
 

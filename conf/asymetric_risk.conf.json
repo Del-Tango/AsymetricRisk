@@ -24,7 +24,7 @@
          "api-key":              "yxdLHNgKWzka2HjzR5jZF0ZXTCZaHp2V1X9EgXjKBxLsfKoClFvET1PqIUW9ctAw",
          "api-secret":           "oPyuIoqWHBt5pvfCk1YLIslViuH87DJvRTgtOsLylGB58LRsEuHvu4KuZOv0DAv5",
          "taapi-key":            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjM2MmRkNThmYzVhOGFkZmVjM2ZhMmEzIiwiaWF0IjoxNjY3NzAxNzg5LCJleHAiOjMzMTcyMTY1Nzg5fQ.33yXXi5RK1oupATjS-RFMLKfD7grZdJ2r7GT4gH-tAE",
-         "api-url":              "https://testnet.binance.vision/api",
+         "api-url":              "https://api.binance.com/api",
          "taapi-url":            "https://api.taapi.io",
          "base-currency":        "BTC",
          "quote-currency":       "USDT",

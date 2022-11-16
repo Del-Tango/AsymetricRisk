@@ -20,6 +20,7 @@ log = logging.getLogger('AsymetricRisk')
 
 class TradingMarket(Client):
 
+#   @pysnooper.snoop()
     def __init__(self, *args, sync=False, **kwargs):
         calling_all_ancestors_from_beyond_the_grave = super().__init__(*args)
         self.base_currency = kwargs.get('base-currency', 'BTC')
@@ -43,17 +44,17 @@ class TradingMarket(Client):
         # necessary data (depending on chosen taapi api plan specifications)
         self.indicator = TradingIndicator(**kwargs)
         self.time_offset = 0
-        self.buy_price = None
-        self.sell_price = None
-        self.volume = None
-        self.adx = None
-        self.macd = None
-        self.macd_signal = None
-        self.macd_hist = None
-        self.ma = None
-        self.ema = None
-        self.rsi = None
-        self.vwap = None
+        self.buy_price = float()
+        self.sell_price = float()
+        self.volume = float()
+        self.adx = float()
+        self.macd = float()
+        self.macd_signal = float()
+        self.macd_hist = float()
+        self.ma = float()
+        self.ema = float()
+        self.rsi = float()
+        self.vwap = float()
         self.last_indicator_update_timestamp = None
         self.success_count = 0
         self.failure_count = 0
@@ -67,7 +68,7 @@ class TradingMarket(Client):
         self.history_cache = {}
         if sync:
             self.time_offset = self._fetch_time_offset()
-        self.update_details()
+        self.update_details('all')
         return calling_all_ancestors_from_beyond_the_grave
 
     # FETCHERS
@@ -286,7 +287,7 @@ class TradingMarket(Client):
     # GENERAL
 
     # TODO - add take profit and stop loss / trailing stop limits
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def buy(self, amount, *args, take_profit=None, stop_loss=None,
             trailing_stop=None, **kwargs):
         log.debug('TODO - Under construction, building...')
@@ -312,7 +313,7 @@ class TradingMarket(Client):
         return order
 
     # TODO - add take profit and stop loss / trailing stop limits
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def sell(self, amount, *args, take_profit=None, stop_loss=None,
              trailing_stop=None,  **kwargs):
         log.debug('TODO - Under construction, building...')
@@ -481,6 +482,7 @@ class TradingMarket(Client):
             return_dict.update({'volume': self.volume})
         return return_dict
 
+#   @pysnooper.snoop()
     def update_indicator_details(self, *update_targets,
                                  timestamp=str(time.time()), **kwargs):
         log.debug('')
