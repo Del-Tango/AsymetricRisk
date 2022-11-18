@@ -35,12 +35,16 @@ class TradingBot():
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
                 self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
-                self.compute_profit_baby(kwargs.get('profit-baby', 10), **kwargs)
-                self.compute_trade_amount(kwargs.get('trade-amount', 1), **kwargs)
+                self.compute_profit_baby(
+                    kwargs.get('profit-baby', 10), **kwargs
+                )
+                self.compute_trade_amount(
+                    kwargs.get('trade-amount', 1), **kwargs
+                )
             except Exception as w:
                 stdout_msg(
-                    '[ WARNING ]: Could not setup trading bot market! Details: ({})'
-                    .format(w)
+                    'Could not setup trading bot market! '
+                    'Details: ({})'.format(w), warn=True
                 )
         self.markets = {arg.ticker_symbol: arg for arg in args}                                         # {'BTC/USDT': TradingMarket(), ...}
         self.markets.update(self.market)
@@ -53,6 +57,8 @@ class TradingBot():
     def fetch_account_value(self, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         base, quote = self.fetch_market_currency()
         response = market.get_asset_balance(
             base, recvWindow=kwargs.get('recvWindow', 60000)
@@ -71,7 +77,7 @@ class TradingBot():
             log.error(
                 'Could not fetch active market! Details: ({})'.format(market)
             )
-            return False
+            return False, False
         return market.base_currency, market.quote_currency
 
     def fetch_supported_trading_strategies(self):
@@ -114,6 +120,14 @@ class TradingBot():
             return False
         self.current_account_value = value
         return self.current_account_value
+
+    # ENSURANCE
+
+    def ensure_trading_market_setup(self, **kwargs):
+        log.debug('')
+        if not self.market:
+            self.market = self.setup_market(**kwargs)
+        return self.market
 
     # ACTIONS
 
@@ -187,7 +201,7 @@ class TradingBot():
             'trade-id': 142324,
         }
         '''
-        log.debug('TODO - Make trade amount a computed percentage of account value.')
+        log.debug('')
         market = self.fetch_active_market()
         if not market:
             stdout_msg('[ ERROR ]: Trading market not set up!')
@@ -213,7 +227,7 @@ class TradingBot():
                 'amount': trade_amount,
                 'side': kwargs.get('side', 'auto'),
             })
-            trade_flag, risk_index, trade_side, failures= self.analyzer.analyze_risk(
+            trade_flag, risk_index, trade_side, failures = self.analyzer.analyze_risk(
                 **kwargs
             )
         if risk_index == 0:
@@ -223,7 +237,6 @@ class TradingBot():
             return False
         if trade_flag:
             if trade_side == 'buy':
-
                 trade = market.buy(trade_amount, **kwargs)
             elif trade_side == 'sell':
                 trade = market.sell(trade_amount, **kwargs)
@@ -372,6 +385,7 @@ class TradingBot():
         reporter = TradingReporter(**kwargs)
         return reporter
 
+    @pysnooper.snoop()
     def setup_market(self, **kwargs):
         log.debug('')
         market = TradingMarket(

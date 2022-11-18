@@ -9,8 +9,9 @@ import logging
 import pysnooper
 import optparse
 import json
+import time
 
-from time import sleep
+#from time import sleep
 from subprocess import Popen, PIPE
 
 from src.backpack.bp_log import log_init
@@ -44,6 +45,7 @@ AR_DEFAULT = {
     "log-file":             "asymetric_risk.log",
     "conf-file":            "asymetric_risk.conf.json",
     "init-file":            __file__,
+    "watchdog-pid-file":    "ar-bot.pid",
     "watchdog-anchor-file": "ar-bot.anchor",
     "log-format":           "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
     "timestamp-format":     "%d/%m/%Y-%H:%M:%S",
@@ -223,9 +225,6 @@ def action_withdrawal_report(*args, **kwargs):
 def action_deposit_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
-def action_single_trade(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    stdout_msg('[ ACTION ]: Single Trade', bold=True)
 def action_view_trade_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: View Trade Report', bold=True)
@@ -248,6 +247,27 @@ def action_supported_tickers(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Stop Trading Bot', bold=True)
 
+def action_single_trade(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: Single Trade', bold=True)
+    stdout_msg('Starting {} trading bot in single trade mode...'
+        .format(AR_SCRIPT_NAME), info=True
+    )
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    try:
+        watchdog = trading_bot.trade(
+            *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(',')),
+            **kwargs
+        )
+        if watchdog == 0:
+            stdout_msg('Trading bot!', ok=True)
+        return watchdog
+    except KeyboardInterrupt as e:
+        log.debug(e)
+    except Exception as e:
+        log.error(e)
+    return 1
+
 def action_stop_watchdog(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Stop Trading Bot', bold=True)
@@ -259,7 +279,7 @@ def action_stop_watchdog(*args, **kwargs):
         return False
     remove = os.remove(AR_DEFAULT['watchdog-anchor-file'])
     pid = fetch_watchdog_pid()
-    stdout_msg('Process anchor file removed.', info=True)
+    stdout_msg('Process anchor file removed.', ok=True)
     time.sleep(1)
     if check_pid_running(pid):
         stdout(
@@ -270,6 +290,7 @@ def action_stop_watchdog(*args, **kwargs):
     stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
     return True
 
+@pysnooper.snoop()
 def action_start_watchdog(*args, **kwargs):
     '''
     [ RETURN ]: Trading watchdog exit code - type int
@@ -279,12 +300,20 @@ def action_start_watchdog(*args, **kwargs):
     stdout_msg('Starting {} trading bot in watchdog mode...'
         .format(AR_SCRIPT_NAME), info=True
     )
-    watchdog = trading_bot.trade_watchdog(
-        *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(',')), **kwargs
-    )
-    if watchdog == 0:
-        stdout_msg('Trading bot!', ok=True)
-    return watchdog
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    try:
+        watchdog = trading_bot.trade_watchdog(
+            *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(',')),
+            **kwargs
+        )
+        if watchdog == 0:
+            stdout_msg('Trading bot!', ok=True)
+        return watchdog
+    except KeyboardInterrupt as e:
+        log.debug(e)
+    except Exception as e:
+        log.error(e)
+    return 1
 
 # HANDLERS
 
@@ -1938,7 +1967,7 @@ def load_config_json():
 
 # SETUP
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def setup_trading_bot(**kwargs):
     log.debug('TODO - FIX ME')
     if not kwargs:
@@ -1947,8 +1976,6 @@ def setup_trading_bot(**kwargs):
     if not trading_bot or not isinstance(trading_bot, TradingBot):
         stdout_msg('Trading Bot setup failure!', err=True)
         return False
-
-    # TODO
     enter_market = trading_bot.enter_market(**kwargs)
     if not enter_market:
         stdout_msg('Trading Bot could not enter trading market!', warn=True)
@@ -1962,7 +1989,7 @@ def format_header_string():
 
      *                          *  Asymetric Risk  *                         *
     ___________________________________________________________________________
-                     Regards, the Alveare Solutions #!/Society -x
+                Excellent Regards, the Alveare Solutions #!/Society -x
     '''
     return header
 
@@ -1971,7 +1998,6 @@ def format_header_string():
 def display_header():
     if AR_DEFAULT['silence']:
         return False
-#   print(format_header_string())
     stdout_msg(format_header_string(), bold=True)
     return True
 
@@ -2007,10 +2033,12 @@ if __name__ == '__main__':
         EXIT_CODE = init_asymetric_risk(**AR_DEFAULT)
     finally:
         cleanup()
-    stdout_msg('Terminating! ({})'.format(EXIT_CODE), done=True)
+    stdout_msg('Terminating! ({})\n'.format(EXIT_CODE), done=True)
     exit(EXIT_CODE)
 
 # CODE DUMP
+
+#   print(format_header_string())
 
 #       stdout_msg(
 #           '[ NOK ]: Trading bot failures detected! Exit code ({})'
@@ -2020,4 +2048,13 @@ if __name__ == '__main__':
 
 #   return False if os.path.exists(AR_DEFAULT['watchdog-anchor-file']) else True
 
+#       {
+#           'error': True, 'exit': 1,
+#           'description': 'Could not stop trading bot!'
+#       }
+
+#   {
+#       'error': True, 'exit': 1,
+#       'description': 'Trading bot watchdog terminated abruptly!',
+#   }
 

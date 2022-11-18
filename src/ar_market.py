@@ -85,6 +85,7 @@ class TradingMarket(Client):
             active_trades[key] = [
                 item for item in all_trades[key] if item.get('status') == 'NEW'
             ]
+        log.debug('Active trades: {}'.format(active_trades))
         return active_trades
 
     def fetch_all_trades(self, *args, **kwargs):
@@ -109,6 +110,7 @@ class TradingMarket(Client):
             records.update(
                 {ticker_symbol: self.recent_trades_cache[timestamp]}
             )
+        log.debug('All trades: {}'.format(records))
         return records
 
     def fetch_asset_balance(self, *args, **kwargs):
@@ -271,6 +273,11 @@ class TradingMarket(Client):
     def update_indicator_timestamp(self):
         log.debug('')
         self.last_indicator_update_timestamp = datetime.datetime.now()
+        log.debug(
+            'Last indicator update at ({})'.format(
+                self.last_indicator_update_timestamp
+            )
+        )
         return self.last_indicator_update_timestamp
 
     def update_cache(self, element, cache_dict, **kwargs):
@@ -282,6 +289,7 @@ class TradingMarket(Client):
                 return 1
         label = kwargs.get('label', str(time.time()))
         cache_dict[label] = element
+        log.debug('Updated cache - {}: {}'.format(cache_dict[label], element))
         return cache_dict
 
     # GENERAL
@@ -293,6 +301,7 @@ class TradingMarket(Client):
         log.debug('TODO - Under construction, building...')
         sanitized_ticker = self.ticker_symbol.replace('/', '')
         if kwargs.get('test'):
+            stdout_msg('Creating test buy order...', info=True)
             order = self.create_test_order(
                 symbol=sanitized_ticker,
                 side=self.SIDE_BUY,
@@ -302,6 +311,7 @@ class TradingMarket(Client):
                 recvWindow=kwargs.get('recvWindow', 60000),
             )
         else:
+            stdout_msg('Creating buy order...', info=True)
             order = self.create_order(
                 symbol=sanitized_ticker,
                 side=self.SIDE_BUY,
@@ -319,6 +329,7 @@ class TradingMarket(Client):
         log.debug('TODO - Under construction, building...')
         sanitized_ticker = self.ticker_symbol.replace('/', '')
         if kwargs.get('test'):
+            stdout_msg('Creating test sell order...', info=True)
             order = self.create_test_order(
                 symbol=sanitized_ticker,
                 side=self.SIDE_SELL,
@@ -328,6 +339,7 @@ class TradingMarket(Client):
                 recvWindow=kwargs.get('recvWindow', 60000),
             )
         else:
+            stdout_msg('Creating sell order...', info=True)
             order = self.create_order(
                 symbol=sanitized_ticker,
                 side=self.SIDE_SELL,
@@ -373,8 +385,12 @@ class TradingMarket(Client):
         '''
         log.debug('')
         if not args:
+            stdout_msg(
+                'No trade ID\'s given to close positions for!', err=True
+            )
             return False
         closed_trade, failed_close = [], []
+        stdout_msg('Closing trades... {}'.format(args), info=True)
         for trade_id in args:
             close = cancel_order(**{
                 'symbol': kwargs.get('symbol', self.ticker_symbol),
@@ -383,8 +399,15 @@ class TradingMarket(Client):
             })
             if not close:
                 failed_close.append(trade_id)
+                stdout_msg(
+                    'Something went wrong! Could not close trade ({})'
+                    .format(trade_id), nok=True
+                )
                 continue
             closed_trade.append(trade_id)
+            stdout_msg(
+                'Trade position closed! ({})'.format(trade_id), ok=True
+            )
         return closed_trade, failed_close
 
     # ENSURANCE

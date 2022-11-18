@@ -10,7 +10,7 @@ import logging
 from .bp_shell import shell_cmd as shell
 from .bp_convertors import dict2json
 
-log = logging.getLogger('')
+log = logging.getLogger('AsymetricRisk')
 
 
 def pretty_dict_print(unpretty_dict):
