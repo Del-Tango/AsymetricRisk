@@ -236,6 +236,20 @@ def action_view_deposit_report(*args, **kwargs):
 def action_market_details(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
+    stdout_msg('Fetching trading market details...', info=True)
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    details = trading_bot.view_market_details(*args, **kwargs)
+    if not details:
+        stdout_msg(
+            'Could not fetch trading market info! Details: ({})'.format(
+               details
+            ), nok=True
+        )
+        return 1
+    print(dict2json(details))
+    return 0
+
+
 
 def action_account_details(*args, **kwargs):
     log.debug('')
@@ -251,7 +265,6 @@ def action_account_details(*args, **kwargs):
         )
         return 1
     print(dict2json(account))
-    stdout_msg('Account details', ok=True)
     return 0
 
 # @pysnooper.snoop()

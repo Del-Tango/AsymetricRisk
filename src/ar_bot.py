@@ -300,6 +300,15 @@ class TradingBot():
 
     # VIEWERS
 
+    def view_market_details(self, *args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        if not args:
+            args = ('all', )
+        return market.fetch_details(*args, **kwargs)
+
     def view_account_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()

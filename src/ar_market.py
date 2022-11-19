@@ -41,7 +41,7 @@ class TradingMarket(Client):
         self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # seconds
         # WARNING: Longer delays between indicator api calls will result in
         # longer execution time. Delays that are too short may not retreive all
-        # necessary data (depending on chosen taapi api plan specifications)
+        # necessary data (depending on chosen Taapi API plan specifications)
         self.indicator = TradingIndicator(**kwargs)
         self.time_offset = 0
         self.buy_price = float()
@@ -75,9 +75,42 @@ class TradingMarket(Client):
 
     # FETCHERS
 
-    # TODO
     def fetch_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
+        '''
+        [ NOTE ]: Fetch market details
+        [ RETURN ]: {
+            "ticker-symbol": "BTC/USDT",
+            "interval": "5m",
+            "history": {
+                "buy-price": [{"value": 16634.68, "backtrack": 1}, ...],
+                "sell-price": [{}, ],
+                "volume": [{}, ],
+                "adx": [{}, ],
+                "macd": [{}, ],
+                "macd-signal": [{}, ],
+                "macd-hist": [{}, ],
+                "ma": [{}, ],
+                "ema": [{}, ],
+                "rsi": [{}, ],
+                "vwap": [{}, ]
+            },
+            "buy-price": 16634.68,
+            "sell-price": 16634.79,
+            "volume": 113695.42224,
+            "indicators": {
+                "adx": 15.579493600436063,
+                "macd": -3.179918018162425,
+                "macd-signal": -6.485571811770549,
+                "macd-hist": 3.3056537936081236,
+                "ma": 16634.81933333334,
+                "ema": 16633.394949095054,
+                "rsi": 53.52208448310394,
+                "vwap": 16632.333673366094
+                }
+            }
+        '''
+        log.debug('')
+        return self.update_details(*args, **kwargs)
 
     def fetch_account(self, *args, **kwargs):
         log.debug('')
@@ -305,30 +338,6 @@ class TradingMarket(Client):
         })
         return return_dict
 
-    # UPDATERS
-
-    def update_indicator_timestamp(self):
-        log.debug('')
-        self.last_indicator_update_timestamp = datetime.datetime.now()
-        log.debug(
-            'Last indicator update at ({})'.format(
-                self.last_indicator_update_timestamp
-            )
-        )
-        return self.last_indicator_update_timestamp
-
-    def update_cache(self, element, cache_dict, **kwargs):
-        log.debug('')
-        size_limit = kwargs.get('size_limit', self.cache_size_limit)
-        if len(cache_dict.keys()) > size_limit:
-            truncate_cache = truncate_cache(cache_dict, size_limit - 1)
-            if not truncate_cache:
-                return 1
-        label = kwargs.get('label', str(time.time()))
-        cache_dict[label] = element
-        log.debug('Updated cache - {}: {}'.format(cache_dict[label], element))
-        return cache_dict
-
     # GENERAL
 
     # TODO - add take profit and stop loss / trailing stop limits
@@ -499,6 +508,28 @@ class TradingMarket(Client):
 #       if 'all' in update_targets or 'volume' in update_targets:
 #           return_dict['volume'] = [{'value':, 'backtrack': ,}]
         return return_dict
+
+    def update_indicator_timestamp(self):
+        log.debug('')
+        self.last_indicator_update_timestamp = datetime.datetime.now()
+        log.debug(
+            'Last indicator update at ({})'.format(
+                self.last_indicator_update_timestamp
+            )
+        )
+        return self.last_indicator_update_timestamp
+
+    def update_cache(self, element, cache_dict, **kwargs):
+        log.debug('')
+        size_limit = kwargs.get('size_limit', self.cache_size_limit)
+        if len(cache_dict.keys()) > size_limit:
+            truncate_cache = truncate_cache(cache_dict, size_limit - 1)
+            if not truncate_cache:
+                return 1
+        label = kwargs.get('label', str(time.time()))
+        cache_dict[label] = element
+        log.debug('Updated cache - {}: {}'.format(cache_dict[label], element))
+        return cache_dict
 
     def update_coin_details(self, timestamp=str(time.time()), **kwargs):
         log.debug('')
@@ -722,129 +753,6 @@ class TradingMarket(Client):
 #           label=timestamp
 #       )
 
-
-        # Get coin price
-#       price = client.get_symbol_ticker(symbol=sanitized_ticker)
-#       # Calculate how much coin specified amount can buy
-#       buy_quantity = round(amount / float(price['price']))
-
-#           quantity=buy_quantity,
-
-
-#       self.order_market_buy(
-#           symbol=self.ticker_symbol, quantity=amount, newOrderRespType='JSON',
-#           recvWindow=60000
-#       )
-
-
-#       self.period_start = kwargs.get('period-start', '1/09/2022')
-#       self.period_end = kwargs.get('period-end', '1/10/2022')
-
-#           'caches': {
-#               'coin-info': self.coin_info_cache,
-#               'ticker-info': self.ticker_info_cache,
-#               'trade-fee': self.trade_fee_cache
-#           }
-
-#       ticker_symbol = str(self.base_currency) \
-#           + str(self.quote_currency)
-
-#       for coin_dict in self.coin_info_cache[timestamp]:
-#           if coin_dict['coin'] != self.base_currency:
-#               continue
-#           print('DEBUG: coin_dict', coin_dict)
-#           self.buy_price = coin_dict.get('bidPrice')
-#           self.sell_price = coin_dict.get('askPrice')
-#           self.volume = coin_dict.get('volume')
-#           break
-
-
-# Coin Info Dict - {'coin': 'BTC', 'depositAllEnable': True,
-# 'withdrawAllEnable': True, 'name': 'Bitcoin', 'free': '0', 'locked': '0',
-# 'freeze': '0', 'withdrawing': '0', 'ipoing': '0', 'ipoable': '0', 'storage':
-# '0', 'isLegalMoney': False, '
-#   trading': True, 'networkList': [{'network': 'BSC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': '', 'specia
-#   lWithdrawTips': 'The network you have selected is BSC. Please ensure that the withdrawal address supports the Binance Smart Chain network. You will lose your assets if the chosen platform does not support retrievals.', 'name': 'BNB Smart C
-#   hain (BEP20)', 'resetAddressStatus': False, 'addressRegex': '^(0x)[0-9A-Fa-f]{40}$', 'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.0000049', 'withdrawMin': '0.0000098', 'withdrawMax': '10000000000', 'minConfirm': 15, 'unLockConfirm
-#   ': 0, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False, 'country': 'AE,BINANCE_BAHRAIN_BSC,custody'}, {'network': 'BTC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': True, 'depositEnable': True, 'withd
-#   rawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': '', 'specialWithdrawTips': '', 'name': 'Bitcoin', 'resetAddressStatus': False, 'addressRegex': '^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^[(bc1q)|(bc1p)][0-9A-Za-z]{37,62}$',
-#   'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.0002', 'withdrawMin': '0.001', 'withdrawMax': '7500', 'minConfirm': 1, 'unLockConfirm': 2, 'sameAddress': False, 'estimatedArrivalTime': 60, 'busy': False, 'country': 'AE,BINANCE_BAHRA
-#   IN_BSC,custody'}, {'network': 'BNB', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': 'Please enter both MEMO a
-#   nd Address data, which are required to deposit BEP2-BTCB tokens to your Binance account.', 'name': 'BNB Beacon Chain (BEP2)', 'resetAddressStatus': False, 'addressRegex': '^(bnb1)[0-9a-z]{38}$', 'addressRule': '', 'memoRegex': '^[0-9A-Za-z
-#                                                                                                                                                                                                                                       \\-_]{1,120}$', 'withdrawFee': '0.0000082', 'withdrawMin': '0.000016', 'withdrawMax': '10000000000', 'depositDust': '0.00001', 'minConfirm': 1, 'unLockConfirm': 0, 'sameAddress': True, 'estimatedArrivalTime': 5, 'busy': False, 'country': '
-#   AE,BINANCE_BAHRAIN_BSC'}, {'network': 'SEGWITBTC', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': False, 'depositDesc': '', 'withdrawDesc': 'The wallet is currently unde
-#   rgoing maintenance. Withdrawals for this asset will be resumed shortly.', 'specialTips': '', 'specialWithdrawTips': '', 'name': 'BTC(SegWit)', 'resetAddressStatus': False, 'addressRegex': '', 'addressRule': '', 'memoRegex': '', 'withdrawFe
-#   e': '0.0005', 'withdrawMin': '0.001', 'withdrawMax': '10000000000', 'minConfirm': 1, 'unLockConfirm': 2, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False}, {'network': 'ETH', 'coin': 'BTC', 'withdrawIntegerMultiple': '0.00000
-#   001', 'isDefault': False, 'depositEnable': True, 'withdrawEnable': True, 'depositDesc': '', 'withdrawDesc': '', 'specialTips': 'This deposit address supports ERC20 BBTC tokens. Please ensure your destination address supports BBTC tokens un
-#   der the contract address ending in 22541.', 'specialWithdrawTips': 'You are withdrawing Binance Wrapped BTC (BBTC). Please ensure that the receiving platform supports this token or you might potentially risk losing your asset.', 'name': 'E
-#   thereum (ERC20)', 'resetAddressStatus': False, 'addressRegex': '^(0x)[0-9A-Fa-f]{40}$', 'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.00018', 'withdrawMin': '0.00036', 'withdrawMax': '10000000000', 'minConfirm': 12, 'unLockConfirm'
-#   : 0, 'sameAddress': False, 'estimatedArrivalTime': 5, 'busy': False, 'country': 'AE,BINANCE_BAHRAIN_BSC,custody'}]}
-
-
-#   >>> tmarket.get_symbol_info(symbol='BTCBUSD')
-#   {'symbol': 'BTCBUSD', 'status': 'TRADING', 'baseAsset': 'BTC', 'baseAssetPrecision': 8, 'quoteAsset': 'BUSD', 'quotePrecision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteOrderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': False, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '1000000.00000000', 'tickSize': '0.01000000'}, {'filterType': 'PERCENT_PRICE', 'multiplierUp': '5', 'multiplierDown': '0.2', 'avgPriceMins': 1}, {'filterType': 'LOT_SIZE', 'minQty': '0.00000100', 'maxQty': '900.00000000', 'stepSize': '0.00000100'}, {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty': '0.00000000', 'maxQty': '100.00000000', 'stepSize': '0.00000000'}, {'filterType': 'TRAILING_DELTA', 'minTrailingAboveDelta': 10, 'maxTrailingAboveDelta': 2000, 'minTrailingBelowDelta': 10, 'maxTrailingBelowDelta': 2000}, {'filterType': 'MAX_NUM_ORDERS', 'maxNumOrders': 200}, {'filterType': 'MAX_NUM_ALGO_ORDERS', 'maxNumAlgoOrders': 5}], 'permissions': ['SPOT']}
-
-#   >>> tmarket.get_symbol_ticker(symbol='LTCBTC')
-#   {'symbol': 'LTCBTC', 'price': '0.00269500'}
-
-#   >>> tmarket.get_system_status()
-#   {'status': 0, 'msg': 'normal'}
-
-#   >>> tmarket.get_ticker(symbol='LTCBTC')
-#   {'symbol': 'LTCBTC', 'priceChange': '0.00002600', 'priceChangePercent': '0.973', 'weightedAvgPrice': '0.00269486', 'prevClosePrice': '0.00267100', 'lastPrice': '0.00269700', 'lastQty': '2.41009000', 'bidPrice': '0.00269700', 'bidQty': '0.25955000', 'askPrice': '0.00269800', 'askQty': '2.00149000', 'openPrice': '0.00267100', 'highPrice': '0.01342800', 'lowPrice': '0.00264400', 'volume': '7235.01344000', 'quoteVolume': '19.49735839', 'openTime': 1667169088911, 'closeTime': 1667255488911, 'firstId': 39165, 'lastId': 42447, 'count': 3283}
-
-#   >>> tmarket.__dict__
-#   {'tld': 'com', 'API_URL': 'https://api.binance.com/api', 'MARGIN_API_URL': 'https://api.binance.com/sapi', 'WEBSITE_URL': 'https://www.binance.com', 'FUTURES_URL': 'https://fapi.binance.com/fapi', 'FUTURES_DATA_URL': 'https://fapi.binance.com/futures/data', 'FUTURES_COIN_URL': 'https://dapi.binance.com/dapi', 'FUTURES_COIN_DATA_URL': 'https://dapi.binance.com/futures/data', 'OPTIONS_URL': 'https://vapi.binance.com/vapi', 'OPTIONS_TESTNET_URL': 'https://testnet.binanceops.com/vapi', 'API_KEY': None, 'API_SECRET': None, 'session': <requests.sessions.Session object at 0xb79470e8>, '_requests_params': None, 'response': <Response [200]>, 'testnet': False, 'timestamp_offset': 0, 'crypto': 'BTC', 'api_url': 'https://testnet.binance.vision/api', 'api_key': None, 'api_secret': None, '': 'ETH', 'period_start': '1/09/2022', 'period_end': '1/10/2022', 'time_offset': 0, 'buy_price': None, 'sell_price': None, 'volume': None, 'adx': None, 'macd': None, 'ma': None, 'rsi': None, 'active_trades': {}, 'trades_to_report': {}, 'success_count': 0, 'failure_count': 0, 'recent_trades_cache': {}, 'account_cache': {}, 'coin_info_cache': {}, 'trade_fee_cache': {}}
-
-#   >>> tmarket.get_avg_price(symbol='LTCBTC')
-#   {'mins': 1, 'price': '0.00269300'}
-
-#   >>> tmarket.get_deposit_address('BTC', recvWindow=60000)
-#   {'coin': 'BTC', 'address': '13drrqoCBejjPjM6tgFbYEf11dUSToKqcP', 'tag': '', 'url': 'http://blockchain.coinmarketcap.com/address/bitcoin/13drrqoCBejjPjM6tgFbYEf11dUSToKqcP'}
-
-#   >>> tmarket.get_orderbook_tickers()
-#   [{'symbol': 'BNBBUSD', 'bidPrice': '328.50000000', 'bidQty': '2.08000000', 'askPrice': '328.60000000', 'askQty': '2.93000000'}, {'symbol': 'BTCBUSD', 'bidPrice': '20483.00000000', 'bidQty': '0.02733900', 'askPrice': '20483.08000000', 'askQty': '0.03222200'}, {'symbol': 'ETHBUSD', 'bidPrice': '1567.61000000', 'bidQty': '0.55499000', 'askPrice': '1567.80000000', 'askQty': '0.45287000'}, {'symbol': 'LTCBUSD', 'bidPrice': '55.13000000', 'bidQty': '17.95756000', 'askPrice': '55.14000000', 'askQty': '9.24919000'}, {'symbol': 'TRXBUSD', 'bidPrice': '0.06325000', 'bidQty': '4425.50000000', 'askPrice': '0.06326000', 'askQty': '11855.90000000'}, {'symbol': 'XRPBUSD', 'bidPrice': '0.46270000', 'bidQty': '367.50000000', 'askPrice': '0.46280000', 'askQty': '2009.60000000'}, {'symbol': 'BNBUSDT', 'bidPrice': '328.60000000', 'bidQty': '6.21000000', 'askPrice': '328.70000000', 'askQty': '8.22000000'}, {'symbol': 'BTCUSDT', 'bidPrice': '20484.79000000', 'bidQty': '0.13961600', 'askPrice': '20485.22000000', 'askQty': '0.08251000'}, {'symbol': 'ETHUSDT', 'bidPrice': '1567.86000000', 'bidQty': '0.01891000', 'askPrice': '1567.87000000', 'askQty': '0.32529000'}, {'symbol': 'LTCUSDT', 'bidPrice': '55.13000000', 'bidQty': '13.78560000', 'askPrice': '55.14000000', 'askQty': '9.24919000'}, {'symbol': 'TRXUSDT', 'bidPrice': '0.06325000', 'bidQty': '316.20000000', 'askPrice': '0.06326000', 'askQty': '15333.60000000'}, {'symbol': 'XRPUSDT', 'bidPrice': '0.46270000', 'bidQty': '1491.30000000', 'askPrice': '0.46290000', 'askQty': '1512.30000000'}, {'symbol': 'BNBBTC', 'bidPrice': '0.01604000', 'bidQty': '0.38000000', 'askPrice': '0.01604100', 'askQty': '0.50000000'}, {'symbol': 'ETHBTC', 'bidPrice': '0.07654100', 'bidQty': '0.08493000', 'askPrice': '0.07654200', 'askQty': '0.11367000'}, {'symbol': 'LTCBTC', 'bidPrice': '0.00269100', 'bidQty': '1.15199000', 'askPrice': '0.00269200', 'askQty': '3.67757000'}, {'symbol': 'TRXBTC', 'bidPrice': '0.00000308', 'bidQty': '714.30000000', 'askPrice': '0.00000309', 'askQty': '2880.30000000'}, {'symbol': 'XRPBTC', 'bidPrice': '0.00002258', 'bidQty': '84.10000000', 'askPrice': '0.00002260', 'askQty': '433.70000000'}, {'symbol': 'LTCBNB', 'bidPrice': '0.16770000', 'bidQty': '47.10794000', 'askPrice': '0.16790000', 'askQty': '33.35319000'}, {'symbol': 'TRXBNB', 'bidPrice': '0.00019240', 'bidQty': '30665.30000000', 'askPrice': '0.00019250', 'askQty': '35324.70000000'}, {'symbol': 'XRPBNB', 'bidPrice': '0.00140800', 'bidQty': '6605.20000000', 'askPrice': '0.00140900', 'askQty': '4755.20000000'}]
-
-#   >>> tmarket.get_recent_trades(symbol='BTCBUSD')
-#   [{'id': 2807808, 'price': '20480.61000000', 'qty': '0.00729900', 'quoteQty': '149.48797239', 'time': 1667258293022, 'isBuyerMaker': True, 'isBestMatch': True}, {'id': 2807809, 'price': '20480.27000000', 'qty': '0.01469400', 'quoteQty': '30 0.93708738', 'time': 1667258293022, 'isBuyerMaker': True, 'isBestMatch': True},
-
-#   >>> tmarket.get_trade_fee(symbol='ETHBTC', recvWindow=60000)
-#   [{'symbol': 'ETHBTC', 'makerCommission': '0.001', 'takerCommission': '0.001'}]
-
-#   >>> tmarket.get_all_coins_info(recvWindow=60000)
-#   [{'coin': 'XMR', 'depositAllEnable': True, 'withdrawAll
-#    Enable': False, 'name': 'Monero', 'free': '0', 'locked': '0', 'freeze': '0', 'withdrawing': '0', 'ipoing': '0', 'ipoable': '0', 'storage': '0', 'isLegalMoney': False, 'trading': True, 'networkList': [{'network': 'XMR', 'coin': 'XMR', 'with
-#    drawIntegerMultiple': '0.00000001', 'isDefault': True, 'depositEnable': True, 'withdrawEnable': False, 'depositDesc': '', 'withdrawDesc': 'Withdrawals are temporarily halted while Binance replenishes the hot wallet. Withdrawals for this as
-#    set will be resumed shortly.', 'specialTips': '', 'name': 'Monero', 'resetAddressStatus': False, 'addressRegex': '^[48][a-zA-Z|\\d]{94}([a-zA-Z|\\d]{11})?$', 'addressRule': '', 'memoRegex': '', 'withdrawFee': '0.0001', 'withdrawMin': '0.00
-#    02', 'withdrawMax': '10000000000', 'minConfirm': 3, 'unLockConfirm': 0,
-#    'sameAddress': False, 'estimatedArrivalTime': 10, 'busy': False,
-#    'country': 'BINANCE_BAHRAIN_BSC'}]}]
-
-#   >>> tmarket.get_account_status(recvWindow=60000)
-#   {'data': 'Normal'}
-
-#   >>> tmarket.get_account_snapshot(type='SPOT', recvWindow=60000)
-#   {'code': 200, 'msg': '', 'snapshotVos': []}
-
-#   >>> tmarket.get_account_api_trading_status(recvWindow=60000)
-#   {'data': {'isLocked': False, 'plannedRecoverTime': 0, 'triggerCondition': {'UFR': 300, 'IFER': 150, 'GCR': 150}, 'updateTime': 0}}
-
-#   >>> tmarket.get_account_api_permissions(recvWindow=60000)
-#   {'ipRestrict': False, 'createTime': 1667239846000, 'tradingAuthorityExpirationTime': 1674950400000, 'enableSpotAndMarginTrading': True, 'enableWithdrawals': False, 'enableReading': True, 'enableMargin': False, 'permitsUniversalTransfer': True, 'enableVanillaOptions': True, 'enableInternalTransfer': False, 'enableFutures': False}
-
-#   >>> tmarket.get_exchange_info()
-#   {'timezone': 'UTC', 'serverTime': 1667259716606, 'rateLimits': [{'rateLimitType': 'REQUEST_WEIGHT', 'interval': 'MINUTE', 'intervalNum': 1, 'limit': 1200}, {'rateLimitType': 'ORDERS', 'interval': 'SECOND', 'intervalNum': 10, 'limit': 50},
-#   {'rateLimitType': 'ORDERS', 'interval': 'DAY', 'intervalNum': 1, 'limit': 160000}], 'exchangeFilters': [], 'symbols': [{'symbol': 'BNBBUSD', 'status': 'TRADING', 'baseAsset': 'BNB', 'baseAssetPrecision': 8, 'quoteAsset': 'BUSD', 'quotePrec
-#   ision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteO
-#   rderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': False, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '10000.00
-#   000000', 'tickSize': '0.01000000'}, {'filterType': 'PERCENT_PRICE', 'multiplierUp': '5', 'multiplierDown': '0.2', 'avgPriceMins': 1}, {'filterType': 'LOT_SIZE', 'minQty': '0.01000000', 'maxQty': '9000.00000000', 'stepSize': '0.01000000'},
-#   {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty>>> tmarket.get_exchange_info()
-#   {'timezone': 'UTC', 'serverTime': 1667259716606, 'rateLimits': [{'rateLimitType': 'REQUEST_WEIGHT', 'interval': 'MINUTE', 'intervalNum': 1, 'limit': 1200}, {'rateLimitType': 'ORDERS', 'interval': 'SECOND', 'intervalNum': 10, 'limit': 50},
-#   {'rateLimitType': 'ORDERS', 'interval': 'DAY', 'intervalNum': 1, 'limit': 160000}], 'exchangeFilters': [], 'symbols': [{'symbol': 'BNBBUSD', 'status': 'TRADING', 'baseAsset': 'BNB', 'baseAssetPrecision': 8, 'quoteAsset': 'BUSD', 'quotePrec
-#   ision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteO
-#   rderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': False, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '10000.00
-#   000000', 'tickSize': '0.01000000'}, {'filterType': 'PERCENT_PRICE', 'multiplierUp': '5', 'multiplierDown': '0.2', 'avgPriceMins': 1}, {'filterType': 'LOT_SIZE', 'minQty': '0.01000000', 'maxQty': '9000.00000000', 'stepSize': '0.01000000'},
-#   {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty
 
 
 #       return {}
