@@ -315,6 +315,15 @@ class TradingBot():
         market = self.fetch_active_market()
         return market.fetch_all_trades(*args, **kwargs)
 
+    def view_supported_tickers(self, *args, **kwargs):
+        '''
+        [ NOTE ]: View all supported ticker symbols
+        [ RETURN ]: List[Dict[symbol: str, price: str]]
+        '''
+        log.debug('')
+        market = self.fetch_active_market()
+        return market.fetch_supported_tickers()
+
     # REPORT MANAGEMENT
 
     # TODO

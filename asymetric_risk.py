@@ -243,9 +243,22 @@ def action_market_details(*args, **kwargs):
 def action_supported_coins(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: View Supported Coins', bold=True)
+
 def action_supported_tickers(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    stdout_msg('[ ACTION ]: Stop Trading Bot', bold=True)
+    log.debug('')
+    stdout_msg('[ ACTION ]: View Supported Ticker Symbols...', bold=True)
+    stdout_msg('Fetching supported ticker symbols...', info=True)
+    tickers = trading_bot.view_supported_tickers(*args, **kwargs)
+    if not tickers:
+        stdout_msg(
+            'Could not fetch supported ticker symbols! Details: ({})'.format(
+                tickers
+            ), nok=True
+        )
+        return 1
+    print(dict2json(tickers))
+    stdout_msg('Available ticker symbols ({})'.format(len(tickers)), ok=True)
+    return 0
 
 def action_single_trade(*args, **kwargs):
     log.debug('')
@@ -290,7 +303,7 @@ def action_stop_watchdog(*args, **kwargs):
     stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
     return True
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def action_start_watchdog(*args, **kwargs):
     '''
     [ RETURN ]: Trading watchdog exit code - type int
@@ -330,14 +343,21 @@ def handle_actions(actions=[], *args, **kwargs):
                 .format(action_label), nok=True
             )
             continue
-        handle = handlers[action_label](*args, **kwargs)
-        if not handle or (isinstance(handle, int) and handle != 0):
-            stdout_msg(
-                'Action ({}) failures detected! ({})'
-                .format(action_label, handle), nok=True
-            )
-            failure_count += 1
-            continue
+        try:
+            handle = handlers[action_label](*args, **kwargs)
+            if not handle or (isinstance(handle, int) and handle != 0):
+                stdout_msg(
+                    'Action ({}) failures detected! ({})'
+                    .format(action_label, handle), nok=True
+                )
+                failure_count += 1
+                continue
+        except Exception as e:
+            log.error(e)
+            stdout_msg('Action ({}) terminated abnormaly! Details: {}'.format(
+                action_label, e
+            ), err=True)
+            return failure_count + 1
         stdout_msg(
             "Action executed successfully! ({})".format(action_label), ok=True
         )
@@ -1969,7 +1989,7 @@ def load_config_json():
 
 #@pysnooper.snoop()
 def setup_trading_bot(**kwargs):
-    log.debug('TODO - FIX ME')
+    log.debug('')
     if not kwargs:
         kwargs = AR_DEFAULT
     bot = create_trading_bot(**kwargs)

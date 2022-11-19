@@ -34,6 +34,7 @@
          "debug":                false,
          "silence":              false,
          "analyze-risk":         true,
+         "risk-tolerance":       1,
          "strategy":             "vwap,rsi,macd,adx,ma,ema,price,volume",
          "side":                 "auto",
          "interval":             "5m",

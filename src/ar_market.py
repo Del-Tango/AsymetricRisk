@@ -60,6 +60,7 @@ class TradingMarket(Client):
         self.failure_count = 0
         self.active_trades = {} #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.trades_to_report = {} # {id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.supported_tickers_cache = {}
         self.recent_trades_cache = {}
         self.account_cache = {}
         self.coin_info_cache = {}
@@ -76,6 +77,19 @@ class TradingMarket(Client):
     # TODO
     def fetch_details(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+
+#   @pysnooper.snoop()
+    def fetch_supported_tickers(self, *args, **kwargs):
+        log.debug('')
+        tickers, merged = self.get_all_tickers(), {}
+        log.debug('Supported ticker symbols: {}'.format(tickers))
+        for ticker_dict in tickers:
+            merged.update({ticker_dict.get('symbol'): ticker_dict,})
+        timestamp = str(time.time())
+        self.update_cache(
+            merged, self.supported_tickers_cache, label=timestamp,
+        )
+        return merged
 
     def fetch_active_trades(self, *args, **kwargs):
         log.debug('')
