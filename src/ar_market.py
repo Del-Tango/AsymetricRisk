@@ -79,6 +79,20 @@ class TradingMarket(Client):
     def fetch_details(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
 
+    def fetch_account(self, *args, **kwargs):
+        log.debug('')
+        timestamp = str(time.time())
+        self.update_cache(
+            self.get_account(recvWindow=kwargs.get('recvWindow', 60000)),
+            self.account_cache,
+            label=timestamp
+        )
+        return self.account_cache[timestamp]
+
+    def fetch_asset_balance(self, *args, **kwargs):
+        log.debug('')
+        account = self.fetch_account(**kwargs)
+        return account.get('balances', False)
 
 #   @pysnooper.snoop()
     def fetch_supported_coins(self, *args, **kwargs):
@@ -144,15 +158,6 @@ class TradingMarket(Client):
             )
         log.debug('All trades: {}'.format(records))
         return records
-
-    def fetch_asset_balance(self, *args, **kwargs):
-        log.debug('')
-        timestamp = str(time.time())
-        self.update_cache(
-            self.get_account(recvWindow=60000), self.account_cache,
-            label=timestamp
-        )
-        return self.account_cache[timestamp].get('balances', False)
 
     def fetch_macd_values(self, **kwargs):
         log.debug('')
@@ -710,6 +715,13 @@ class TradingMarket(Client):
         return return_dict
 
 # CODE DUMP
+
+#       timestamp = str(time.time())
+#       self.update_cache(
+#           self.get_account(recvWindow=60000), self.account_cache,
+#           label=timestamp
+#       )
+
 
         # Get coin price
 #       price = client.get_symbol_ticker(symbol=sanitized_ticker)

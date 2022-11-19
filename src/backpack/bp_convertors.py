@@ -9,7 +9,7 @@ import logging
 import os
 import base64
 
-log = logging.getLogger('')
+log = logging.getLogger('AsymetricRisk')
 
 
 def encode_message_base64(message):

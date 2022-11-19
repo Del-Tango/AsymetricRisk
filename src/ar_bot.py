@@ -22,24 +22,24 @@ log = logging.getLogger('AsymetricRisk')
 
 class TradingBot():
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def __init__(self, *args, **kwargs):
         log.debug('')
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
         self.market = {}
         self.start_account_value = float()
         self.current_account_value = float()
-        self.profit_baby = float()
-        self.trade_amount = float()
+        self.profit_baby = float(10)
+        self.trade_amount = float(1)
         self.profit_target = float()
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
                 self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
                 self.compute_profit_baby(
-                    kwargs.get('profit-baby', 10), **kwargs
+                    kwargs.get('profit-baby', self.profit_baby), **kwargs
                 )
                 self.compute_trade_amount(
-                    kwargs.get('trade-amount', 1), **kwargs
+                    kwargs.get('trade-amount', self.trade_amount), **kwargs
                 )
             except Exception as w:
                 stdout_msg(
@@ -58,6 +58,9 @@ class TradingBot():
         log.debug('')
         market = self.fetch_active_market()
         if not market:
+            log.error(
+                'Could not fetch active market! Details: ({})'.format(market)
+            )
             return False
         base, quote = self.fetch_market_currency()
         response = market.get_asset_balance(
@@ -91,7 +94,13 @@ class TradingBot():
                 'Active market not set up! Details: ({})'.format(self.market)
             )
             return False
-        return list(self.market.values())[0]
+        market = list(self.market.values())[0]
+        if not market:
+            log.error(
+                'Could not fetch active market! Details: ({})'.format(market)
+            )
+            return False
+        return market
 
     # SETTERS
 
@@ -291,12 +300,21 @@ class TradingBot():
 
     # VIEWERS
 
+    def view_account_details(self, *args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        return market.fetch_account(**kwargs)
+
     def view_asset_balance(self, *args, **kwargs):
         '''
         [ NOTE ]: View balance of specified or all coins in market account.
         '''
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         return market.fetch_asset_balance(*args, **kwargs)
 
     def view_trades(self, *args, **kwargs):
@@ -305,6 +323,8 @@ class TradingBot():
         '''
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         return market.fetch_active_trades(*args, **kwargs)
 
     def view_trade_history(self, *args, **kwargs):
@@ -313,6 +333,8 @@ class TradingBot():
         '''
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         return market.fetch_all_trades(*args, **kwargs)
 
     def view_supported_tickers(self, *args, **kwargs):
@@ -322,15 +344,18 @@ class TradingBot():
         '''
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         return market.fetch_supported_tickers()
 
-    # TODO
     def view_supported_coins(self, *args, **kwargs):
         '''
         [ NOTE ]: View all supported crypto coins
         '''
         log.debug('')
         market = self.fetch_active_market()
+        if not market:
+            return False
         return market.fetch_supported_coins(**kwargs)
 
     # REPORT MANAGEMENT

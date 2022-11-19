@@ -6,7 +6,7 @@
 
 import logging
 
-log = logging.getLogger('')
+log = logging.getLogger('AsymetricRisk')
 
 
 def compute_percentage(percentage, value):

@@ -8,7 +8,7 @@ import os
 import stat
 import logging
 
-log = logging.getLogger('')
+log = logging.getLogger('AsymetricRisk')
 
 
 def check_pid_running(pid):

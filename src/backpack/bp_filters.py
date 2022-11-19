@@ -8,7 +8,7 @@ import os
 import stat
 import logging
 
-log = logging.getLogger('GateKeeper')
+log = logging.getLogger('AsymetricRisk')
 
 
 def filter_file_name_from_path(file_path):

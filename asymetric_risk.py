@@ -113,12 +113,8 @@ AR_DEFAULT = {
     "vwap-interval":        "5m"
 }
 
-log = log_init(
-    '/'.join([AR_DEFAULT['log-dir'], AR_DEFAULT['log-file']]),
-    AR_DEFAULT['log-format'], AR_DEFAULT['timestamp-format'],
-    AR_DEFAULT['debug'], log_name=AR_SCRIPT_NAME
-)
-trading_bot = None #TradingBot(**AR_DEFAULT)
+log = logging.getLogger('AsymetricRisk')
+trading_bot = None
 
 # FETCHERS
 
@@ -227,19 +223,36 @@ def action_deposit_report(*args, **kwargs):
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
 def action_view_trade_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
+    # TODO - No mods in trading bot
     stdout_msg('[ ACTION ]: View Trade Report', bold=True)
 def action_view_withdrawal_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
+    # TODO - No mods in trading bot
     stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
 def action_view_deposit_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
+    # TODO - No mods in trading bot
     stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
-def action_account_details(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    stdout_msg('[ ACTION ]: View Account Details', bold=True)
 def action_market_details(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
+
+def action_account_details(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: View Account Details', bold=True)
+    stdout_msg('Fetching trading account details...', info=True)
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    account = trading_bot.view_account_details(*args, **kwargs)
+    if not account:
+        stdout_msg(
+            'Could not fetch account info! Details: ({})'.format(
+               account
+            ), nok=True
+        )
+        return 1
+    print(dict2json(account))
+    stdout_msg('Account details', ok=True)
+    return 0
 
 # @pysnooper.snoop()
 def action_supported_coins(*args, **kwargs):
@@ -417,29 +430,29 @@ def create_command_line_parser():
             -a  | --action "start-watchdog,trade-report" \\
             -c  | --config-file /etc/conf/asymetric_risk.conf.json \\
             -l  | --log-file /etc/log/asymetric_risk.log \\
-            -K  | --api-key "yxdLHNgKWzka2HjzR5jZF0ZXTCZaHp2V1X9EgXjKBxLsfKoClFvET1PqIUW9ctAw" \\
-            -S  | --api-secret "oPyuIoqWHBt5pvfCk1YLIslViuH87DJvRTgtOsLylGB58LRsEuHvu4KuZOv0DAv5" \\
-            -k  | --taapi-key "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjM2MmRkNThmYzVhOGFkZmVjM2ZhMmEzIiwiaWF0IjoxNjY3NzAxNzg5LCJleHAiOjMzMTcyMTY1Nzg5fQ.33yXXi5RK1oupATjS-RFMLKfD7grZdJ2r7GT4gH-tAE" \\
+            -K  | --api-key "*************************************************" \\
+            -S  | --api-secret "**********************************************" \\
+            -k  | --taapi-key "***********************************************" \\
             -U  | --api-url "https://testnet.binance.vision/api" \\
             -u  | --taapi-url "https://api.taapi.io" \\
             -T  | --strategy "vwap,rsi,macd,adx,ma,ema,price,volume" \\
             -D  | --debug \\
             -s  | --silence \\
-            -A  | --analyze-risk \\
-            -t  | --side "auto" \\
-            -i  | --interval "5m" \\
-            -p  | --period 14 \\
-            -R  | --risk-tolerance High \\
-            -b  | --base-currency BTC \\
-            -q  | --quote-currency USDT \\
-            -Z  | --ticker-symbol BTC/USDT \\
-            -P  | --profit-baby 10 \\
-                | --stop-loss 10 \\
-                | --take-profit 30 \\
-                | --trailing-stop 10 \\
-                | --price-movement 5 \\
-                | --rsi-top 70 \\
-                | --rsi-bottom 30 \\
+            -A  | --analyze-risk \\             # Do risk analysis before trading
+            -t  | --side "auto" \\              # Trade side (buy | sell | auto)
+            -i  | --interval "5m" \\            # Chart time interval
+            -p  | --period 14 \\                # No. of intervals
+            -R  | --risk-tolerance High \\      # Implies (-A | --analyze-risk)
+            -b  | --base-currency BTC \\        # Measure value of -
+            -q  | --quote-currency USDT \\      # Measure base currency value in -
+            -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
+            -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
+                | --stop-loss 10 \\             # Set trading stop loss at X% of amount
+                | --take-profit 30 \\           # Set trading take profit at X% of amount
+                | --trailing-stop 10 \\         # Set trailing stop at X% of amount
+                | --price-movement 5 \\         # Set price movement trigger at X% per interval
+                | --rsi-top 70 \\               # Specify strong RSI value (1-100)
+                | --rsi-bottom 30 \\            # Specify low RSI value (1-100)
                 | --rsi-period 14 \\
                 | --rsi-backtrack 5 \\
                 | --rsi-backtracks 12 \\
@@ -2074,6 +2087,14 @@ if __name__ == '__main__':
     exit(EXIT_CODE)
 
 # CODE DUMP
+
+#TradingBot(**AR_DEFAULT)
+
+#   log_init(
+#       '/'.join([AR_DEFAULT['log-dir'], AR_DEFAULT['log-file']]),
+#       AR_DEFAULT['log-format'], AR_DEFAULT['timestamp-format'],
+#       AR_DEFAULT['debug'], log_name=AR_SCRIPT_NAME
+#   )
 
 #   print(format_header_string())
 
