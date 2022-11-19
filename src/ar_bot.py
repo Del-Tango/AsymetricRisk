@@ -318,11 +318,20 @@ class TradingBot():
     def view_supported_tickers(self, *args, **kwargs):
         '''
         [ NOTE ]: View all supported ticker symbols
-        [ RETURN ]: List[Dict[symbol: str, price: str]]
+        [ RETURN ]: {symbol: {'symbol': str, 'price': str}}
         '''
         log.debug('')
         market = self.fetch_active_market()
         return market.fetch_supported_tickers()
+
+    # TODO
+    def view_supported_coins(self, *args, **kwargs):
+        '''
+        [ NOTE ]: View all supported crypto coins
+        '''
+        log.debug('')
+        market = self.fetch_active_market()
+        return market.fetch_supported_coins(**kwargs)
 
     # REPORT MANAGEMENT
 

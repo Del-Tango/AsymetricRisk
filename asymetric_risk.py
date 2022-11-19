@@ -240,14 +240,30 @@ def action_account_details(*args, **kwargs):
 def action_market_details(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
+
+# @pysnooper.snoop()
 def action_supported_coins(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
+    log.debug('')
     stdout_msg('[ ACTION ]: View Supported Coins', bold=True)
+    stdout_msg('Fetching supported crypto coins...', info=True)
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    coins = trading_bot.view_supported_coins(*args, **kwargs)
+    if not coins:
+        stdout_msg(
+            'Could not fetch supported crypto coins! Details: ({})'.format(
+               coins
+            ), nok=True
+        )
+        return 1
+    print(dict2json(coins))
+    stdout_msg('Available crypto coins ({})'.format(len(coins)), ok=True)
+    return 0
 
 def action_supported_tickers(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Supported Ticker Symbols...', bold=True)
     stdout_msg('Fetching supported ticker symbols...', info=True)
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     tickers = trading_bot.view_supported_tickers(*args, **kwargs)
     if not tickers:
         stdout_msg(
@@ -345,7 +361,8 @@ def handle_actions(actions=[], *args, **kwargs):
             continue
         try:
             handle = handlers[action_label](*args, **kwargs)
-            if not handle or (isinstance(handle, int) and handle != 0):
+            if (handle != 0 and not handle) \
+                    or (isinstance(handle, int) and handle != 0):
                 stdout_msg(
                     'Action ({}) failures detected! ({})'
                     .format(action_label, handle), nok=True

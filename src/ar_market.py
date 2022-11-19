@@ -61,6 +61,7 @@ class TradingMarket(Client):
         self.active_trades = {} #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.trades_to_report = {} # {id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.supported_tickers_cache = {}
+        self.supported_coins_cache = {}
         self.recent_trades_cache = {}
         self.account_cache = {}
         self.coin_info_cache = {}
@@ -77,6 +78,23 @@ class TradingMarket(Client):
     # TODO
     def fetch_details(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+
+
+#   @pysnooper.snoop()
+    def fetch_supported_coins(self, *args, **kwargs):
+        log.debug('')
+        merged = {}
+        coins = self.get_all_coins_info(
+            recvWindow=kwargs.get('recvWindow', 60000)
+        )
+        log.debug('Supported crypto coins: {}'.format(coins))
+        for coin in coins:
+            merged.update({coin.get('coin'): coin,})
+        timestamp = str(time.time())
+        self.update_cache(
+            merged, self.supported_coins_cache, label=timestamp,
+        )
+        return merged
 
 #   @pysnooper.snoop()
     def fetch_supported_tickers(self, *args, **kwargs):
