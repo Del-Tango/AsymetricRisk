@@ -58,6 +58,7 @@ AR_DEFAULT = {
     "profit-baby":          10,
     "base-currency":        'BTC',
     "quote-currency":       'USDT',
+    "ticker-symbol":        'BTC/USDT',
     "period-start":         '01-10-2022',
     "period-end":           '01-11-2022',
     "risk-tolerance":       1,
@@ -71,6 +72,8 @@ AR_DEFAULT = {
     "side":                 "auto",
     "interval":             "5m",
     "period":               14,
+    "backtrack":            1,
+    "backtracks":           10,
     "stop-loss":            10,
     "take-profit":          30,
     "trailing-stop":        10,
@@ -110,7 +113,19 @@ AR_DEFAULT = {
     "vwap-backtrack":       5,
     "vwap-backtracks":      12,
     "vwap-chart":           "candles",
-    "vwap-interval":        "5m"
+    "vwap-interval":        "5m",
+    "price-period":         14,
+    "price-backtrack":      5,
+    "price-backtracks":     12,
+    "price-chart":          "candles",
+    "price-interval":       "5m",
+    "report-prefix":        "ar-",
+    "report-id":            "",
+    "report-suffix":        "",
+    "report-extension":     "report",
+    "report-id-length":     8,
+    "report-id-characters": "abcdefghijklmnopqrstuvwxyz0123456789",
+    "report-location":      "./data/reports",
 }
 
 log = logging.getLogger('AsymetricRisk')
@@ -133,9 +148,10 @@ def fetch_action_handlers():
         'withdrawal-report': action_withdrawal_report,
         'deposit-report': action_deposit_report,
         'single-trade': action_single_trade,
-        'view-trade-report': action_view_trade_report,
-        'view-withdrawal-report': action_view_withdrawal_report,
-        'view-deposit-report': action_view_deposit_report,
+        'view-report': action_view_report,
+#       'view-trade-report': action_view_trade_report,
+#       'view-withdrawal-report': action_view_withdrawal_report,
+#       'view-deposit-report': action_view_deposit_report,
         'account-details': action_account_details,
         'market-details': action_market_details,
         'supported-coins': action_supported_coins,
@@ -211,7 +227,23 @@ def check_log_file(**kwargs):
 
 # ACTIONS
 
-# TODO
+# TODO - DEPENDENCY - TradeReporter
+#   def action_view_trade_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Trade Report', bold=True)
+#   def action_view_withdrawal_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
+#   def action_view_deposit_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
+def action_view_report(*args, **kwargs):
+    log.debug('')
+    # TODO - No mods in trading bot
+    stdout_msg('[ ACTION ]: View Report', bold=True)
 def action_trade_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Trade Report', bold=True)
@@ -221,22 +253,14 @@ def action_withdrawal_report(*args, **kwargs):
 def action_deposit_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
-def action_view_trade_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    # TODO - No mods in trading bot
-    stdout_msg('[ ACTION ]: View Trade Report', bold=True)
-def action_view_withdrawal_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    # TODO - No mods in trading bot
-    stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
-def action_view_deposit_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    # TODO - No mods in trading bot
-    stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
+
+#@pysnooper.snoop()
 def action_market_details(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
+    log.debug('')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
-    stdout_msg('Fetching trading market details...', info=True)
+    log.debug('Action Market Details args/kwargs - {} / {}'.format(args, kwargs))
+    if not kwargs.get('update-flag'):
+        kwargs.update({'update-flag': False})
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     details = trading_bot.view_market_details(*args, **kwargs)
     if not details:
@@ -249,12 +273,9 @@ def action_market_details(*args, **kwargs):
     print(dict2json(details))
     return 0
 
-
-
 def action_account_details(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Account Details', bold=True)
-    stdout_msg('Fetching trading account details...', info=True)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     account = trading_bot.view_account_details(*args, **kwargs)
     if not account:
@@ -271,7 +292,6 @@ def action_account_details(*args, **kwargs):
 def action_supported_coins(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Supported Coins', bold=True)
-    stdout_msg('Fetching supported crypto coins...', info=True)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     coins = trading_bot.view_supported_coins(*args, **kwargs)
     if not coins:
@@ -288,7 +308,6 @@ def action_supported_coins(*args, **kwargs):
 def action_supported_tickers(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Supported Ticker Symbols...', bold=True)
-    stdout_msg('Fetching supported ticker symbols...', info=True)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     tickers = trading_bot.view_supported_tickers(*args, **kwargs)
     if not tickers:
@@ -440,26 +459,28 @@ def create_command_line_parser():
     [ EXAMPLE ]: Start (A)Risk trading bot -
 
         ~$ %prog \\
-            -a  | --action "start-watchdog,trade-report" \\
+            -a  | --action "start-watchdog,trade-report,account-details" \\
             -c  | --config-file /etc/conf/asymetric_risk.conf.json \\
             -l  | --log-file /etc/log/asymetric_risk.log \\
+            -U  | --api-url "https://testnet.binance.vision/api" \\
+            -u  | --taapi-url "https://api.taapi.io" \\
             -K  | --api-key "*************************************************" \\
             -S  | --api-secret "**********************************************" \\
             -k  | --taapi-key "***********************************************" \\
-            -U  | --api-url "https://testnet.binance.vision/api" \\
-            -u  | --taapi-url "https://api.taapi.io" \\
             -T  | --strategy "vwap,rsi,macd,adx,ma,ema,price,volume" \\
             -D  | --debug \\
             -s  | --silence \\
             -A  | --analyze-risk \\             # Do risk analysis before trading
             -t  | --side "auto" \\              # Trade side (buy | sell | auto)
-            -i  | --interval "5m" \\            # Chart time interval
+            -i  | --interval "5m" \\            # Chart/candle time interval
             -p  | --period 14 \\                # No. of intervals
             -R  | --risk-tolerance High \\      # Implies (-A | --analyze-risk)
             -b  | --base-currency BTC \\        # Measure value of -
             -q  | --quote-currency USDT \\      # Measure base currency value in -
             -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
             -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
+                | --history-backtrack 14 \\     # General period backtrack value for indicator history
+                | --history-backtracks 14 \\    # General period backtracks value for indicator history
                 | --stop-loss 10 \\             # Set trading stop loss at X% of amount
                 | --take-profit 30 \\           # Set trading take profit at X% of amount
                 | --trailing-stop 10 \\         # Set trailing stop at X% of amount
@@ -499,7 +520,12 @@ def create_command_line_parser():
                 | --vwap-backtrack 5 \\
                 | --vwap-backtracks 12 \\
                 | --vwap-chart "candles" \\
-                | --vwap-interval "5m"'''
+                | --vwap-interval "5m" \\
+                | --price-period 14 \\
+                | --price-backtrack 5 \\
+                | --price-backtracks 12 \\
+                | --price-chart "candles" \\
+                | --price-interval "5m"'''
     parser = optparse.OptionParser(help_msg)
     return parser
 
@@ -534,7 +560,9 @@ def process_command_line_options(parser):
         'side': process_side_argument(parser, options),
         'profit_baby': process_profit_baby_argument(parser, options),
         'interval': process_interval_argument(parser, options),
-        'period 14': process_period_argument(parser, options),
+        'period': process_period_argument(parser, options),
+        'backtrack': process_backtrack_argument(parser, options),
+        'backtracks': process_backtracks_argument(parser, options),
         'stop_loss': process_stop_loss_argument(parser, options),
         'take_profit': process_take_profit_argument(parser, options),
         'trailing_stop': process_trailing_stop_argument(parser, options),
@@ -576,8 +604,125 @@ def process_command_line_options(parser):
         'vwap_backtracks': process_vwap_backtracks_argument(parser, options),
         'vwap_chart': process_vwap_chart_argument(parser, options),
         'vwap_interval': process_vwap_interval_argument(parser, options),
+        'price_period': process_price_period_argument(parser, options),
+        'price_backtrack': process_price_backtrack_argument(parser, options),
+        'price_backtracks': process_price_backtracks_argument(parser, options),
+        'price_chart': process_price_chart_argument(parser, options),
+        'price_interval': process_price_interval_argument(parser, options),
     }
     return processed
+
+def process_price_period_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.price_period
+    if value == None:
+        log.warning(
+            'No price period provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['price-period'])
+        )
+        return False
+    AR_DEFAULT['price-period'] = value
+    stdout_msg(
+        'Price Period setup ({})'.format(AR_DEFAULT['price-period']), ok=True
+    )
+    return True
+
+def process_price_backtrack_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.price_backtrack
+    if value == None:
+        log.warning(
+            'No price backtrack value provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['price-backtrack'])
+        )
+        return False
+    AR_DEFAULT['price-backtrack'] = value
+    stdout_msg(
+        'Price Backtrack setup ({})'.format(AR_DEFAULT['price-backtrack']), ok=True
+    )
+    return True
+
+def process_price_backtracks_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.price_backtracks
+    if value == None:
+        log.warning(
+            'No price backtracks value provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['price-backtracks'])
+        )
+        return False
+    AR_DEFAULT['price-backtracks'] = value
+    stdout_msg(
+        'Price Backtracks setup ({})'.format(AR_DEFAULT['price-backtracks']), ok=True
+    )
+    return True
+
+def process_price_chart_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.price_chart
+    if value == None:
+        log.warning(
+            'No price chart type provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['price-chart'])
+        )
+        return False
+    AR_DEFAULT['price-chart'] = value
+    stdout_msg(
+        'Price Chart setup ({})'.format(AR_DEFAULT['price-chart']), ok=True
+    )
+    return True
+
+def process_price_interval_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.price_interval
+    if value == None:
+        log.warning(
+            'No price interval value provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['price-interval'])
+        )
+        return False
+    AR_DEFAULT['price-interval'] = value
+    stdout_msg(
+        'Price Interval setup ({})'.format(AR_DEFAULT['price-interval']), ok=True
+    )
+    return True
+
+def process_backtrack_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.backtrack
+    if value == None:
+        log.warning(
+            'No period backtrack provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['backtrack'])
+        )
+        return False
+    AR_DEFAULT['backtrack'] = value
+    stdout_msg(
+        'Period Backtrack setup ({})'.format(AR_DEFAULT['backtrack']), ok=True
+    )
+    return True
+
+def process_backtracks_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.backtracks
+    if value == None:
+        log.warning(
+            'No period backtracks provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['backtracks'])
+        )
+        return False
+    AR_DEFAULT['backtracks'] = value
+    stdout_msg(
+        'Period Backtracks setup ({})'.format(AR_DEFAULT['backtracks']), ok=True
+    )
+    return True
 
 def process_price_movement_argument(parser, options):
     global AR_DEFAULT
@@ -841,7 +986,7 @@ def process_debug_argument(parser, options):
         return False
     AR_DEFAULT['debug'] = value
     stdout_msg(
-        'Debug falg setup ({})'.format(AR_DEFAULT['debug']), ok=True
+        'Debug flag setup ({})'.format(AR_DEFAULT['debug']), ok=True
     )
     return True
 
@@ -1561,7 +1706,7 @@ def process_config_file_argument(parser, options):
         return False
     AR_DEFAULT['conf-dir'] = filter_directory_from_path(file_path)
     AR_DEFAULT['conf-file'] = filter_file_name_from_path(file_path)
-    load_config_json()
+#   load_config_json()
     stdout_msg(
         'Config file setup ({})'.format(AR_DEFAULT['conf-file']), ok=True
     )
@@ -1716,6 +1861,18 @@ def add_command_line_parser_options(parser):
              'single-trade | view-trade-report | view-withdrawal-report | '
              'view-deposit-report | account-details | market-details | '
              'supported-coins | supported-tickers)',
+    )
+    parser.add_option(
+        '', '--history-backtrack', dest='backtrack', type='int', metavar='PERIOD',
+        help='General backtrack value for indicator history. Backtrack returns a '
+             'single candle value from X periods back. Given value can be overwritten '
+             'for specific indicators if that indicator value is also given.',
+    )
+    parser.add_option(
+        '', '--history-backtracks', dest='backtracks', type='int', metavar='PERIOD',
+        help='General backtracks value for indicator history. Backtracks returns '
+             'all candle values from X periods back. Given value can be overwritten '
+             'for specific indicators if that indicator value is also given.',
     )
     parser.add_option(
         '', '--stop-loss', dest='stop_loss', type='int', metavar='PERCENTAGE',
@@ -1962,6 +2119,41 @@ def add_command_line_parser_options(parser):
              'The default is 0 and a maximum is 50.', metavar='PERIOD'
     )
     parser.add_option(
+        '', '--price-period', dest='price_period', type='int', metavar='PERIOD',
+        help='Period/Number of candles used when computing the asset Price.',
+
+    )
+    parser.add_option(
+        '', '--price-backtrack', dest='price_backtrack', type='int', metavar='PERIOD',
+        help='Number of candles/periods to backtrack when computing the '
+             'Price history. The backtrack parameter removes '
+             'candles from the data set and calculates the indicator value X amount of '
+             'candles back. So, if you’re fetching the indicator on the hourly and you '
+             'want to know what the indicator was 5 hours ago, set backtrack=5. '
+             'The default is 0 and a maximum is 50.',
+    )
+    parser.add_option(
+        '', '--price-backtracks', dest='price_backtracks', type='int', metavar='PERIOD',
+        help='Number of candles/periods to backtrack when computing the '
+             'Price history. The backtracks parameter returns '
+             'the indicator value calculated on every candle for the past X candles. '
+             'For example, if you want to know what the indicator was every hour for '
+             'the past 12 hours, you use backtracks=12. As a result, you will '
+             'get 12 values back.',
+    )
+    parser.add_option(
+        '', '--price-chart', dest='price_chart', type='string', metavar='TYPE',
+        help='Type of chart used when computing the Price. '
+             'The chart parameter accepts one of two values: candles or heikinashi. '
+             'Candles is the default, but if you set this to heikinashi, the '
+             'indicator values will be calculated using Heikin Ashi candles. ',
+    )
+    parser.add_option(
+        '', '--price-interval', dest='price_interval', type='string', metavar='INTERVAL',
+        help='Time interval used when computing the Price. '
+             'Supported time frames: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 12h, 1d, 1w.',
+    )
+    parser.add_option(
         '', '--price-movement', dest='price_movement', type='int',
         help='Price percentage that triggers a large price movement for '
              'specified interval.', metavar='PERCENTAGE'
@@ -2003,7 +2195,6 @@ def load_config_json():
     global AR_VERSION
     global AR_VERSION_NO
     log.debug('')
-    stdout_msg('Loading config file...', info=True)
     conf_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
     if not os.path.isfile(conf_file_path):
         stdout_msg('File not found! ({})'.format(conf_file_path), nok=True)
@@ -2051,9 +2242,9 @@ def format_header_string():
     ___________________________________________________________________________
 
      *                          *  Asymetric Risk  *                         *
-    ___________________________________________________________________________
+    ________________________________________________________v{}{}___________
                 Excellent Regards, the Alveare Solutions #!/Society -x
-    '''
+    '''.format(AR_VERSION_NO, AR_VERSION)
     return header
 
 # DISPLAY
@@ -2084,15 +2275,17 @@ def init_asymetric_risk(*args, **kwargs):
 # MISCELLANEOUS
 
 if __name__ == '__main__':
-    config_setup = load_config_json()
-    if not config_setup:
-        stdout_msg('Could not load config file!', warn=True)
     parse_command_line_arguments()
     if not update_log():
         stdout_msg('Could not properly set up logger!', warn=True)
+    stdout_msg('Loading config file...', info=True)
+    config_setup = load_config_json()
+    if not config_setup:
+        stdout_msg('Could not load config file!', warn=True)
     clear_screen()
     EXIT_CODE = 1
     try:
+        log.debug('AR_DEFAULT - {}'.format(AR_DEFAULT))
         EXIT_CODE = init_asymetric_risk(**AR_DEFAULT)
     finally:
         cleanup()

@@ -140,11 +140,11 @@ class TradingBot():
 
     # ACTIONS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
-            'watchdog-anchor-file', '.art-bot.anch'
+            'watchdog-anchor-file', '.ar-bot.anch'
         )
         ensure_files_exist(anchor_file)
         while True:
@@ -289,7 +289,7 @@ class TradingBot():
     # GENERAL
 
     def mission_accomplished(self):
-        log.debug('')
+        log.debug('HELL YES!')
         message = 'Target acquired! PROFIT BABY!! - Started from ({}) '\
             'now we here ({}) :>'.format(
                 self.start_account_value, self.current_account_value
@@ -299,6 +299,13 @@ class TradingBot():
         return message
 
     # VIEWERS
+
+    def view_report(self, *args, **kwargs):
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        return self.reporter.read(*args, **kwargs)
 
     def view_market_details(self, *args, **kwargs):
         log.debug('')
@@ -369,9 +376,12 @@ class TradingBot():
 
     # REPORT MANAGEMENT
 
-    # TODO
     def generate_report(self):
-        log.debug('TODO - Under construction, building...')
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        return self.reporter.generate(*args, **kwargs)
 
     # MARKET MANAGEMENT
 
@@ -437,7 +447,7 @@ class TradingBot():
         reporter = TradingReporter(**kwargs)
         return reporter
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def setup_market(self, **kwargs):
         log.debug('')
         market = TradingMarket(

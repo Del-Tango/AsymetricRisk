@@ -32,6 +32,7 @@ class TradingIndicator():
 
     # FORMATTERS
 
+#   @pysnooper.snoop()
     def format_target_url(self, indicator_label, *args, **kwargs):
         '''
         [ RETURN ]: Obviously... right?
@@ -56,6 +57,7 @@ class TradingIndicator():
             if action_data[item] != None
         ]
         target_url = target_url + str('&'.join(action_variables))
+        log.debug('Formatted target URL - {}'.format(target_url))
         return target_url
 
     # GENERAL
@@ -88,15 +90,29 @@ class TradingIndicator():
 
     def adx(self, **kwargs):
         '''
-        [ RETURN ]: Example - 'b\'{"value":27.163106189421097}\''
+        [ RETURN ]: Current or backtrack value example -
+
+            {"value": 27.163106189421097}
+
+        OR - with specified backtracks value -
+
+            [
+                {"value": 37.09463629080951,"backtrack":0},
+                {"value": 35.014232435139164,"backtrack":1},
+                ...
+            ]
         '''
         log.debug('')
+        log.debug('ADX call received kwargs - {}'.format(kwargs))
+        details = kwargs.copy()
+        if details.get('adx-backtracks') or details.get('backtracks'):
+            details.update({'adx-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('adx', **{
-            'period': kwargs.get('adx-period', kwargs.get('period')),
-            'backtrack': kwargs.get('adx-backtrack'),
-            'backtracks': kwargs.get('adx-backtracks'),
-            'chart': kwargs.get('adx-chart'),
-            'interval': kwargs.get('adx-interval', kwargs.get('interval'))
+            'period': details.get('adx-period', details.get('period')),
+            'backtrack': details.get('adx-backtrack', details.get('backtrack')),
+            'backtracks': details.get('adx-backtracks', details.get('backtracks')),
+            'chart': details.get('adx-chart', details.get('chart')),
+            'interval': details.get('adx-interval', details.get('interval'))
         }))
 
     def macd(self, **kwargs):
@@ -104,14 +120,17 @@ class TradingIndicator():
         [ RETURN ]: Example - 'b\'{"valueMACD":47.481220348032366,"valueMACDSignal":78.66025805066222,"valueMACDHist":-31.179037702629856}\''
         '''
         log.debug('')
+        details = kwargs.copy()
+        if details.get('macd-backtracks') or details.get('backtracks'):
+            details.update({'macd-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('macd',  **{
-            'backtrack': kwargs.get('macd-backtrack'),
-            'backtracks': kwargs.get('macd-backtracks'),
-            'chart': kwargs.get('macd-chart'),
-            'interval': kwargs.get('macd-interval', kwargs.get('interval')),
-            'macd-fast-period': kwargs.get('macd-fast-period'),
-            'macd-slow-period': kwargs.get('macd-slow-period'),
-            'macd-signal-period': kwargs.get('macd-signal-period'),
+            'backtrack': details.get('macd-backtrack', details.get('backtrack')),
+            'backtracks': details.get('macd-backtracks', details.get('backtracks')),
+            'chart': details.get('macd-chart', details.get('chart')),
+            'interval': details.get('macd-interval', details.get('interval')),
+            'macd-fast-period': details.get('macd-fast-period'),
+            'macd-slow-period': details.get('macd-slow-period'),
+            'macd-signal-period': details.get('macd-signal-period'),
         }))
 
     def ma(self, **kwargs):
@@ -119,12 +138,15 @@ class TradingIndicator():
         [ RETURN ]: Example - 'b\'{"value":21315.933999999987}\''
         '''
         log.debug('')
+        details = kwargs.copy()
+        if details.get('ma-backtracks') or details.get('backtracks'):
+            details.update({'ma-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('ma', **{
-            'period': kwargs.get('ma-period', kwargs.get('period')),
-            'backtrack': kwargs.get('ma-backtrack'),
-            'backtracks': kwargs.get('ma-backtracks'),
-            'chart': kwargs.get('ma-chart'),
-            'interval': kwargs.get('ma-interval', kwargs.get('interval'))
+            'period': details.get('ma-period', details.get('period')),
+            'backtrack': details.get('ma-backtrack', details.get('backtrack')),
+            'backtracks': details.get('ma-backtracks', details.get('backtracks')),
+            'chart': details.get('ma-chart', details.get('chart')),
+            'interval': details.get('ma-interval', details.get('interval'))
         }))
 
     def ema(self, **kwargs):
@@ -132,12 +154,15 @@ class TradingIndicator():
         [ RETURN ]: Example - 'b\'{"value":20884.645666666664}\''
         '''
         log.debug('')
+        details = kwargs.copy()
+        if details.get('ema-backtracks') or details.get('backtracks'):
+            details.update({'ema-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('ema', **{
-            'period': kwargs.get('ema-period', kwargs.get('period')),
-            'backtrack': kwargs.get('ema-backtrack'),
-            'backtracks': kwargs.get('ema-backtracks'),
-            'chart': kwargs.get('ema-chart'),
-            'interval': kwargs.get('ema-interval', kwargs.get('interval'))
+            'period': details.get('ema-period', details.get('period')),
+            'backtrack': details.get('ema-backtrack', details.get('backtrack')),
+            'backtracks': details.get('ema-backtracks', details.get('backtracks')),
+            'chart': details.get('ema-chart', details.get('chart')),
+            'interval': details.get('ema-interval', details.get('interval'))
         }))
 
     def rsi(self, **kwargs):
@@ -145,11 +170,14 @@ class TradingIndicator():
         [ RETURN ]: Example - 'b\'{"value":50.978938548271955}\''
         '''
         log.debug('')
+        details = kwargs.copy()
+        if details.get('rsi-backtracks') or details.get('backtracks'):
+            details.update({'rsi-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('rsi', **{
             'period': kwargs.get('rsi-period', kwargs.get('period')),
-            'backtrack': kwargs.get('rsi-backtrack'),
-            'backtracks': kwargs.get('rsi-backtracks'),
-            'chart': kwargs.get('rsi-chart'),
+            'backtrack': kwargs.get('rsi-backtrack', kwargs.get('backtrack')),
+            'backtracks': kwargs.get('rsi-backtracks', kwargs.get('backtracks')),
+            'chart': kwargs.get('rsi-chart', kwargs.get('chart')),
             'interval': kwargs.get('rsi-interval', kwargs.get('interval'))
         }))
 
@@ -158,12 +186,42 @@ class TradingIndicator():
         [ RETURN ]: Example - "b\"{"value":20513.436047490202}\""
         '''
         log.debug('')
+        details = kwargs.copy()
+        if details.get('vwap-backtracks') or details.get('backtracks'):
+            details.update({'vwap-backtrack': None, 'backtrack': None})
         return self.api_call(self.format_target_url('vwap', **{
-            'period': kwargs.get('vwap-period', kwargs.get('period')),
-            'backtrack': kwargs.get('vwap-backtrack'),
-            'backtracks': kwargs.get('vwap-backtracks'),
-            'chart': kwargs.get('vwap-chart'),
-            'interval': kwargs.get('vwap-interval', kwargs.get('interval'))
+            'period': details.get('vwap-period', details.get('period')),
+            'backtrack': details.get('vwap-backtrack', details.get('backtrack')),
+            'backtracks': details.get('vwap-backtracks', details.get('backtracks')),
+            'chart': details.get('vwap-chart', details.get('chart')),
+            'interval': details.get('vwap-interval', details.get('interval'))
+        }))
+
+    def price(self, **kwargs):
+        '''
+        [ RETURN ]: Current or backtrack value example -
+
+            {"value": 27.163106189421097}
+
+        OR - with specified backtracks value -
+
+            [
+                {"value": 37.09463629080951,"backtrack":0},
+                {"value": 35.014232435139164,"backtrack":1},
+                ...
+            ]
+        '''
+        log.debug('')
+        log.debug('Price call received kwargs - {}'.format(kwargs))
+        details = kwargs.copy()
+        if details.get('price-backtracks') or details.get('backtracks'):
+            details.update({'price-backtrack': None, 'backtrack': None})
+        return self.api_call(self.format_target_url('price', **{
+            'period': details.get('price-period', details.get('period')),
+            'backtrack': details.get('price-backtrack', details.get('backtrack')),
+            'backtracks': details.get('price-backtracks', details.get('backtracks')),
+            'chart': details.get('price-chart', details.get('chart')),
+            'interval': details.get('price-interval', details.get('interval'))
         }))
 
 # CODE DUMP
