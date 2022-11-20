@@ -5,6 +5,9 @@
 # ASYMETRIC RISK TRADING BOT
 
 import logging
+import pysnooper
+
+from src.backpack.bp_general import stdout_msg
 
 log = logging.getLogger('AsymetricRisk')
 
@@ -72,17 +75,36 @@ class TradingStrategy():
 
     # ACTIONS
 
+    @pysnooper.snoop()
     def analyze_risk(self, strategy='vwap', side='auto', **kwargs):
         log.debug('')
+        log.debug('Risk Analyzer received kwargs - {}'.format(kwargs))
         failures = 0
         trade_flag, risk_index, trade_side, evaluations = False, 0, side, {}
+        stdout_msg('Computing strategy...', info=True)
         for strategy_label in strategy.split(','):
             if strategy_label not in self.strategies:
                 failures += 1
+                stdout_msg('Strategy {}'.format(strategy_label), nok=True)
                 continue
+            # Compute trading strategy
             evaluations[strategy_label] = self.strategies[strategy_label](**kwargs)
+            stdout_msg(
+                'Strategy {}'.format(strategy_label),
+                ok=False if not evaluations[strategy_label] else True,
+                nok=False if evaluations[strategy_label] else True,
+            )
+        # Evaluate risk of give strategy results
+        stdout_msg('Evaluating trading risk', info=True)
         trade_flag, risk_index, trade_side = self.risk_evaluators[self.risk_tolerance](
             evaluations, side=side, details=kwargs.get('details', {})
+        )
+        stdout_msg(
+            'Risk evaluation: Trade - {}, Risk - {}, Side - {}'.format(
+                trade_flag, risk_index, trade_side
+            ),
+            ok=False if not trade_flag else True,
+            nok=False if trade_flag else True,
         )
         return trade_flag, risk_index, trade_side, failures
 
@@ -102,6 +124,19 @@ class TradingStrategy():
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_price_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ INPUT ]: return_dict - {
+            'price-movement': ,
+            'confirmed-by-volume': ,
+            'interval': ,
+            'value': ,
+            'risk': ,
+            'trade': ,
+            'description': ,
+        }
+
+        kwargs - {}
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
 

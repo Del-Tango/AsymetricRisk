@@ -35,97 +35,98 @@ AR_PROJECT_DIR = os.path.dirname(__file__)
 # HOT ARGS
 
 AR_DEFAULT = {
-    "log-dir":              AR_PROJECT_DIR + "/log",
-    "conf-dir":             AR_PROJECT_DIR + "/conf",
-    "lib-dir":              AR_PROJECT_DIR + "/lib",
-    "src-dir":              AR_PROJECT_DIR + "/src",
-    "dox-dir":              AR_PROJECT_DIR + "/dox",
-    "dta-dir":              AR_PROJECT_DIR + "/data",
-    "tmp-dir":              "/tmp",
-    "log-file":             "asymetric_risk.log",
-    "conf-file":            "asymetric_risk.conf.json",
-    "init-file":            __file__,
-    "watchdog-pid-file":    "ar-bot.pid",
-    "watchdog-anchor-file": "ar-bot.anchor",
-    "log-format":           "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
-    "timestamp-format":     "%d/%m/%Y-%H:%M:%S",
-    "api-key":              os.environ.get('binance_api'),
-    "api-secret":           os.environ.get('binance_secret'),
-    "taapi-key":            os.environ.get('taapi_api'),
-    "api-url":              'https://testnet.binance.vision/api',
-    "taapi-url":            "https://api.taapi.io",
-    "trade-amount":         1,
-    "profit-baby":          10,
-    "base-currency":        'BTC',
-    "quote-currency":       'USDT',
-    "ticker-symbol":        'BTC/USDT',
-    "period-start":         '01-10-2022',
-    "period-end":           '01-11-2022',
-    "risk-tolerance":       1,
-    "test":                 False,
-    "debug":                True,
-    "silence":              False,
-    "action":               '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report)
-    "report-id":            '0',
-    "analyze-risk":         True,
-    "strategy":             "vwap,rsi,macd,adx,ma,ema,price,volume",
-    "side":                 "auto",
-    "interval":             "5m",
-    "period":               14,
-    "backtrack":            1,
-    "backtracks":           10,
-    "stop-loss":            10,
-    "take-profit":          30,
-    "trailing-stop":        10,
-    "price-movement":       5,
-    "rsi-top":              70,
-    "rsi-bottom":           30,
-    "rsi-period":           14,
-    "rsi-backtrack":        5,
-    "rsi-backtracks":       12,
-    "rsi-chart":            "candles",
-    "rsi-interval":         "5m",
-    "volume-movement":      5,
-    "volume-interval":      "5m",
-    "ma-period":            30,
-    "ma-backtrack":         5,
-    "ma-backtracks":        12,
-    "ma-chart":             "candles",
-    "ma-interval":          "5m",
-    "ema-period":           30,
-    "ema-backtrack":        5,
-    "ema-backtracks":       12,
-    "ema-chart":            "candles",
-    "ema-interval":         "5m",
-    "macd-backtrack":       5,
-    "macd-backtracks":      12,
-    "macd-chart":           "candles",
-    "macd-fast-period":     12,
-    "macd-slow-period":     26,
-    "macd-signal-period":   9,
-    "macd-interval":        "5m",
-    "adx-period":           14,
-    "adx-backtrack":        5,
-    "adx-backtracks":       12,
-    "adx-chart":            "candles",
-    "adx-interval":         "5m",
-    "vwap-period":          14,
-    "vwap-backtrack":       5,
-    "vwap-backtracks":      12,
-    "vwap-chart":           "candles",
-    "vwap-interval":        "5m",
-    "price-period":         14,
-    "price-backtrack":      5,
-    "price-backtracks":     12,
-    "price-chart":          "candles",
-    "price-interval":       "5m",
-    "report-prefix":        "ar-",
-    "report-id":            "",
-    "report-suffix":        "",
-    "report-extension":     "report",
-    "report-id-length":     8,
-    "report-id-characters": "abcdefghijklmnopqrstuvwxyz0123456789",
-    "report-location":      "./data/reports",
+    "log-dir":                  AR_PROJECT_DIR + "/log",
+    "conf-dir":                 AR_PROJECT_DIR + "/conf",
+    "lib-dir":                  AR_PROJECT_DIR + "/lib",
+    "src-dir":                  AR_PROJECT_DIR + "/src",
+    "dox-dir":                  AR_PROJECT_DIR + "/dox",
+    "dta-dir":                  AR_PROJECT_DIR + "/data",
+    "tmp-dir":                  "/tmp",
+    "log-file":                 "asymetric_risk.log",
+    "conf-file":                "asymetric_risk.conf.json",
+    "init-file":                __file__,
+    "watchdog-pid-file":        "ar-bot.pid",
+    "watchdog-anchor-file":     "ar-bot.anchor",
+    "log-format":               "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
+    "timestamp-format":         "%d/%m/%Y-%H:%M:%S",
+    "api-key":                  os.environ.get('binance_api'),
+    "api-secret":               os.environ.get('binance_secret'),
+    "taapi-key":                os.environ.get('taapi_api'),
+    "api-url":                  'https://testnet.binance.vision/api',
+    "taapi-url":                "https://api.taapi.io",
+    "trade-amount":             1,
+    "profit-baby":              10,
+    "base-currency":            'BTC',
+    "quote-currency":           'USDT',
+    "ticker-symbol":            'BTC/USDT',
+    "period-start":             '01-10-2022',
+    "period-end":               '01-11-2022',
+    "indicator-update-delay":   18,
+    "risk-tolerance":           1,
+    "test":                     True,
+    "debug":                    True,
+    "silence":                  False,
+    "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report)
+    "report-id":                '0',
+    "analyze-risk":             True,
+    "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
+    "side":                     "auto",
+    "interval":                 "5m",
+    "period":                   14,
+    "backtrack":                1,
+    "backtracks":               10,
+    "stop-loss":                10,
+    "take-profit":              30,
+    "trailing-stop":            10,
+    "price-movement":           5,
+    "rsi-top":                  70,
+    "rsi-bottom":               30,
+    "rsi-period":               14,
+    "rsi-backtrack":            5,
+    "rsi-backtracks":           12,
+    "rsi-chart":                "candles",
+    "rsi-interval":             "5m",
+    "volume-movement":          5,
+    "volume-interval":          "5m",
+    "ma-period":                30,
+    "ma-backtrack":             5,
+    "ma-backtracks":            12,
+    "ma-chart":                 "candles",
+    "ma-interval":              "5m",
+    "ema-period":               30,
+    "ema-backtrack":            5,
+    "ema-backtracks":           12,
+    "ema-chart":                "candles",
+    "ema-interval":             "5m",
+    "macd-backtrack":           5,
+    "macd-backtracks":          12,
+    "macd-chart":               "candles",
+    "macd-fast-period":         12,
+    "macd-slow-period":         26,
+    "macd-signal-period":       9,
+    "macd-interval":            "5m",
+    "adx-period":               14,
+    "adx-backtrack":            5,
+    "adx-backtracks":           12,
+    "adx-chart":                "candles",
+    "adx-interval":             "5m",
+    "vwap-period":              14,
+    "vwap-backtrack":           5,
+    "vwap-backtracks":          12,
+    "vwap-chart":               "candles",
+    "vwap-interval":            "5m",
+    "price-period":             14,
+    "price-backtrack":          5,
+    "price-backtracks":         12,
+    "price-chart":              "candles",
+    "price-interval":           "5m",
+    "report-prefix":            "ar-",
+    "report-id":                "",
+    "report-suffix":            "",
+    "report-extension":         "report",
+    "report-id-length":         8,
+    "report-id-characters":     "abcdefghijklmnopqrstuvwxyz0123456789",
+    "report-location":          "./data/reports",
 }
 
 log = logging.getLogger('AsymetricRisk')
@@ -254,7 +255,7 @@ def action_deposit_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
 
-#@pysnooper.snoop()
+@pysnooper.snoop()
 def action_market_details(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
@@ -330,7 +331,7 @@ def action_single_trade(*args, **kwargs):
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     try:
         watchdog = trading_bot.trade(
-            *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(',')),
+            *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(','), ),
             **kwargs
         )
         if watchdog == 0:
@@ -364,7 +365,7 @@ def action_stop_watchdog(*args, **kwargs):
     stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
     return True
 
-#@pysnooper.snoop()
+@pysnooper.snoop()
 def action_start_watchdog(*args, **kwargs):
     '''
     [ RETURN ]: Trading watchdog exit code - type int
@@ -377,8 +378,7 @@ def action_start_watchdog(*args, **kwargs):
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     try:
         watchdog = trading_bot.trade_watchdog(
-            *(kwargs.get('strategy', AR_DEFAULT['strategy']).split(',')),
-            **kwargs
+            *kwargs.get('strategy').split(','), **kwargs
         )
         if watchdog == 0:
             stdout_msg('Trading bot!', ok=True)
@@ -391,9 +391,10 @@ def action_start_watchdog(*args, **kwargs):
 
 # HANDLERS
 
-#@pysnooper.snoop()
+# TODO
+@pysnooper.snoop()
 def handle_actions(actions=[], *args, **kwargs):
-    log.debug('')
+    log.debug('TODO - FIX ME')
     failure_count = 0
     handlers = fetch_action_handlers()
     for action_label in actions:
@@ -2171,11 +2172,70 @@ def parse_command_line_arguments():
     add_command_line_parser_options(parser)
     return process_command_line_options(parser)
 
-# GENERAL
+# CLEANERS
 
-# TODO
-def cleanup():
-    log.debug('TODO - Under construction, building...')
+def cleanup(*args, **kwargs):
+    log.debug('')
+    return_dict = {}
+    cleanup = {
+        'watchdog-anchor-file': cleanup_watchdog_anchor_file, #(*args, **kwargs),
+        'watchdog-pid-file': cleanup_watchdog_pid_file,
+    }
+    stdout_msg(
+        'Cleaning up... Jordan Peterson recommendation', info=True
+    )
+    if not args or 'all' in args:
+        for label in cleanup:
+            clean = cleanup[label](*args, **kwargs)
+            return_dict[label] = clean
+            stdout_msg(
+                'Cleaning up {}'.format(label),
+                ok=False if not clean else True,
+                nok=False if clean else True,
+            )
+    else:
+        for arg in args:
+            clean = cleanup[arg](*args, **kwargs)
+            return_dict[arg] = clean
+            stdout_msg(
+                'Cleaning up {}'.format(arg),
+                ok=False if not clean else True,
+                nok=False if clean else True,
+            )
+    return_dict['errors'] = True if False in return_dict.values() else False
+    return return_dict
+
+def cleanup_watchdog_pid_file(*args, **kwargs):
+    log.debug('')
+    exit = False
+    file_path = kwargs.get(
+        'watchdog-pid-file', AR_DEFAULT['watchdog-pid-file']
+    )
+    try:
+        if os.path.exists(file_path):
+            remove_anch = os.remove(file_path)
+        exit = True
+    except Exception as w:
+        log.warning(w)
+        exit = False
+    return exit
+
+def cleanup_watchdog_anchor_file(*args, **kwargs):
+    log.debug('')
+    exit = False
+    file_path = kwargs.get(
+        'watchdog-anchor-file', AR_DEFAULT['watchdog-anchor-file']
+    )
+    try:
+        if os.path.exists(file_path):
+            remove_anch = os.remove(file_path)
+        exit = True
+    except Exception as w:
+        log.warning(w)
+        exit = False
+    return exit
+
+# GENERAL
 
 def update_log():
     global log
@@ -2288,7 +2348,7 @@ if __name__ == '__main__':
         log.debug('AR_DEFAULT - {}'.format(AR_DEFAULT))
         EXIT_CODE = init_asymetric_risk(**AR_DEFAULT)
     finally:
-        cleanup()
+        cleanup(**AR_DEFAULT)
     stdout_msg('Terminating! ({})\n'.format(EXIT_CODE), done=True)
     exit(EXIT_CODE)
 

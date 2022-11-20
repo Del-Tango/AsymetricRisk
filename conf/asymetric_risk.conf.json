@@ -39,6 +39,8 @@
          "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
          "side":                     "auto",
          "interval":                 "5m",
+         "period-start":             "",
+         "period-end":               "",
          "period":                   14,
          "backtrack":                5,
          "backtracks":               14,

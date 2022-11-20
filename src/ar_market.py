@@ -10,6 +10,9 @@ import time
 import datetime
 import json
 import pysnooper
+import pandas
+import numpy
+#import matplotlib.pyplot as plt   # needs pip install
 
 from binance.client import Client
 from binance import ThreadedWebsocketManager
@@ -48,6 +51,7 @@ class TradingMarket(Client):
         # longer execution time. Delays that are too short may not retreive all
         # necessary data (depending on chosen Taapi API plan specifications)
         self.indicator = TradingIndicator(**kwargs)
+        self.data_frame = None
         self.time_offset = 0
         self.buy_price = float()
         self.sell_price = float()
@@ -76,10 +80,33 @@ class TradingMarket(Client):
         if sync:
             self.time_offset = self._fetch_time_offset()
         if kwargs.get('update-flag'):
+            self.data_frame = pandas.DataFrame()
             self.update_details('all', **kwargs)
         return calling_all_ancestors_from_beyond_the_grave
 
     # FETCHERS
+
+    def fetch_candle_info_column_labels(self):
+        log.debug('')
+        return [
+            'open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time',
+            'qav', 'num_trades', 'taker_base_vol', 'taker_quote_vol', 'ignore'
+        ]
+
+#   @pysnooper.snoop()
+    def fetch_candle_info(self, *args, **kwargs):
+        log.debug('')
+        sanitized_ticker = kwargs.get('ticker-symbol', self.ticker_symbol)\
+            .replace('/', '')
+        getter_kwargs = {'limit': kwargs.get('period', self.period or int()),}
+        if kwargs.get('period-start'):
+            getter_kwargs.update({'start_str': kwargs['period-start']})
+        if kwargs.get('period-end'):
+            getter_kwargs.update({'end_str': kwargs['period-end']})
+        return self.get_historical_klines(
+            sanitized_ticker, kwargs.get('interval', self.period_interval),
+            **getter_kwargs
+        )
 
     def fetch_details(self, *args, **kwargs):
         '''
@@ -465,9 +492,21 @@ class TradingMarket(Client):
             )
         return order
 
-    def compute_ticker_symbol(self, base=None, quote=None):
+#   @pysnooper.snoop()
+    def build_candle_info_data_frame(self, *args, **kwargs):
         log.debug('')
-        return str(base) + '/' + str(quote)
+        try:
+            candle_info = self.fetch_candle_info(*args, **kwargs)
+            if not candle_info:
+                stdout_msg('Could not fetch candle info!', err=True)
+            data_frame = pandas.DataFrame(candle_info)
+            data_frame.columns = self.fetch_candle_info_column_labels()
+        except Exception as e:
+            stdout_msg(
+                'Could not build candle info dataframe! Details: {}'.format(e)
+            )
+            return False
+        return data_frame
 
 #   @pysnooper.snoop()
     def raw_api_response_convertor(self, raw_value):
@@ -526,6 +565,45 @@ class TradingMarket(Client):
             )
         return closed_trade, failed_close
 
+    # COMPUTERS
+
+    # TODO
+    @pysnooper.snoop()
+    def compute_volume_history_from_candle_info(self, candle_info, **kwargs):
+        '''
+        [ RETURN ]: [{'value':, 'backtrack': ,}]
+        '''
+        log.debug('TODO - Under construction')
+        info_dict, volume_history = candle_info.to_dict(), []
+        for candle_index in info_dict['volume']:
+            volume_history.append({
+                'value': info_dict['volume'][candle_index],
+                'backtrack': candle_index
+            })
+        return volume_history
+
+
+    def compute_price_history_support(self, price_history):
+        log.debug('')
+        if not price_history:
+            return False
+        return min([
+            price_history[index]['value'] for index in range(len(price_history))
+        ])
+
+    def compute_price_history_resistance(self, price_history):
+        log.debug('')
+        if not price_history:
+            return False
+        return max([
+            price_history[index]['value'] for index in range(len(price_history))
+        ])
+
+    def compute_ticker_symbol(self, base=None, quote=None):
+        log.debug('')
+        return str(base) + '/' + str(quote)
+
+
     # ENSURANCE
 
     def ensure_indicator_delay(self):
@@ -547,15 +625,17 @@ class TradingMarket(Client):
 
     # UPDATERS
 
-    # TODO
 #   @pysnooper.snoop()
     def update_price_volume_history(self, *update_targets,
                                     timestamp=str(time.time()), **kwargs):
         '''
         [ NOTE ]: Data fetched from binance.com
         '''
-        log.debug('TODO - Fetch buy/sell-price and volume history')
-        return_dict = {'history': {'price': [], 'buy-price': [], 'sell-price': [], 'volume': []}}
+        log.debug('')
+        return_dict = {'history': {
+            'price': [], 'volume': [], 'price-support': None,
+            'price-resistance': None,
+        }}
         details = kwargs.copy()
         stdout_msg('Updating market price/volume history...', info=True)
         if not kwargs.get('backtrack') and not kwargs.get('backtracks'):
@@ -565,14 +645,34 @@ class TradingMarket(Client):
                 warn=True
             )
             details.update({'backtracks': self.history_backtracks,})
+        candle_info = self.build_candle_info_data_frame(**kwargs)
+        log.debug('Candle INFO dataframe - {}'.format(candle_info))
         if 'all' in update_targets or 'price' in update_targets:
             return_dict['history']['price'] = self.fetch_price_value(**details)
-            stdout_msg('Price History', ok=True)
-            # TODO - Add buy and sell prices as well as volume history
-#           return_dict['history']['buy-price'] = [{'value':, 'backtrack': ,}]
-#           return_dict['history']['sell-price'] = [{'value':, 'backtrack': ,}]
-#       if 'all' in update_targets or 'volume' in update_targets:
-#           return_dict['volume'] = [{'value':, 'backtrack': ,}]
+            return_dict['history'].update({
+                'price-support': self.compute_price_history_support(
+                    return_dict['history']['price']
+                ),
+                'price-resistance': self.compute_price_history_resistance(
+                    return_dict['history']['price']
+                ),
+            })
+            stdout_msg(
+                'Price History - {} periods of {} candles'.format(
+                    len(return_dict['history']['price']),
+                    kwargs.get('interval', self.period_interval)
+                ), ok=True
+            )
+        if 'all' in update_targets or 'volume' in update_targets:
+            return_dict['history']['volume'] = self.compute_volume_history_from_candle_info(
+                candle_info, **kwargs
+            )
+            stdout_msg(
+                'Volume History - {} periods of {} candles'.format(
+                    len(return_dict['history']['volume']),
+                    kwargs.get('interval', self.period_interval)
+                ), ok=True
+            )
         return return_dict['history']
 
 #   @pysnooper.snoop()
@@ -581,7 +681,7 @@ class TradingMarket(Client):
         '''
         [ NOTE ]: Data fetched from taapi.io
         '''
-        log.debug('')
+        log.debug('TODO - display more data')
         return_dict, details = {'history': {}}, kwargs.copy()
         stdout_msg('Updating market indicator history...', info=True)
         if not details.get('backtrack') and not details.get('backtracks'):
@@ -595,35 +695,67 @@ class TradingMarket(Client):
                 or 'adx' in update_targets:
             adx_history = self.fetch_adx_value(**details)
             if adx_history:
-                stdout_msg('ADX History', ok=True)
+                stdout_msg(
+                    'ADX History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
             return_dict['history'].update({'adx': adx_history})
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'macd' in update_targets:
-            macd, _, _ = self.fetch_macd_values(**details)
-            return_dict['history'].update({'macd': macd,})
+            macd_history, _, _ = self.fetch_macd_values(**details)
+            if macd_history:
+                stdout_msg(
+                    'MACD History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
+            return_dict['history'].update({'macd': macd_history,})
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'ma' in update_targets:
             ma_history = self.fetch_ma_value(**details)
             if ma_history:
-                stdout_msg('MA History', ok=True)
+                stdout_msg(
+                    'MA History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
             return_dict['history'].update({'ma': ma_history})
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'ema' in update_targets:
             ema_history = self.fetch_ema_value(**details)
             if ema_history:
-                stdout_msg('EMA History', ok=True)
+                stdout_msg(
+                    'EMA History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
             return_dict['history'].update({'ema': ema_history})
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'rsi' in update_targets:
             rsi_history = self.fetch_rsi_value(**details)
             if ema_history:
-                stdout_msg('RSI History', ok=True)
+                stdout_msg(
+                    'RSI History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
             return_dict['history'].update({'rsi': rsi_history})
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'vwap' in update_targets:
             vwap_history = self.fetch_vwap_value(**details)
             if vwap_history:
-                stdout_msg('VWAP History', ok=True)
+                stdout_msg(
+                    'VWAP History - {} periods of {} candles'.format(
+                        kwargs.get('period', self.period),
+                        kwargs.get('interval', self.period_interval)
+                    ), ok=True
+                )
             return_dict['history'].update({'vwap': vwap_history})
         log.debug('Indicator history: {}'.format(return_dict))
         return return_dict['history']
@@ -673,8 +805,9 @@ class TradingMarket(Client):
         return_dict = {}
         stdout_msg('Updating price action details...', info=True)
         self.update_cache(
-            self.get_ticker(symbol=self.ticker_symbol.replace('/', '')),
-            self.ticker_info_cache, label=timestamp,
+            self.get_ticker(
+                symbol=kwargs.get('ticker-symbol', self.ticker_symbol).replace('/', '')
+            ), self.ticker_info_cache, label=timestamp,
         )
         if 'all' in update_targets or 'price' in update_targets:
             self.buy_price = float(
@@ -688,11 +821,13 @@ class TradingMarket(Client):
                 'sell-price': self.sell_price,
             })
             stdout_msg(
-                'Buy Price value', ok=True if return_dict['buy-price'] else False,
+                'Buy Price value - {}'.format(return_dict['buy-price']),
+                ok=True if return_dict['buy-price'] else False,
                 nok=True if not return_dict['buy-price'] else False
             )
             stdout_msg(
-                'Sell Price value', ok=True if return_dict['sell-price'] else False,
+                'Sell Price value - {}'.format(return_dict['sell-price']),
+                ok=True if return_dict['sell-price'] else False,
                 nok=True if not return_dict['sell-price'] else False
             )
         if 'all' in update_targets or 'volume' in update_targets:
@@ -701,7 +836,8 @@ class TradingMarket(Client):
             )
             return_dict.update({'volume': self.volume})
             stdout_msg(
-                'Trading Volume value', ok=True if return_dict['volume'] else False,
+                'Trading Volume value - {}'.format(return_dict['volume']),
+                ok=True if return_dict['volume'] else False,
                 nok=True if not return_dict['volume'] else False
             )
         log.debug('Price volume details - {}'.format(return_dict))
@@ -744,7 +880,8 @@ class TradingMarket(Client):
             self.adx = self.fetch_adx_value(**details)
             return_dict['indicators'].update({'adx': self.adx})
             stdout_msg(
-                'ADX Value', ok=True if self.adx else False,
+                'ADX Value - {}'.format(return_dict['indicators']['adx']),
+                ok=True if self.adx else False,
                 nok=True if not self.adx else False
             )
         if 'all' in update_targets or 'indicators' in update_targets \
@@ -757,7 +894,12 @@ class TradingMarket(Client):
                 'macd-hist': self.macd_hist
             })
             stdout_msg(
-                'MACD Values', ok=True if self.macd else False,
+                'MACD Values -\nMACD - {}\nSignal - {}\nHistory - {}'.format(
+                    return_dict['indicators']['macd'],
+                    return_dict['indicators']['macd-signal'],
+                    return_dict['indicators']['macd-hist'],
+                ),
+                ok=True if self.macd else False,
                 nok=True if not self.macd else False
             )
         if 'all' in update_targets or 'indicators' in update_targets \
@@ -765,7 +907,8 @@ class TradingMarket(Client):
             self.ma = self.fetch_ma_value(**details)
             return_dict['indicators'].update({'ma': self.ma})
             stdout_msg(
-                'MA Value', ok=True if self.ma else False,
+                'MA Value - {}'.format(return_dict['indicators']['ma']),
+                ok=True if self.ma else False,
                 nok=True if not self.ma else False
             )
         if 'all' in update_targets or 'indicators' in update_targets \
@@ -773,7 +916,8 @@ class TradingMarket(Client):
             self.ema = self.fetch_ema_value(**details)
             return_dict['indicators'].update({'ema': self.ema})
             stdout_msg(
-                'EMA Value', ok=True if self.ema else False,
+                'EMA Value - {}'.format(return_dict['indicators']['ema']),
+                ok=True if self.ema else False,
                 nok=True if not self.ema else False
             )
         if 'all' in update_targets or 'indicators' in update_targets \
@@ -781,7 +925,8 @@ class TradingMarket(Client):
             self.rsi = self.fetch_rsi_value(**details)
             return_dict['indicators'].update({'rsi': self.rsi})
             stdout_msg(
-                'RSI Value', ok=True if self.rsi else False,
+                'RSI Value - {}'.format(return_dict['indicators']['rsi']),
+                ok=True if self.rsi else False,
                 nok=True if not self.rsi else False
             )
         if 'all' in update_targets or 'indicators' in update_targets \
@@ -789,12 +934,13 @@ class TradingMarket(Client):
             self.vwap = self.fetch_vwap_value(**details)
             return_dict['indicators'].update({'vwap': self.vwap})
             stdout_msg(
-                'VWAP Value', ok=True if self.vwap else False,
+                'VWAP Value - {}'.format(return_dict['indicators']['vwap']),
+                ok=True if self.vwap else False,
                 nok=True if not self.vwap else False
             )
         return return_dict
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_details(self, *args, **kwargs):
         '''
         [ INPUT  ]: *(
@@ -856,8 +1002,14 @@ class TradingMarket(Client):
                 'vwap': 20592.650164735693
             },
             'history': {
+                'price-support': 16547.39,
+                'price-resistance': 21903.77,
                 'price': [{
                     'value': 20903.77,
+                    'backtrack': 0,
+                }, ...],
+                'volume': [{
+                    'value': 7270.56273,
                     'backtrack': 0,
                 }, ...],
                 "adx": [{
@@ -929,6 +1081,15 @@ class TradingMarket(Client):
 
 # CODE DUMP
 
+
+    # TODO - DEPRECATED
+#   def fetch_data_frame(self, *args, **kwargs):
+#       log.debug('TODO - DEPRECATED')
+#       if not self.data_frame:
+#           self.data_frame = pandas.DataFrame()
+#       return self.data_frame
+
+
 #       timestamp = str(time.time())
 #       self.update_cache(
 #           self.get_account(recvWindow=60000), self.account_cache,
@@ -960,4 +1121,118 @@ class TradingMarket(Client):
 
 
 
+#   # Author : Yogesh K for finxter.com
+#   # SMA(simple moving average) using python-binance
+#   import os
+#   from binance.client import Client
+#   from binance import ThreadedWebsocketManager # This import can be removed. not needed
+#   import pprint
+#   import datetime      # This import can be removed, not needed
+#   import pandas as pd     # needs pip install
+#   import numpy as np
+#   import matplotlib.pyplot as plt   # needs pip install
+
+#   def get_hourly_dataframe(): # we want hourly data and for past 1 week.
+#       # valid intervals - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
+#       # request historical candle (or klines) data using timestamp from above, interval either every min, hr, day or month
+#       # starttime = '30 minutes ago UTC' for last 30 mins time
+#       # e.g. client.get_historical_klines(symbol='ETHUSDTUSDT', '1m', starttime)
+#       # starttime = '1 Dec, 2017', '1 Jan, 2018'  for last month of 2017
+#       # e.g. client.get_historical_klines(symbol='BTCUSDT', '1h', "1 Dec, 2017", "1 Jan, 2018")
+#       starttime = '1 week ago UTC'  # to start for 1 week ago
+#       interval = '1h'
+#       bars = client.get_historical_klines(symbol, interval, starttime)
+#       for line in bars:        # Keep only first 5 columns, "date" "open" "high" "low" "close"
+#           del line[5:]
+#       df = pd.DataFrame(bars, columns=['date', 'open', 'high', 'low', 'close']) #  2 dimensional tabular data
+#       return df
+
+#   def plot_graph(df):
+#       df=df.astype(float)
+#       df[['close', '5sma','15sma']].plot()
+#       plt.xlabel('Date',fontsize=18)
+#       plt.ylabel('Close price',fontsize=18)
+#       plt.scatter(df.index,df['Buy'], color='purple',label='Buy',  marker='^', alpha = 1) # purple = buy
+#       plt.scatter(df.index,df['Sell'], color='red',label='Sell',  marker='v', alpha = 1)  # red = sell
+#       plt.show()
+
+#   def buy_or_sell(buy_sell_list, df):
+#       for index, value in enumerate(buy_sell_list):
+#           current_price = client.get_symbol_ticker(symbol =symbol)
+#           print(current_price['price']) # Output is in json format, only price needs to be accessed
+#           if value == 1.0 : # signal to buy (either compare with current price to buy/sell or use limit order with close price)
+#               if current_price['price'] < df['Buy'][index]:
+#                   print("buy buy buy....")
+#                   buy_order = client.order_market_buy(symbol=symbol, quantity=2)
+#                   print(buy_order)
+#           elif value == -1.0: # signal to sell
+#               if current_price['price'] > df['Sell'][index]:
+#                   print("sell sell sell....")
+#                   sell_order = client.order_market_sell(symbol=symbol, quantity=10)
+#                   print(sell_order)
+#           else:
+#               print("nothing to do...")
+
+#   def sma_trade_logic():
+#       symbol_df = get_hourly_dataframe()
+#       # small time Moving average. calculate 5 moving average using Pandas over close price
+#       symbol_df['5sma'] = symbol_df['close'].rolling(5).mean()
+#       # long time moving average. calculate 15 moving average using Pandas
+#       symbol_df['15sma'] = symbol_df['close'].rolling(15).mean()
+#       # To print in human readable date and time (from timestamp)
+#       symbol_df.set_index('date', inplace=True)
+#       symbol_df.index = pd.to_datetime(symbol_df.index, unit='ms')
+#       # Calculate signal column
+#       symbol_df['Signal'] = np.where(symbol_df['5sma'] > symbol_df['15sma'], 1, 0)
+#       # Calculate position column with diff
+#       symbol_df['Position'] = symbol_df['Signal'].diff()
+#
+#       # Add buy and sell columns
+#       symbol_df['Buy'] = np.where(symbol_df['Position'] == 1,symbol_df['close'], np.NaN )
+#       symbol_df['Sell'] = np.where(symbol_df['Position'] == -1,symbol_df['close'], np.NaN )
+#       with open('output.txt', 'w') as f:
+#           f.write(
+#                   symbol_df.to_string()
+#               )
+#       #plot_graph(symbol_df)
+#       # get the column=Position as a list of items.
+#       buy_sell_list = symbol_df['Position'].tolist()
+#       buy_or_sell(buy_sell_list, symbol_df)
+
+#   def main():
+#       sma_trade_logic()
+#   if __name__ == "__main__":
+#       api_key = os.environ.get('BINANCE_TESTNET_KEY')     # passkey (saved in bashrc for linux)
+#       api_secret = os.environ.get('BINANCE_TESTNET_PASSWORD')  # secret (saved in bashrc for linux)
+#       client = Client(api_key, api_secret, testnet=True)
+#       print("Using Binance TestNet Server")
+#       pprint.pprint(client.get_account())
+#       symbol = 'BNBUSDT'   # Change symbol here e.g. BTCUSDT, BNBBTC, ETHUSDT, NEOBTC
+#       main()
+
+
+
+
+
+#   >>> klines = client.get_historical_klines('BTCUSDT', '5m')
+#   >>> df = pandas.DataFrame(klines)
+#   >>> df.columns = ['open_time','open', 'high', 'low', 'close', 'volume','close_time', 'qav','num_trades','taker_base_vol', 'taker_quote_vol', 'ignore']
+#   >>> df.index
+#   RangeIndex(start=0, stop=1000, step=1)
+#   >>> df.to_csv('BTCUSDT.csv', index=None, header=True)
+#   >>> df.astype(float)
+#           open_time      open      high       low     close     volume    close_time           qav  num_trades  taker_base_vol  taker_quote_vol  ignore
+#   0    1.668655e+12  16605.73  16609.40  16591.73  16594.93  406.28587  1.668655e+12  6.745211e+06      9824.0       185.42670     3.078612e+06     0.0
+#   1    1.668656e+12  16594.07  16601.55  16584.21  16594.90  326.43187  1.668656e+12  5.417243e+06      9414.0       163.59533     2.714979e+06     0.0
+#   2    1.668656e+12  16595.36  16599.54  16565.36  16582.03  788.64793  1.668656e+12  1.308035e+07     17636.0       375.63970     6.230347e+06     0.0
+#   3    1.668656e+12  16582.03  16590.19  16551.00  16577.26  708.80975  1.668656e+12  1.174623e+07     16412.0       380.73812     6.309786e+06     0.0
+#   4    1.668656e+12  16577.25  16594.95  16576.01  16578.33  524.85937  1.668657e+12  8.704904e+06     14693.0       264.54180     4.387601e+06     0.0
+#   ..            ...       ...       ...       ...       ...        ...           ...           ...         ...             ...              ...     ...
+#   995  1.668954e+12  16570.38  16575.68  16553.22  16554.25  513.19995  1.668954e+12  8.500602e+06     17573.0       232.79453     3.856155e+06     0.0
+#   996  1.668954e+12  16554.25  16555.85  16542.97  16550.40  634.06216  1.668954e+12  1.049428e+07     16621.0       318.35584     5.269239e+06     0.0
+#   997  1.668954e+12  16550.40  16565.18  16546.24  16562.38  330.40569  1.668955e+12  5.470655e+06     13703.0       168.53287     2.790560e+06     0.0
+#   998  1.668955e+12  16562.38  16563.43  16544.19  16544.19  356.52770  1.668955e+12  5.900975e+06     13539.0       169.22395     2.800937e+06     0.0
+#   999  1.668955e+12  16544.58  16556.59  16544.12  16551.63  259.84942  1.668955e+12  4.300507e+06     11053.0       131.21379     2.171608e+06     0.0
+
+#   [1000 rows x 12 columns]
 

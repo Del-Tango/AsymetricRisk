@@ -46,7 +46,7 @@ class TradingBot():
                     'Could not setup trading bot market! '
                     'Details: ({})'.format(w), warn=True
                 )
-        self.markets = {arg.ticker_symbol: arg for arg in args}                                         # {'BTC/USDT': TradingMarket(), ...}
+        self.markets = {arg.ticker_symbol: arg for arg in args} # {'BTC/USDT': TradingMarket(), ...}
         self.markets.update(self.market)
         self.reporter = self.setup_reporter(**kwargs)
         self.analyzer = self.setup_analyzer(**kwargs)
@@ -132,6 +132,7 @@ class TradingBot():
 
     # ENSURANCE
 
+    @pysnooper.snoop()
     def ensure_trading_market_setup(self, **kwargs):
         log.debug('')
         if not self.market:
@@ -140,7 +141,7 @@ class TradingBot():
 
     # ACTIONS
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
@@ -154,12 +155,14 @@ class TradingBot():
             if not trade:
                 failures += 1
             self.update_current_account_value(**kwargs)
-            if self.profit_target and self.current_account_value >= self.profit_target:
+            if self.profit_target \
+                    and self.current_account_value >= self.profit_target:
                 self.mission_accomplished()
                 break
             time.sleep(kwargs.get('watchdog-interval', 60))
         return failures
 
+    @pysnooper.snoop()
     def trade(self, *args, **kwargs):
         '''
         [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
@@ -167,10 +170,14 @@ class TradingBot():
                 'analyze-risk': True,                     (type bool) - default True
                 'strategy': vwap,rsi,macd,price,volume,   (type str) - default vwap
                 'side': buy,                              (type str) - <buy, sell, auto> default auto
+                'period': 14,
+                'backtrack': 5,
+                'backtracks': 14,
+                'chart': candles,
                 'price-movement': 5%,
+                'interval': 5m,
                 'rsi-top': 70%,
                 'rsi-bottom': 30%,
-                'interval': 5m,
                 'rsi-period': 14,
                 'rsi-backtrack': 5,
                 'rsi-backtracks': 12,
@@ -205,39 +212,48 @@ class TradingBot():
                 'vwap-backtracks': 12,
                 'vwap-chart': candles,
                 'vwap-interval': 5m,
+                'price-period': 14,
+                'price-backtrack': 5,
+                'price-backtracks': 12,
+                'price-chart': candles,
+                'price-interval': 5m,
             }
         [ RETURN ]: {
             'trade-id': 142324,
         }
         '''
         log.debug('')
-        market = self.fetch_active_market()
+        market, details = self.fetch_active_market(), kwargs.copy()
+        log.debug('Trade kwargs - {}'.format(details))
         if not market:
-            stdout_msg('[ ERROR ]: Trading market not set up!')
+            stdout_msg('Trading market not set up!', err=True)
             return False
         stdout_msg(
-            '[ INFO ]: Looking for trades... ({})'.format(market.ticker_symbol)
+            'Looking for trades... ({})'.format(market.ticker_symbol), info=True
         )
-        trading_strategy = (arg[0] if len(args) == 1 else ','.join(args)) \
-            if args else kwargs.get('strategy', '')
+        trading_strategy = ','.join(args) if args \
+                else details.get('strategy', '')
         stdout_msg(
-            '[ INFO ]: Updating market details applicable to strategy... ({})'
-            .format(trading_strategy)
+            'Updating market details applicable to strategy... ({})'
+            .format(trading_strategy), info=True
         )
-        details = market.update_details(*trading_strategy, **kwargs)
+        market_details = market.update_details(
+            *trading_strategy.split(','), **details
+        )
         trade_flag, risk_index, trade = False, 0, None
         trade_amount = self.compute_trade_amount(
-            kwargs.get('trade-amount', 1), **kwargs
+            details.get('trade-amount', 1), **details
         )
-        if kwargs.get('analyze-risk'):
-            kwargs.update({
-                'details': details,
+        if details.get('analyze-risk'):
+            details.update({
+                'details': market_details,
                 'strategy': trading_strategy,
                 'amount': trade_amount,
                 'side': kwargs.get('side', 'auto'),
             })
+            stdout_msg('Analyzing trading risk', info=True)
             trade_flag, risk_index, trade_side, failures = self.analyzer.analyze_risk(
-                **kwargs
+                **details
             )
         if risk_index == 0:
             # [ NOTE ]: Trading cycle should stop here according to specified
@@ -246,9 +262,9 @@ class TradingBot():
             return False
         if trade_flag:
             if trade_side == 'buy':
-                trade = market.buy(trade_amount, **kwargs)
+                trade = market.buy(trade_amount, **details)
             elif trade_side == 'sell':
-                trade = market.sell(trade_amount, **kwargs)
+                trade = market.sell(trade_amount, **details)
         else:
             return False
         return False if (not trade or trade.get('error')) else trade
@@ -256,8 +272,10 @@ class TradingBot():
     def close_trade(self, *args, **kwargs):
         '''
         [ INPUT ]: *args    - trade ID's (type str)
-                   **kwargs - symbol (type str) - ticker symbol, default is active market
-                            - recvWindow (type int) - binance API response window, default is 60000
+                   **kwargs - symbol (type str) - ticker symbol, default is
+                              active market
+                            - recvWindow (type int) - binance API response
+                              window, default is 60000
         [ RETURN ]: closed trades (type lst), failed closes (type lst)
         '''
         log.debug('')
@@ -272,7 +290,7 @@ class TradingBot():
             else compute_percentage(
                 percentage, self.current_account_value
             )
-        return True
+        return self.trade_amount
 
     def compute_profit_baby(self, percentage, **kwargs):
         log.debug('')
@@ -284,7 +302,7 @@ class TradingBot():
                 percentage, self.start_account_value
             )
         self.profit_target = (self.start_account_value + self.profit_baby)
-        return True
+        return self.profit_baby
 
     # GENERAL
 
@@ -447,12 +465,13 @@ class TradingBot():
         reporter = TradingReporter(**kwargs)
         return reporter
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def setup_market(self, **kwargs):
         log.debug('')
         market = TradingMarket(
             kwargs.get('api-key', str()),
             kwargs.get('api-secret', str()),
+            testnet=kwargs.get('test'),
             **kwargs
         )
         return {kwargs['ticker-symbol']: market}
