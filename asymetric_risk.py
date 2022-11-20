@@ -473,8 +473,8 @@ def create_command_line_parser():
             -s  | --silence \\
             -A  | --analyze-risk \\             # Do risk analysis before trading
             -t  | --side "auto" \\              # Trade side (buy | sell | auto)
-            -i  | --interval "5m" \\            # Chart/candle time interval
-            -p  | --period 14 \\                # No. of intervals
+            -i  | --interval "5m" \\            # Time interval represented by a single candle
+            -p  | --period 14 \\                # Number of candles
             -R  | --risk-tolerance High \\      # Implies (-A | --analyze-risk)
             -b  | --base-currency BTC \\        # Measure value of -
             -q  | --quote-currency USDT \\      # Measure base currency value in -

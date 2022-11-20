@@ -6,8 +6,10 @@
 
 import logging
 import pysnooper
+import pprint
 
-from src.backpack.bp_general import stdout_msg
+from src.backpack.bp_general import stdout_msg, pretty_dict_print
+from src.backpack.bp_computers import compute_percentage, compute_percentage_of
 
 log = logging.getLogger('AsymetricRisk')
 
@@ -53,13 +55,134 @@ class TradingStrategy():
 
     # CHECKERS
 
-    # TODO
-    def check_large_price_movement(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
-    def check_large_volume_movement(*args, **kwargs):
-        log.debug('TODO - Under construction, building...')
+    @pysnooper.snoop()
     def check_price_movement_confirmed_by_volume(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
+        log.debug('')
+        check_volume = self.check_large_volume_movement(*args, **kwargs)
+        check_price = self.check_large_price_movement(*args, **kwargs)
+        return_dict = {
+            'flag': False if not check_price['flag'] or \
+                not check_volume['flag'] else True,
+            'start-value': check_volume['start-value'],
+            'stop-value': check_volume['stop-value'],
+        }
+        if not check_price or not check_volume:
+            if check_price:
+                log.debug(
+                    'Large price movement was not confirmed by volume movement.'
+                )
+        else:
+            log.debug('Large price movement confirmed by large volume movement!',)
+        return return_dict
+
+    @pysnooper.snoop()
+    def check_large_volume_movement(*args, **kwargs):
+        log.debug('')
+        volume_movement = int(kwargs.get('volume-movement', 0)) # %
+        if volume_movement == 0:
+            stdout_msg(
+                'Cannot compute if I duonno what a large volume movement is! '
+                'Please specify', err=True
+            )
+            return False
+        details = kwargs['details']['history']
+        volume_values = [
+            float(details['volume'][index]['value'])
+            for index in range(len(details['volume']))
+        ]
+        period_volume_avg = sum(volume_values) / len(volume_values)
+        min_val, max_val = min(volume_values), max(volume_values)
+        min_candle = [
+            item for item in details['volume'] if item['value'] == min_val
+        ]
+        if min_candle:
+            min_candle = min_candle[0]['backtrack']
+        max_candle = [
+            item for item in details['volume'] if item['value'] == max_val
+        ]
+        if max_candle:
+            max_candle = max_candle[0]['backtrack']
+        movement = max_val - min_val
+        move_percent = compute_percentage_of(movement, period_volume_avg)
+        return_dict = {
+            'flag': True if move_percent >= volume_movement else False,
+            'start-value': min_val if min_candle > max_candle else max_val,
+            'stop-value': max_val if min_candle < max_candle else min_val,
+            'period-average': period_volume_avg,
+            'min-candle-index': min_candle or None,
+            'max-candle-index': max_candle or None,
+            'side': '',
+            'moved': movement,
+            'moved-percentage': move_percent,
+        }
+        return_dict.update({
+            'side': 'up' if return_dict['start-value'] \
+                < return_dict['stop-value'] else 'down',
+        })
+        if move_percent >= volume_movement:
+            log.debug('Large volume movement detected!')
+        else:
+            log.debug(
+                'No large volume movement occured over period. Moved by {}%'.format(
+                    move_percent
+                )
+            )
+        return return_dict
+
+    @pysnooper.snoop()
+    def check_large_price_movement(self, *args, **kwargs):
+        log.debug('')
+        price_movement = int(kwargs.get('price-movement', 0)) # %
+        if price_movement == 0:
+            stdout_msg(
+                'Cannot compute if I duonno what a large price movement is! '
+                'Please specify', err=True
+            )
+            return False
+        details = kwargs['details']['history']
+        price_values = [
+            float(details['price'][index]['value'])
+            for index in range(len(details['price']))
+        ]
+        period_price_avg = sum(price_values) / len(price_values)
+        min_val = details.get('price-support', min(price_values))
+        max_val = details.get('price-resistance', max(price_values))
+        min_candle = [
+            item for item in details['price'] if item['value'] == min_val
+        ]
+        if min_candle:
+            min_candle = min_candle[0]['backtrack']
+        max_candle = [
+            item for item in details['price'] if item['value'] == max_val
+        ]
+        if max_candle:
+            max_candle = max_candle[0]['backtrack']
+        movement = max_val - min_val
+        move_percent = compute_percentage_of(movement, period_price_avg)
+        return_dict = {
+            'flag': True if move_percent >= price_movement else False,
+            'start-value': min_val if min_candle > max_candle else max_val,
+            'stop-value': max_val if min_candle < max_candle else min_val,
+            'period-average': period_price_avg,
+            'min-candle-index': min_candle or None,
+            'max-candle-index': max_candle or None,
+            'moved': movement,
+            'side': '',
+            'moved-percentage': move_percent,
+        }
+        return_dict.update({
+            'side': 'up' if return_dict['start-value'] \
+                < return_dict['stop-value'] else 'down',
+        })
+        if move_percent >= price_movement:
+            log.debug('Large price movement detected!')
+        else:
+            log.debug(
+                'No large price movement occured over period. Moved by {}%'.format(
+                    move_percent
+                )
+            )
+        return return_dict
 
     # GENERAL
 
@@ -90,10 +213,20 @@ class TradingStrategy():
             # Compute trading strategy
             evaluations[strategy_label] = self.strategies[strategy_label](**kwargs)
             stdout_msg(
-                'Strategy {}'.format(strategy_label),
+                'Strategy {} - \n{}'.format(
+                    strategy_label,
+                    pretty_dict_print(evaluations[strategy_label])
+                ),
                 ok=False if not evaluations[strategy_label] else True,
                 nok=False if evaluations[strategy_label] else True,
             )
+
+#       stdout_msg(
+#           '\nStrategy Price {}'.format(),
+#           red=False if return_dict['trade'] else True,
+#           green=False if not return_dict['trade'] else True,
+#       )
+
         # Evaluate risk of give strategy results
         stdout_msg('Evaluating trading risk', info=True)
         trade_flag, risk_index, trade_side = self.risk_evaluators[self.risk_tolerance](
@@ -156,8 +289,7 @@ class TradingStrategy():
             'macd-signal': {value: , interval: , risk: , trade: , description: },
             'macd-hist': {value: , interval: , risk: , trade: , description: },
             'adx': {value: , interval: , risk: , trade: , description: },
-            'buy-price': {value: , interval: , risk: , trade: , description: },
-            'sell-price': {value: , interval: , risk: , trade: , description: },
+            'price': {value: , interval: , risk: , trade: , description: },
             'volume': {value: , interval: , risk: , trade: , description: },
             ...
         }
@@ -180,7 +312,7 @@ class TradingStrategy():
         return trade_flag, risk_index
     def evaluate_buy(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
-        instruction_set = kwargs
+        instruction_set = kwargs.copy()
         instruction_set.update({'side': 'buy'})
         return self.evaluate_risk(evaluations_dict, **instruction_set)
 #       if not evaluations_dict:
@@ -189,7 +321,7 @@ class TradingStrategy():
 #       return trade_flag, risk_index
     def evaluate_sell(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
-        instruction_set = kwargs
+        instruction_set = kwargs.copy()
         instruction_set.update({'side': 'sell'})
         return self.evaluate_risk(evaluations_dict, **instruction_set)
 #       if not evaluations_dict:
@@ -303,6 +435,7 @@ class TradingStrategy():
             > self.risk_tolerance else True
         return return_dict
 
+    @pysnooper.snoop()
     def strategy_price(self, *args, **kwargs):
         '''
         [ INPUT ]: kwargs[details] {
@@ -321,6 +454,10 @@ class TradingStrategy():
                 'vwap': 20592.650164735693
             },
             'history': {
+                'price-support': 1234,
+                'price-resistance': 1235,
+                'price': [{'value': 1234, backtrack: 1}, ...],
+                'volume': [{'value': 1234, backtrack: 1}, ...],
                 'adx': [{'value': 1234, backtrack: 1}, ...],
                 'macd': [{'value': 1234, backtrack: 1}, ...],
                 'macd-signal': [{'value': 1234, backtrack: 1}, ...],
@@ -329,9 +466,6 @@ class TradingStrategy():
                 'ema': [{'value': 1234, backtrack: 1}, ...],
                 'rsi': [{'value': 1234, backtrack: 1}, ...],
                 'vwap': [{'value': 1234, backtrack: 1}, ...],
-                'buy-price': [{'value': 1234, backtrack: 1}, ...],
-                'sell-price': [{'value': 1234, backtrack: 1}, ...],
-                'volume': [{'value': 1234, backtrack: 1}, ...],
             }
         }
 
@@ -360,9 +494,30 @@ class TradingStrategy():
             'trade': False,
             'description': 'Price Action Strategy',
         }
+        if return_dict['price-movement']['flag']:
+            stdout_msg(
+                'Large {}% price movement detected! Triggered over {}%'.format(
+                    move_percent, price_movement
+                ), ok=True
+            )
+        if return_dict['confirmed-by-volume']['flag']:
+            stdout_msg(
+                'Large {}% volume movement detected! Triggered over {}%\n'
+                'Price movement validated by volume!'.format(
+                    move_percent, volume_movement
+                ), ok=True
+            )
+
+        # TODO
         return_dict['risk'] = self.compute_price_trade_risk(return_dict, **kwargs)
         return_dict['trade'] = False if return_dict['risk'] \
             > self.risk_tolerance else True
+#       stdout_msg(
+#           '\nStrategy Price {}'.format(pretty_dict_print(return_dict)),
+#           red=False if return_dict['trade'] else True,
+#           green=False if not return_dict['trade'] else True,
+#       )
+
         return return_dict
 
 

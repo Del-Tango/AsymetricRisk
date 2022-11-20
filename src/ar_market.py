@@ -582,7 +582,7 @@ class TradingMarket(Client):
             })
         return volume_history
 
-
+    @pysnooper.snoop()
     def compute_price_history_support(self, price_history):
         log.debug('')
         if not price_history:
@@ -591,6 +591,7 @@ class TradingMarket(Client):
             price_history[index]['value'] for index in range(len(price_history))
         ])
 
+    @pysnooper.snoop()
     def compute_price_history_resistance(self, price_history):
         log.debug('')
         if not price_history:
@@ -625,7 +626,7 @@ class TradingMarket(Client):
 
     # UPDATERS
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_price_volume_history(self, *update_targets,
                                     timestamp=str(time.time()), **kwargs):
         '''
