@@ -153,13 +153,18 @@ class TradingBot():
                 break
             trade = self.trade(*args, **kwargs)
             if not trade:
-                failures += 1
+                if isinstance(trade, dict) and trade.get('error'):
+                    failures += 1
             self.update_current_account_value(**kwargs)
             if self.profit_target \
                     and self.current_account_value >= self.profit_target:
                 self.mission_accomplished()
                 break
-            time.sleep(kwargs.get('watchdog-interval', 60))
+            cool_down_seconds = kwargs.get('watchdog-interval', 60)
+            stdout_msg(
+                'Bot cool down: {} seconds'.format(cool_down_seconds), red=True
+            )
+            time.sleep(cool_down_seconds)
         return failures
 
     @pysnooper.snoop()

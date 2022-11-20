@@ -121,8 +121,7 @@ class TradingStrategy():
             'trigger-percentage': volume_movement,
         }
         return_dict.update({
-            'side': 'up' if return_dict['start-value'] \
-                < return_dict['stop-value'] else 'down',
+            'side': 'up' if min_candle > max_candle else 'down',
         })
         if move_percent >= volume_movement:
             log.debug('Large volume movement detected!')
@@ -187,8 +186,7 @@ class TradingStrategy():
             'trigger-percentage': price_movement,
         }
         return_dict.update({
-            'side': 'up' if return_dict['start-value'] \
-                < return_dict['stop-value'] else 'down',
+            'side': 'up' if min_candle > max_candle else 'down',
         })
         if move_percent >= price_movement:
             log.debug('Large price movement detected!')
@@ -412,20 +410,26 @@ class TradingStrategy():
     # TODO
     def strategy_vwap(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
-        # return {value: 2435.897674764, interval: 5m, risk: 3, trade: False, description: VWAP}
+        # TODO - Research
     def strategy_rsi(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+        # TODO - Research
     def strategy_macd(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+        # TODO - Research
     def strategy_ma(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+        # TODO - Research
     def strategy_ema(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+        # TODO - Research
     def strategy_adx(self, *args, **kwargs):
         log.debug('TODO - Under construction, building...')
+        # TODO - Research how to trade ADX
         return_dict = {
-            'interval': kwargs.get('interval'),
-            'value': kwargs.get('volume'),
+            'interval': kwargs.get('adx-interval', kwargs.get('interval')),
+            'period': kwargs.get('adx-period', kwargs.get('period')),
+            'value': kwargs.get('adx'),
             'risk': 0,
             'trade': False,
             'description': 'Volume Strategy',
@@ -437,10 +441,22 @@ class TradingStrategy():
 
 
     def strategy_volume(self, *args, **kwargs):
+        '''
+        [ RETURN ]: {
+            'volume-movement': {flag: True, ...},
+            'interval': '1h',
+            'period': 14,
+            'value': 20903.77,
+            'risk': 0,
+            'trade': True,
+            'description': 'Price Action Strategy',
+        }
+        '''
         log.debug('')
         return_dict = {
             'volume-movement': self.check_large_volume_movement(*args, **kwargs),
-            'interval': kwargs.get('interval'),
+            'interval': kwargs.get('volume-interval', kwargs.get('interval')),
+            'period': kwargs.get('volume-period', kwargs.get('period')),
             'value': kwargs.get('volume'),
             'risk': 0,
             'trade': False,
@@ -487,20 +503,21 @@ class TradingStrategy():
 
         [ RETURN ]: {
             'price-movement': {flag: True, start-value: , stop-value},
-            'confirmed-by-volume': {flag: True, start-value: , stop-value},
+            'confirmed-by-volume': {flag: True, volume: {flag: ...}},
             'interval': '1h',
+            'period': 14,
             'value': 20903.77,
             'risk': 0,
             'trade': True,
             'description': 'Price Action Strategy',
         }
-
         '''
         log.debug('')
         return_dict = {
             'price-movement': self.check_large_price_movement(*args, **kwargs),
             'confirmed-by-volume': {},
-            'interval': kwargs.get('interval'),
+            'interval': kwargs.get('price-interval', kwargs.get('interval')),
+            'period': kwargs.get('price-period', kwargs.get('period')),
             'value': kwargs.get('details', {}).get('sell-price') \
                 if kwargs.get('side') == 'sell' \
                 else kwargs.get('details', {}).get('buy-price'),
@@ -514,17 +531,10 @@ class TradingStrategy():
                     move_percent, price_movement
                 ), ok=True
             )
-            # TODO - Uncomment
-#           return_dict['confirmed-by-volume'] = \
-#               self.check_price_movement_confirmed_by_volume(
-#                   return_dict['price-movement'], **kwargs
-#               )
-        # TODO - Remove 4 down
-        return_dict['confirmed-by-volume'] = \
-            self.check_price_movement_confirmed_by_volume(
-                return_dict['price-movement'], **kwargs
-        )
-
+            return_dict['confirmed-by-volume'] = \
+                self.check_price_movement_confirmed_by_volume(
+                    return_dict['price-movement'], **kwargs
+                )
         if return_dict['confirmed-by-volume'] and \
                 not return_dict['confirmed-by-volume'].get('error'):
             if return_dict['confirmed-by-volume'].get('flag'):
@@ -540,16 +550,18 @@ class TradingStrategy():
         return_dict['risk'] = self.compute_price_trade_risk(return_dict, **kwargs)
         return_dict['trade'] = False if return_dict['risk'] \
             > self.risk_tolerance else True
+        return return_dict
+
+
+# CODE DUMP
+
 #       stdout_msg(
 #           '\nStrategy Price {}'.format(pretty_dict_print(return_dict)),
 #           red=False if return_dict['trade'] else True,
 #           green=False if not return_dict['trade'] else True,
 #       )
 
-        return return_dict
 
-
-# CODE DUMP
 
 #           5: self.evaluate_high_risk_tolerance,
 #       }
