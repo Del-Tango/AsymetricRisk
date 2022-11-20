@@ -585,7 +585,8 @@ class TradingMarket(Client):
     @pysnooper.snoop()
     def compute_price_history_support(self, price_history):
         log.debug('')
-        if not price_history:
+        if not price_history or \
+                (isinstance(price_history, dict) and price_history.get('error')):
             return False
         return min([
             price_history[index]['value'] for index in range(len(price_history))
@@ -594,7 +595,8 @@ class TradingMarket(Client):
     @pysnooper.snoop()
     def compute_price_history_resistance(self, price_history):
         log.debug('')
-        if not price_history:
+        if not price_history or \
+                (isinstance(price_history, dict) and price_history.get('error')):
             return False
         return max([
             price_history[index]['value'] for index in range(len(price_history))
