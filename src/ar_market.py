@@ -86,6 +86,36 @@ class TradingMarket(Client):
 
     # FETCHERS
 
+    @pysnooper.snoop()
+    def fetch_adx_value(self, **kwargs):
+        '''
+        [ RETURN ]: adx-value, plus-dmi, minus-dmi
+                    [{value: x, backtrack: 0}, {value: x, backtrack: 1}, ...]
+        '''
+        log.debug('')
+        self.ensure_indicator_delay()
+        adx_kwargs = self.format_adx_indicator_kwargs(**kwargs)
+        log.debug('ADX Indicator handler kwargs - {}'.format(adx_kwargs))
+        raw_value = self.indicator.adx(**adx_kwargs)
+        log.debug('RAW ADX API response - {}'.format(raw_value))
+        if not raw_value:
+            return False
+        self.update_indicator_timestamp()
+        values = self.raw_api_response_convertor(raw_value)
+
+        if not kwargs.get('backtrack', kwargs.get('adx-backtrack')) \
+                and not kwargs.get('backtracks', kwargs.get('adx-backtracks')):
+            if not isinstance(values, dict):
+                return {'error': True}
+            return values.get('adx'), values.get('plusdi'), \
+                values.get('minusdi')
+        return values
+
+#       return value_dict.get('adx'), value_dict.get('plusdi'), value_dict.get('minusdi') \
+#           if not kwargs.get('backtrack', kwargs.get('adx-backtrack')) \
+#           and not kwargs.get('backtracks', kwargs.get('adx-backtracks')) \
+#           else value_dict
+
     def fetch_candle_info_column_labels(self):
         log.debug('')
         return [
@@ -240,23 +270,6 @@ class TradingMarket(Client):
         return value_dict.get('value', False) \
             if not kwargs.get('backtrack', kwargs.get('price-backtrack')) \
             and not kwargs.get('backtracks', kwargs.get('price-backtracks')) \
-            else value_dict
-
-#   @pysnooper.snoop()
-    def fetch_adx_value(self, **kwargs):
-        log.debug('')
-        self.ensure_indicator_delay()
-        adx_kwargs = self.format_adx_indicator_kwargs(**kwargs)
-        log.debug('ADX Indicator handler kwargs - {}'.format(adx_kwargs))
-        raw_value = self.indicator.adx(**adx_kwargs)
-        log.debug('RAW ADX API response - {}'.format(raw_value))
-        if not raw_value:
-            return False
-        self.update_indicator_timestamp()
-        value_dict = self.raw_api_response_convertor(raw_value)
-        return value_dict.get('value', False) \
-            if not kwargs.get('backtrack', kwargs.get('adx-backtrack')) \
-            and not kwargs.get('backtracks', kwargs.get('adx-backtracks')) \
             else value_dict
 
 #   @pysnooper.snoop()
@@ -678,7 +691,7 @@ class TradingMarket(Client):
             )
         return return_dict['history']
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_indicator_history(self, *update_targets,
                                  timestamp=str(time.time()), **kwargs):
         '''
@@ -880,10 +893,17 @@ class TradingMarket(Client):
             .format(self.taapi_url), warn=True)
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'adx' in update_targets:
-            self.adx = self.fetch_adx_value(**details)
-            return_dict['indicators'].update({'adx': self.adx})
+            self.adx, self.plusdi, self.minusdi = self.fetch_adx_value(**details)
+            return_dict['indicators'].update({
+                'adx': self.adx, '+di': self.plusdi, '-di': self.minusdi,
+            })
             stdout_msg(
-                'ADX Value - {}'.format(return_dict['indicators']['adx']),
+                'ADX Values - \nADX - {}\n+DI - {}\n-DI - {}'.format(
+                    return_dict['indicators']['adx'],
+                    return_dict['indicators']['+di'],
+                    return_dict['indicators']['-di'],
+
+                ),
                 ok=True if self.adx else False,
                 nok=True if not self.adx else False
             )

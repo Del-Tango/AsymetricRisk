@@ -9,16 +9,32 @@ import logging
 
 from .bp_shell import shell_cmd as shell
 from .bp_convertors import dict2json, json2dict
+from .bp_checkers import *
 
 log = logging.getLogger('AsymetricRisk')
+
+
+def scan_value_sets(values1, values2, look_for='crossover'):
+    '''
+    [ NOTE ]: Can look for convergence, divergence and crossover
+    '''
+    log.debug('')
+    handlers = {
+        'convergence': check_value_set_convergence,
+        'divergence': check_value_set_divergence,
+        'crossover': check_value_set_crossover,
+    }
+    return handlers[look_for](values1, values2)
 
 
 def pretty_dict_print(unpretty_dict):
     '''
     [ NOTE ]: json2dict wrapper for funziz
+              ... dude.
     '''
     log.debug('')
     return dict2json(unpretty_dict)
+
 
 #@pysnooper.snoop()
 def write2file(*args, file_path=str(), mode='w', **kwargs):

@@ -242,9 +242,10 @@ class TradingBot():
             'Updating market details applicable to strategy... ({})'
             .format(trading_strategy), info=True
         )
-        market_details = market.update_details(
-            *trading_strategy.split(','), **details
-        )
+        market_update_args = trading_strategy.split(',')
+        if 'indicators' not in market_update_args:
+            market_update_args.append('indicators')
+        market_details = market.update_details(*market_update_args, **details)
         trade_flag, risk_index, trade = False, 0, None
         trade_amount = self.compute_trade_amount(
             details.get('trade-amount', 1), **details
@@ -276,11 +277,18 @@ class TradingBot():
 
     def close_trade(self, *args, **kwargs):
         '''
+        [ NOTE ]: When in a long-trade (buy) exit at the next price resistance
+                  level.
+
+        [ NOTE ]: When in a short-trade (sell) exit at the next price support
+                  level.
+
         [ INPUT ]: *args    - trade ID's (type str)
                    **kwargs - symbol (type str) - ticker symbol, default is
                               active market
                             - recvWindow (type int) - binance API response
                               window, default is 60000
+
         [ RETURN ]: closed trades (type lst), failed closes (type lst)
         '''
         log.debug('')

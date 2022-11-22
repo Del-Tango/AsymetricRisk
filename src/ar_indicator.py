@@ -92,13 +92,17 @@ class TradingIndicator():
         '''
         [ RETURN ]: Current or backtrack value example -
 
-            {"value": 27.163106189421097}
+            {
+                "adx": 27.163106189421097,
+                "plusdi": 33.32334015840893,
+                "minusdi": 10.438557555722891,
+            }
 
         OR - with specified backtracks value -
 
             [
-                {"value": 37.09463629080951,"backtrack":0},
-                {"value": 35.014232435139164,"backtrack":1},
+                {"adx": 37.09463629080951, "plusdi": ..., "minusdi": ..., "backtrack":0},
+                {"adx": 37.09463629080951, "plusdi": ..., "minusdi": ..., "backtrack":1},
                 ...
             ]
         '''
@@ -107,7 +111,7 @@ class TradingIndicator():
         details = kwargs.copy()
         if details.get('adx-backtracks') or details.get('backtracks'):
             details.update({'adx-backtrack': None, 'backtrack': None})
-        return self.api_call(self.format_target_url('adx', **{
+        return self.api_call(self.format_target_url('dmi', **{
             'period': details.get('adx-period', details.get('period')),
             'backtrack': details.get('adx-backtrack', details.get('backtrack')),
             'backtracks': details.get('adx-backtracks', details.get('backtracks')),
