@@ -60,6 +60,58 @@ class TradingStrategy():
 
     # CHECKERS
 
+
+    # TODO
+    def check_macd_bullish_divergence(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        return {}
+    def check_macd_bearish_divergence(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        return {}
+    def check_macd_divergence(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        return {}
+    def check_macd_bullish_crossover(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        return {}
+    def check_macd_bearish_crossover(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        return {}
+    def check_macd_crossover(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+        details = kwargs['details']['history']
+
+        # TODO - Fetch params
+
+        macd_values = {
+            'macd': [ float(details['macd'][index]['valueMACD'])
+                    for index in range(len(details['macd'])) ],
+            'signal': [ float(details['macd'][index]['valueMACDSignal'])
+                    for index in range(len(details['macd'])) ],
+            'history': [ float(details['macd'][index]['valueMACDHist'])
+                    for index in range(len(details['macd'])) ],
+        }
+        scan = scan_value_sets(
+            macd_values['macd'], macd_values['signal'], look_for='crossover'
+        )
+        return_dict = {
+            'flag': False, #scan.get('flag', False),
+            'start-candle': details['macd'][len(details['macd'])-1]['backtrack'],
+            'stop-candle': details['macd'][0]['backtrack'],
+            'side': '',
+            'values': macd_values,
+            'scan': scan,
+        }
+        if not scan['flag']:
+            return return_dict
+#       for index in return_dict['scan']['crossovers']:
+#           if not adx_values['adx'][index] > adx_bottom:
+#               continue
+#           return_dict['flag'] = True
+        return return_dict
+
+
+
     def check_adx_crossover(self, *args, **kwargs):
         log.debug('')
         details = kwargs['details']['history']
@@ -80,7 +132,7 @@ class TradingStrategy():
             'flag': False, #scan.get('flag', False),
             'start-candle': details['adx'][len(details['adx'])-1]['backtrack'],
             'stop-candle': details['adx'][0]['backtrack'],
-            'side': 'sell' if scan['flag'] else '',
+            'side': '',
             'values': adx_values,
             'scan': scan,
         }
@@ -106,6 +158,10 @@ class TradingStrategy():
             return return_dict
         return_dict['flag'] = True \
             if return_dict['scan']['direction1'] == 'up' else False
+        return_dict.update({
+            'flag': True if return_dict['scan']['direction1'] == 'down' else False,
+            'side': 'buy' if return_dict['scan']['flag'] else '',
+        })
         return return_dict
 
     @pysnooper.snoop()
@@ -120,8 +176,10 @@ class TradingStrategy():
         return_dict = check_adx_crossover(*args, **kwargs)
         if not return_dict['scan']['flag']:
             return return_dict
-        return_dict['flag'] = True \
-            if return_dict['scan']['direction1'] == 'down' else False
+        return_dict.update({
+            'flag': True if return_dict['scan']['direction1'] == 'down' else False,
+            'side': 'sell' if return_dict['scan']['flag'] else '',
+        })
         return return_dict
 
 #   @pysnooper.snoop()
@@ -319,6 +377,9 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
+    def compute_macd_trade_risk(return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
     def compute_trade_flag(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
@@ -548,6 +609,7 @@ class TradingStrategy():
         '''
         log.debug('TODO - Under construction, building...')
         # TODO - Research
+
     def strategy_macd(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Moving Average Convergence Divergence
@@ -576,8 +638,46 @@ class TradingStrategy():
         [ INPUT ]:
         [ RETURN ]:
         '''
-        log.debug('TODO - Under construction, building...')
-        # TODO - Research
+        log.debug('')
+        return_dict = {
+            'bullish-crossover': self.check_macd_bullish_crossover(*args, **kwargs),
+            'bearish-crossover': self.check_macd_bearish_crossover(*args, **kwargs),
+            'bullish-divergence': self.check_macd_bullish_divergence(*args, **kwargs),
+            'bearish-divergence': self.check_macd_bearish_divergence(*args, **kwargs),
+            'interval': kwargs.get('macd-interval', kwargs.get('interval')),
+            'period': kwargs.get('macd-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'side': '',
+            'description': 'Moving Average Convergence Divergence Strategy',
+        }
+
+        if return_dict['bullish-crossover']['flag']:
+            stdout_msg('MACD Bullish Crossover detected!')
+        elif return_dict['bearish-crossover']['flag']:
+            stdout_msg('MACD Bearish Crossover detected!')
+
+        if return_dict['bullish-divergence']['flag']:
+            stdout_msg('MACD Bullish Divergence detected!')
+        elif return_dict['bearish-divergence']['flag']:
+            stdout_msg('MACD Bearish Divergence detected!')
+
+        return_dict['risk'] = self.compute_macd_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if True in [
+            return_dict['bullish-crossover']['flag'],
+            return_dict['bearish-crossover']['flag'],
+            return_dict['bullish-divergence']['flag'],
+            return_dict['bearish-divergence']['flag'],
+        ] else False
+
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-crossover', 'bearish-crossover',
+                    'bullish-divergence', 'bearish-divergence'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
 
     def strategy_adx(self, *args, **kwargs):
         '''
@@ -600,14 +700,11 @@ class TradingStrategy():
         return_dict = {
             'bullish-crossover': self.check_adx_bullish_crossover(*args, **kwargs),
             'bearish-crossover': self.check_adx_bearish_crossover(*args, **kwargs),
-            'interval': kwargs.get('price-interval', kwargs.get('interval')),
-            'period': kwargs.get('price-period', kwargs.get('period')),
-            'value': kwargs.get('details', {}).get('sell-price') \
-                if kwargs.get('side') == 'sell' \
-                else kwargs.get('details', {}).get('buy-price'),
+            'interval': kwargs.get('adx-interval', kwargs.get('interval')),
+            'period': kwargs.get('adx-period', kwargs.get('period')),
             'risk': 0,
             'trade': False,
-            'description': 'Price Action Strategy',
+            'description': 'Average Directional Index Strategy',
         }
         if return_dict['bullish-crossover']['flag']:
             stdout_msg(
@@ -649,7 +746,7 @@ class TradingStrategy():
             'risk': 3,
             'side': 'buy',
             'trade': True,
-            'description': 'Price Action Strategy',
+            'description': 'Volume Strategy',
         }
         '''
         log.debug('')
@@ -700,7 +797,9 @@ class TradingStrategy():
                 'price-resistance': 1235,
                 'price': [{'value': 1234, backtrack: 1}, ...],
                 'volume': [{'value': 1234, backtrack: 1}, ...],
-                'adx': [{'value': 1234, backtrack: 1}, ...],
+                "adx": [{'value': 1234, backtrack: 1}, ...],
+                "+di": [{'value': 1234, backtrack: 1}, ...],
+                "-di": [{'value': 1234, backtrack: 1}, ...],
                 'macd': [{'value': 1234, backtrack: 1}, ...],
                 'macd-signal': [{'value': 1234, backtrack: 1}, ...],
                 'macd-hist': [{'value': 1234, backtrack: 1}, ...],
