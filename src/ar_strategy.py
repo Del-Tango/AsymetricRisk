@@ -60,29 +60,86 @@ class TradingStrategy():
 
     # CHECKERS
 
-    @pysnooper.snoop()
+    def check_rsi_bullish_divergence(self, *args, **kwargs):
+        log.debug('')
+        divergence = self.check_rsi_divergence(
+            *args, direction='bullish', **kwargs
+        )
+        if divergence['flag'] and divergence['rsi-direction'] == 'up' \
+                and divergence['price-direction'] == 'down':
+            divergence['side'] = 'buy'
+        else:
+            divergence['flag'] = False
+        return divergence
+
+    def check_rsi_bearish_divergence(self, *args, **kwargs):
+        log.debug('')
+        divergence = self.check_rsi_divergence(
+            *args, direction='bearish', **kwargs
+        )
+        if divergence['flag'] and divergence['rsi-direction'] == 'down' \
+                and divergence['price-direction'] == 'up':
+            divergence['side'] = 'sell'
+        else:
+            divergence['flag'] = False
+        return divergence
+
+    def check_rsi_divergence(self, *args, direction='bullish', **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
+        rsi_values = {
+            'rsi': [ float(details['rsi'][index]['value'])
+                    for index in range(len(details['macd'])) ],
+            'price': [ float(details['price'][index]['value'])
+                    for index in range(len(details['macd'])) ],
+        }
+        scanner_args, scanner_kwargs = [], {
+            'look_for': 'divergence', 'peak_distance': 1, 'error_margin': 1
+        }
+        if direction == 'bullish':
+            scanner_args = [rsi_values['rsi'], rsi_values['price']]
+        elif direction == 'bearish':
+            scanner_args = [rsi_values['price'], rsi_values['rsi']]
+        scan = scan_value_sets(*scanner_args, **scanner_kwargs)
+        return_dict = {
+            'flag': False,
+            'start-candle': details['rsi'][len(details['rsi'])-1]['backtrack'],
+            'stop-candle': details['rsi'][0]['backtrack'],
+            'rsi-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'values': rsi_values,
+            'scan': scan,
+        }
+        if not scan['flag'] or not scan['confirmed']:
+            return return_dict
+        return_dict['flag'] = scan['flag']
+        return return_dict
+
+#   @pysnooper.snoop()
     def check_macd_bullish_divergence(self, *args, **kwargs):
         log.debug('')
-        crossover = self.check_macd_divergence(*args, direction='bullish', **kwargs)
-        if crossover['flag'] and crossover['macd-direction'] == 'up' \
-                and crossover['price-direction'] == 'down':
-            crossover['side'] = 'buy'
+        divergence = self.check_macd_divergence(*args, direction='bullish', **kwargs)
+        if divergence['flag'] and divergence['macd-direction'] == 'up' \
+                and divergence['price-direction'] == 'down':
+            divergence['side'] = 'buy'
         else:
-            crossover['flag'] = False
-        return crossover
+            divergence['flag'] = False
+        return divergence
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_macd_bearish_divergence(self, *args, **kwargs):
         log.debug('')
-        crossover = self.check_macd_divergence(*args, direction='bearish', **kwargs)
-        if crossover['flag'] and crossover['macd-direction'] == 'down' \
-                and crossover['price-direction'] == 'up':
-            crossover['side'] = 'sell'
+        divergence = self.check_macd_divergence(*args, direction='bearish', **kwargs)
+        if divergence['flag'] and divergence['macd-direction'] == 'down' \
+                and divergence['price-direction'] == 'up':
+            divergence['side'] = 'sell'
         else:
-            crossover['flag'] = False
-        return crossover
+            divergence['flag'] = False
+        return divergence
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_macd_divergence(self, *args, direction='bullish', **kwargs):
         log.debug('')
         details = kwargs['details']['history']
@@ -121,7 +178,7 @@ class TradingStrategy():
         return_dict['flag'] = scan['flag']
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_macd_bullish_crossover(self, *args, **kwargs):
         log.debug('')
         crossover = self.check_macd_crossover(*args, **kwargs)
@@ -131,7 +188,7 @@ class TradingStrategy():
             crossover['flag'] = False
         return crossover
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_macd_bearish_crossover(self, *args, **kwargs):
         log.debug('')
         crossover = self.check_macd_crossover(*args, **kwargs)
@@ -141,7 +198,7 @@ class TradingStrategy():
             crossover['flag'] = False
         return crossover
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_macd_crossover(self, *args, **kwargs):
         log.debug('')
         details = kwargs['details']['history']
@@ -436,6 +493,9 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
+    def compute_rsi_trade_risk(selfreturn_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
     def compute_macd_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
@@ -641,6 +701,8 @@ class TradingStrategy():
         '''
         log.debug('TODO - Under construction, building...')
         # TODO - Research
+
+    @pysnooper.snoop()
     def strategy_rsi(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Relative Strength Index
@@ -666,8 +728,37 @@ class TradingStrategy():
         [ INPUT ]:
         [ RETURN ]:
         '''
-        log.debug('TODO - Under construction, building...')
-        # TODO - Research
+        log.debug('')
+        return_dict = {
+            'bullish-divergence': self.check_rsi_bullish_divergence(*args, **kwargs),
+            'bearish-divergence': self.check_rsi_bearish_divergence(*args, **kwargs),
+            'interval': kwargs.get('rsi-interval', kwargs.get('interval')),
+            'period': kwargs.get('rsi-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'side': '',
+            'description': 'Relative Strength Index Strategy',
+        }
+
+        if return_dict['bullish-divergence']['flag']:
+            stdout_msg('RSI Bullish Divergence detected!')
+        elif return_dict['bearish-divergence']['flag']:
+            stdout_msg('RSI Bearish Divergence detected!')
+
+        return_dict['risk'] = self.compute_rsi_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if True in [
+            return_dict[label]['flag'] for label in (
+                'bullish-divergence', 'bearish-divergence',
+            )
+        ] else False
+
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-divergence', 'bearish-divergence'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
 
     @pysnooper.snoop()
     def strategy_macd(self, *args, **kwargs):
