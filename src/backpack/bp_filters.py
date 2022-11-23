@@ -11,6 +11,14 @@ import logging
 log = logging.getLogger('AsymetricRisk')
 
 
+def list_intersection(values1, values2):
+    log.debug('')
+    if not values1 or not values2:
+        return False
+    intersect = [item for item in values1 if item in values2]
+    return intersect
+
+
 def filter_file_name_from_path(file_path):
     log.debug('')
     return os.path.basename(file_path)

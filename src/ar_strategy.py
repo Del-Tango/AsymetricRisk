@@ -60,29 +60,91 @@ class TradingStrategy():
 
     # CHECKERS
 
-
-    # TODO
+    @pysnooper.snoop()
     def check_macd_bullish_divergence(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-        return {}
+        log.debug('')
+        crossover = self.check_macd_divergence(*args, direction='bullish', **kwargs)
+        if crossover['flag'] and crossover['macd-direction'] == 'up' \
+                and crossover['price-direction'] == 'down':
+            crossover['side'] = 'buy'
+        else:
+            crossover['flag'] = False
+        return crossover
+
+    @pysnooper.snoop()
     def check_macd_bearish_divergence(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-        return {}
-    def check_macd_divergence(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-        return {}
-    def check_macd_bullish_crossover(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-        return {}
-    def check_macd_bearish_crossover(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-        return {}
-    def check_macd_crossover(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
+        log.debug('')
+        crossover = self.check_macd_divergence(*args, direction='bearish', **kwargs)
+        if crossover['flag'] and crossover['macd-direction'] == 'down' \
+                and crossover['price-direction'] == 'up':
+            crossover['side'] = 'sell'
+        else:
+            crossover['flag'] = False
+        return crossover
+
+    @pysnooper.snoop()
+    def check_macd_divergence(self, *args, direction='bullish', **kwargs):
+        log.debug('')
         details = kwargs['details']['history']
+        macd_values = {
+            'macd': [ float(details['macd'][index]['valueMACD'])
+                    for index in range(len(details['macd'])) ],
+            'signal': [ float(details['macd'][index]['valueMACDSignal'])
+                    for index in range(len(details['macd'])) ],
+            'history': [ float(details['macd'][index]['valueMACDHist'])
+                    for index in range(len(details['macd'])) ],
+            'price': [ float(details['price'][index]['value'])
+                    for index in range(len(details['macd'])) ]
+        }
+        scanner_args, scanner_kwargs = [], {
+            'look_for': 'divergence-peaks', 'peak_distance': 1, 'error_margin': 1
+        }
+        if direction == 'bullish':
+            scanner_args = [macd_values['macd'], macd_values['price']]
+        elif direction == 'bearish':
+            scanner_args = [macd_values['price'], macd_values['macd']]
+        scan = scan_value_sets(*scanner_args, **scanner_kwargs)
+        return_dict = {
+            'flag': False,
+            'start-candle': details['macd'][len(details['macd'])-1]['backtrack'],
+            'stop-candle': details['macd'][0]['backtrack'],
+            'macd-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'values': macd_values,
+            'scan': scan,
+        }
+        if not scan['flag'] or not scan['confirmed'] \
+                or len(scan['peaks']) not in (2, 3):
+            return return_dict
+        return_dict['flag'] = scan['flag']
+        return return_dict
 
-        # TODO - Fetch params
+    @pysnooper.snoop()
+    def check_macd_bullish_crossover(self, *args, **kwargs):
+        log.debug('')
+        crossover = self.check_macd_crossover(*args, **kwargs)
+        if crossover['flag'] and crossover['macd-direction'] == 'up':
+            crossover['side'] = 'sell'
+        else:
+            crossover['flag'] = False
+        return crossover
 
+    @pysnooper.snoop()
+    def check_macd_bearish_crossover(self, *args, **kwargs):
+        log.debug('')
+        crossover = self.check_macd_crossover(*args, **kwargs)
+        if crossover['flag'] and crossover['macd-direction'] == 'down':
+            crossover['side'] = 'sell'
+        else:
+            crossover['flag'] = False
+        return crossover
+
+    @pysnooper.snoop()
+    def check_macd_crossover(self, *args, **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
         macd_values = {
             'macd': [ float(details['macd'][index]['valueMACD'])
                     for index in range(len(details['macd'])) ],
@@ -95,22 +157,19 @@ class TradingStrategy():
             macd_values['macd'], macd_values['signal'], look_for='crossover'
         )
         return_dict = {
-            'flag': False, #scan.get('flag', False),
+            'flag': False,
             'start-candle': details['macd'][len(details['macd'])-1]['backtrack'],
             'stop-candle': details['macd'][0]['backtrack'],
-            'side': '',
+            'macd-direction': scan['direction1'],
+            'signal-direction': scan['direction2'],
             'values': macd_values,
             'scan': scan,
         }
-        if not scan['flag']:
+        if not scan['flag'] or not scan['confirmed'] \
+                or len(scan['crossovers']) not in (2, 3, 4):
             return return_dict
-#       for index in return_dict['scan']['crossovers']:
-#           if not adx_values['adx'][index] > adx_bottom:
-#               continue
-#           return_dict['flag'] = True
+        return_dict['flag'] = scan['flag']
         return return_dict
-
-
 
     def check_adx_crossover(self, *args, **kwargs):
         log.debug('')
@@ -144,7 +203,7 @@ class TradingStrategy():
             return_dict['flag'] = True
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_adx_bullish_crossover(self, *args, **kwargs):
         '''
         [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
@@ -153,7 +212,7 @@ class TradingStrategy():
                   Crossover and place the stop-loss lower than the previous candle.
         '''
         log.debug('')
-        return_dict = check_adx_crossover(*args, **kwargs)
+        return_dict = self.check_adx_crossover(*args, **kwargs)
         if not return_dict['scan']['flag']:
             return return_dict
         return_dict['flag'] = True \
@@ -164,7 +223,7 @@ class TradingStrategy():
         })
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_adx_bearish_crossover(self, *args, **kwargs):
         '''
         [ NOTE ]: When a Bearish Crossover occurs (when the ADX line is above 25
@@ -173,7 +232,7 @@ class TradingStrategy():
                   Crossover and place the stop-loss higher than the previous candle.
         '''
         log.debug('')
-        return_dict = check_adx_crossover(*args, **kwargs)
+        return_dict = self.check_adx_crossover(*args, **kwargs)
         if not return_dict['scan']['flag']:
             return return_dict
         return_dict.update({
@@ -377,7 +436,7 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
-    def compute_macd_trade_risk(return_dict, **kwargs):
+    def compute_macd_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_trade_flag(self, evaluations_dict, **kwargs):
@@ -610,6 +669,7 @@ class TradingStrategy():
         log.debug('TODO - Under construction, building...')
         # TODO - Research
 
+    @pysnooper.snoop()
     def strategy_macd(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Moving Average Convergence Divergence
@@ -664,10 +724,10 @@ class TradingStrategy():
 
         return_dict['risk'] = self.compute_macd_trade_risk(return_dict, **kwargs)
         return_dict['trade'] = True if True in [
-            return_dict['bullish-crossover']['flag'],
-            return_dict['bearish-crossover']['flag'],
-            return_dict['bullish-divergence']['flag'],
-            return_dict['bearish-divergence']['flag'],
+            return_dict[label]['flag'] for label in (
+                'bullish-crossover', 'bearish-crossover',
+                'bullish-divergence', 'bearish-divergence',
+            )
         ] else False
 
         if return_dict['trade']:

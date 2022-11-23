@@ -14,7 +14,7 @@ from .bp_checkers import *
 log = logging.getLogger('AsymetricRisk')
 
 
-def scan_value_sets(values1, values2, look_for='crossover'):
+def scan_value_sets(values1, values2, look_for='crossover', **kwargs):
     '''
     [ NOTE ]: Can look for convergence, divergence and crossover
     '''
@@ -22,9 +22,11 @@ def scan_value_sets(values1, values2, look_for='crossover'):
     handlers = {
         'convergence': check_value_set_convergence,
         'divergence': check_value_set_divergence,
+        'convergence-peaks': check_value_set_convergence_peaks,
+        'divergence-peaks': check_value_set_divergence_peaks,
         'crossover': check_value_set_crossover,
     }
-    return handlers[look_for](values1, values2)
+    return handlers[look_for](values1, values2, **kwargs)
 
 
 def pretty_dict_print(unpretty_dict):

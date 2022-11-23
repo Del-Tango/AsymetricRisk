@@ -7,13 +7,144 @@
 import os
 import stat
 import logging
-#import pysnooper
+import pysnooper
+
+from src.backpack.bp_filters import list_intersection
 
 log = logging.getLogger('AsymetricRisk')
 
+@pysnooper.snoop()
+def check_value_set_divergence_peaks(values1, values2,
+                                     peak_distance=1, error_margin=1, **kwargs):
+    '''
+    [ NOTE ]: Value divergence is confirmed if -
+        * Larger distance than peak_distance data points between top indexes
+        * Match higher and lower peaks with a index +/-error_margin
+        * values1 peaks increase over time
+        * values2 peaks decrease over time
+    '''
+    log.debug('')
+    convergence = check_value_set_convergence(values1, values2)
+    return_dict = {
+        'flag': False,
+        'start1': convergence['start1'],
+        'start2': convergence['start2'],
+        'end1': convergence['end1'],
+        'end2': convergence['end2'],
+        'direction1': convergence['direction1'],
+        'direction2': convergence['direction2'],
+        'peaks': [],
+        'peaks1': [],
+        'peaks2': [],
+    }
+    if len(values1) != len(values2): # or not convergence['flag']:
+        return return_dict
+    confirmed, top1_index, top2_index = False, [], []
+    # NOTE: Look for two divergence peaks
+    if return_dict['direction1'] == 'up' \
+            and return_dict['direction2'] == 'down':
+        top1, top2 = sorted(values1)[-2:], sorted(values2)
+        top2.reverse(); top2 = top2[-2:]
+        top1_index = [
+            item for item in range(len(values1)) if values1[item] in top1
+        ] #[0]
+        top2_index = [
+            item for item in range(len(values2)) if values2[item] in top2
+        ] #[0]
+        top_index = list_intersection(top1_index, top2_index)
+        return_dict.update({
+            'peaks': top_index,
+            'peaks1': top1_index,
+            'peaks2': top2_index,
+        })
+        if not len(top_index) >= 2:
+            return return_dict
+        val1a, val1b, = values1[top_index[0]], values1[top_index[1]]
+        val2a, val2b = values2[top_index[0]], values2[top_index[1]]
+        confirmed = True \
+            if top1_index[1] - top1_index[0] >= peak_distance \
+            and top1_index[0] in [
+                top2_index[0],
+                top2_index[0] + error_margin,
+                top2_index[0] - error_margin
+            ] and val1b > val1a \
+            and top2_index[1] - top2_index[0] >= peak_distance \
+            and top1_index[1] in [
+                top2_index[1],
+                top2_index[1] + error_margin,
+                top2_index[1] - error_margin
+            ] and val2b < val2a else False
+    return_dict.update({'flag': confirmed,})
+    return return_dict
 
-# @pysnooper.snoop()
-def check_value_set_convergence(values1, values2):
+
+@pysnooper.snoop()
+def check_value_set_convergence_peaks(values1, values2,
+                                      peak_distance=1, error_margin=1, **kwargs):
+    '''
+    [ NOTE ]: Value convergence is confirmed if -
+        * Larger distance than 2 data points between top indexes
+        * Match higher and lower peaks with a +/-1 index error margin
+        * values1 peaks increase over time
+        * values2 peaks decrease over time
+    '''
+    log.debug('')
+    convergence = check_value_set_convergence(values1, values2)
+    return_dict = {
+        'flag': False,
+        'start1': convergence['start1'],
+        'start2': convergence['start2'],
+        'end1': convergence['end1'],
+        'end2': convergence['end2'],
+        'direction1': convergence['direction1'],
+        'direction2': convergence['direction2'],
+        'peaks': [],
+        'peaks1': [],
+        'peaks2': [],
+    }
+    if len(values1) != len(values2): # or not convergence['flag']:
+        return return_dict
+    confirmed, top1_index, top2_index = False, [], []
+    # NOTE: Look for two convergent peaks
+    if return_dict['direction1'] == 'down' \
+            and return_dict['direction2'] == 'up':
+        top1, top2 = sorted(values1), sorted(values2)[-2:]
+        top1.reverse(); top1 = top1[-2:]
+        top1_index = [
+            item for item in range(len(values1)) if values1[item] in top1
+        ] #[0]
+        top2_index = [
+            item for item in range(len(values2)) if values2[item] in top2
+        ] #[0]
+        top_index = list_intersection(top1_index, top2_index)
+        return_dict.update({
+            'peaks': top_index,
+            'peaks1': top1_index,
+            'peaks2': top2_index,
+        })
+        if not len(top_index) >= 2:
+            return return_dict
+        val1a, val1b, = values1[top_index[0]], values1[top_index[1]]
+        val2a, val2b = values2[top_index[0]], values2[top_index[1]]
+        confirmed = True \
+            if top1_index[1] - top1_index[0] >= peak_distance \
+            and top1_index[0] in [
+                top2_index[0],
+                top2_index[0] + error_margin,
+                top2_index[0] - error_margin
+            ] and val1b < val1a \
+            and top2_index[1] - top2_index[0] >= peak_distance \
+            and top1_index[1] in [
+                top2_index[1],
+                top2_index[1] + error_margin,
+                top2_index[1] - error_margin
+            ] and val2b > val2a else False
+    return_dict.update({'flag': confirmed,})
+    return return_dict
+
+
+@pysnooper.snoop()
+def check_value_set_convergence(values1, values2, **kwargs):
     log.debug('')
     if len(values1) != len(values2):
         return False
@@ -42,20 +173,20 @@ def check_value_set_convergence(values1, values2):
     if return_dict['direction1'] == 'down' \
             and return_dict['direction2'] == 'up' \
             and return_dict['start1'] > return_dict['start2'] \
-            and not crossover:
+            and not crossover['flag']:
         return_dict['flag'] = True
 
     if return_dict['direction1'] == 'up' \
             and return_dict['direction2'] == 'down' \
             and return_dict['start1'] < return_dict['start2'] \
-            and not crossover:
+            and not crossover['flag']:
         return_dict['flag'] = True
 
     return return_dict
 
 
 # @pysnooper.snoop()
-def check_value_set_divergence(values1, values2):
+def check_value_set_divergence(values1, values2, **kwargs):
     log.debug('')
     if len(values1) != len(values2):
         return False
@@ -84,20 +215,20 @@ def check_value_set_divergence(values1, values2):
     if return_dict['direction1'] == 'up' \
             and return_dict['direction2'] == 'down' \
             and return_dict['start1'] > return_dict['start2'] \
-            and not crossover:
+            and not crossover['flag']:
         return_dict['flag'] = True
 
     if return_dict['direction1'] == 'down' \
             and return_dict['direction2'] == 'up' \
             and return_dict['start1'] < return_dict['start2'] \
-            and not crossover:
+            and not crossover['flag']:
         return_dict['flag'] = True
 
     return return_dict
 
 
 # @pysnooper.snoop()
-def check_value_set_crossover(values1, values2):
+def check_value_set_crossover(values1, values2, **kwargs):
     '''
     [ INPUT ]: [1,2,3,4,5], [5,4,3,2,1]
 
@@ -202,4 +333,6 @@ def check_file_exists(file_path):
         log.error(e)
         return None
 
+
+# CODE DUMP
 
