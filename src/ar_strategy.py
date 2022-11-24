@@ -60,6 +60,60 @@ class TradingStrategy():
 
     # CHECKERS
 
+    def check_vwap_bullish_trend_confirmation(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Buy when price is trading below VWAP and then breaks to begin
+                  to trade above it - Bullish Trend Confirmation
+        '''
+        log.debug('')
+        crossover = self.check_vwap_crossover(*args, direction='bullish', **kwargs)
+        if crossover['flag'] and crossover['price-direction'] == 'up' \
+                and crossover['scan']['start2'] < crossover['scan']['start1']:
+            crossover['side'] = 'buy'
+        else:
+            crossover['flag'] = False
+        return crossover
+
+    def check_vwap_bearish_trend_confirmation(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
+                  to trade below it - Bearish Trend Confirmation
+        '''
+        log.debug('')
+        crossover = self.check_vwap_crossover(*args, direction='bearish', **kwargs)
+        if crossover['flag'] and crossover['price-direction'] == 'down' \
+                and crossover['scan']['start2'] > crossover['scan']['start1']:
+            crossover['side'] = 'sell'
+        else:
+            crossover['flag'] = False
+        return crossover
+
+    def check_vwap_crossover(self, *args, direction='bullish', **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
+        vwap_values = {
+            'vwap': [ float(details['vwap'][index]['value'])
+                    for index in range(len(details['vwap'])) ],
+            'price': [ float(details['price'][index]['value'])
+                     for index in range(len(details['price'])) ],
+        }
+        scan = scan_value_sets(
+            vwap_values['vwap'], vwap_values['price'], look_for='crossover'
+        )
+        return_dict = {
+            'flag': scan['flag'],
+            'start-candle': details['vwap'][len(details['vwap'])-1]['backtrack'],
+            'stop-candle': details['vwap'][0]['backtrack'],
+            'vwap-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'side': '',
+            'values': vwap_values,
+            'scan': scan,
+        }
+        return return_dict
+
     def check_rsi_bullish_divergence(self, *args, **kwargs):
         log.debug('')
         divergence = self.check_rsi_divergence(
@@ -493,7 +547,10 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
-    def compute_rsi_trade_risk(selfreturn_dict, **kwargs):
+    def compute_vwap_trade_risk(self, return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
+    def compute_rsi_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_macd_trade_risk(self, return_dict, **kwargs):
@@ -502,13 +559,13 @@ class TradingStrategy():
     def compute_trade_flag(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
-    def compute_risk_index(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        return 0
     def compute_adx_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_volume_trade_risk(self, return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
+    def compute_risk_index(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_price_trade_risk(self, return_dict, **kwargs):
@@ -524,6 +581,8 @@ class TradingStrategy():
         }
 
         kwargs - {}
+
+        [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
         log.debug('TODO - Under construction, building...')
         return 0
@@ -686,6 +745,8 @@ class TradingStrategy():
         '''
         log.debug('TODO - Under construction, building...')
         # TODO - Research
+
+    @pysnooper.snoop()
     def strategy_vwap(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Volume Weighted Average Price
@@ -699,8 +760,41 @@ class TradingStrategy():
         [ INPUT ]:
         [ RETURN ]:
         '''
-        log.debug('TODO - Under construction, building...')
-        # TODO - Research
+        log.debug('')
+        return_dict = {
+            'bullish-crossover': self.check_vwap_bullish_trend_confirmation(*args, **kwargs),
+            'bearish-crossover': self.check_vwap_bearish_trend_confirmation(*args, **kwargs),
+            'interval': kwargs.get('vwap-interval', kwargs.get('interval')),
+            'period': kwargs.get('vwap-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'description': 'Volume Weighted Average Price Strategy',
+        }
+        if return_dict['bullish-crossover']['flag']:
+            stdout_msg(
+                'VWAP Bullish Trend Confirmation detected! Triggered when when '
+                'price is trading below VWAP and then breaks to begin to trade '
+                'above it.',  ok=True
+            )
+        elif return_dict['bearish-crossover']['flag']:
+            stdout_msg(
+                'VWAP Bearish Trend Confirmation detected! Triggered when price '
+                'is trading above VWAP and the breaks to begin to trade below it ',
+                ok=True
+            )
+        return_dict['risk'] = self.compute_vwap_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict[label]['flag'] for label in (
+                'bullish-crossover', 'bearish-crossover'
+            )
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-crossover', 'bearish-crossover'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
 
     @pysnooper.snoop()
     def strategy_rsi(self, *args, **kwargs):
