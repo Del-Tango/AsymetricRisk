@@ -13,6 +13,75 @@ from src.backpack.bp_filters import list_intersection
 
 log = logging.getLogger('AsymetricRisk')
 
+
+@pysnooper.snoop()
+def check_value_set_crossover(values1, values2, **kwargs):
+    '''
+    [ INPUT ]: [1,2,3,4,5], [5,4,3,2,1]
+
+    [ RETURN ]: {
+        'flag': True,           # Crossover detected
+        'start1': 1,            # values1[0] value
+        'start2': 5,            # values2[0] value
+        'end1': 5,              # values1[len(values1)-1] value
+        'end2': 1,              # values2[len(values2)-1] value
+        'crossovers': [3],      # List of positions where crossovers occur (indexes)
+        'confirmed': True       # If after a crossover values continuously increase
+        'direction1': 'down',
+        'direction2': 'up',
+    }
+    '''
+    log.debug('')
+    if len(values1) != len(values2):
+        return False
+
+    return_dict = {
+        'flag': False,
+        'start1': values1[0],
+        'start2': values2[0],
+        'end1': values1[len(values1)-1],
+        'end2': values2[len(values2)-1],
+        'crossovers': [],
+        'confirmed': False,
+        'direction1': '',
+        'direction2': ''
+    }
+
+    if return_dict['start1'] < return_dict['end1']:
+        return_dict['direction1'] = 'up'
+    elif return_dict['start1'] > return_dict['end1']:
+        return_dict['direction1'] = 'down'
+
+    if return_dict['start2'] < return_dict['end2']:
+        return_dict['direction2'] = 'up'
+    elif return_dict['start2'] > return_dict['end2']:
+        return_dict['direction2'] = 'down'
+
+    old_val1, old_val2, confirmed = None, None, 0
+    for index in range(len(values1)):
+        val1, val2 = values1[index], values2[index]
+        if val1 == val2 \
+                or (None not in [old_val1, old_val2] and (old_val1 < old_val2 \
+                    and val1 > val2)) \
+                or (None not in [old_val1, old_val2] and (old_val1 > old_val2 \
+                    and val1 < val2)):
+            if not return_dict['flag']:
+                return_dict.update({
+                    'flag': True,
+                    'crossovers': return_dict['crossovers'] + [index],
+                })
+            continue
+        elif val1 > val2 \
+                and val1 > return_dict['start1'] and val1 > old_val1:
+            confirmed += 1
+        elif val1 < val2 \
+                and val2 > return_dict['start2'] and val2 > old_val2:
+            confirmed += 1
+        old_val1, old_val2 = val1, val2
+    return_dict['confirmed'] = False if not confirmed else True
+    return return_dict
+
+
 @pysnooper.snoop()
 def check_value_set_divergence_peaks(values1, values2,
                                      peak_distance=1, error_margin=1, **kwargs):
@@ -227,38 +296,24 @@ def check_value_set_divergence(values1, values2, **kwargs):
     return return_dict
 
 
-# @pysnooper.snoop()
-def check_value_set_crossover(values1, values2, **kwargs):
+def check_value_set_above(values1, values2, **kwargs):
     '''
-    [ INPUT ]: [1,2,3,4,5], [5,4,3,2,1]
-
-    [ RETURN ]: {
-        'flag': True,           # Crossover detected
-        'start1': 3,            # values1[0] value
-        'start2': 1,            # values2[0] value
-        'end1': 2,              # values1[len(values1)-1] value
-        'end2': 15,             # values2[len(values2)-1] value
-        'crossovers': [5, 7],   # List of positions where crossovers occur (indexes)
-        'confirmed': True       # If after a crossover values continuously increase
-        'direction1': 'down',
-        'direction2': 'up',
-    }
+    [ NOTE ]: Check if all the values from 1 are higher than the values in 2.
     '''
     log.debug('')
-    if len(values1) != len(values2):
-        return False
-
     return_dict = {
         'flag': False,
         'start1': values1[0],
         'start2': values2[0],
         'end1': values1[len(values1)-1],
         'end2': values2[len(values2)-1],
-        'crossovers': [],
-        'confirmed': False,
         'direction1': '',
-        'direction2': ''
+        'direction2': '',
+        'above': [],
+        'below': [],
     }
+    if len(values1) != len(values2):
+        return return_dict
 
     if return_dict['start1'] < return_dict['end1']:
         return_dict['direction1'] = 'up'
@@ -270,24 +325,68 @@ def check_value_set_crossover(values1, values2, **kwargs):
     elif return_dict['start2'] > return_dict['end2']:
         return_dict['direction2'] = 'down'
 
-    old_val1, old_val2, confirmed = None, None, 0
+    above1, above2, failures = 0, 0, 0
     for index in range(len(values1)):
-        val1, val2 = values1[index], values2[index]
-        if val1 == val2:
-            if not return_dict['flag']:
-                return_dict.update({
-                    'flag': True,
-                    'crossovers': return_dict['crossovers'] + [index],
-                }) #['flag'] = True
+        if not values1[index] or not values2[index]:
+            failures += 1
             continue
-        elif val1 > val2 \
-                and val1 > return_dict['start1'] and val1 > old_val1:
-            confirmed += 1
-        elif val1 < val2 \
-                and val2 > return_dict['start2'] and val2 > old_val2:
-            confirmed += 1
-        old_val1, old_val2 = val1, val2
-    return_dict['confirmed'] = False if not confirmed else True
+        if values1[index] > values2[index]:
+            above1 += 1
+        elif values1[index] < values2[index]:
+            above2 += 1
+
+    return_dict.update({
+        'flag': False if above1 != len(values1) else True,
+        'above': values1 if above1 > above2 else values2,
+        'below': values1 if above1 < above2 else values2,
+    })
+    return return_dict
+
+
+def check_value_set_below(values1, values2, **kwargs):
+    '''
+    [ NOTE ]: Check if all the values from 1 are lower than the values in 2.
+    '''
+    log.debug('')
+    return_dict = {
+        'flag': False,
+        'start1': values1[0],
+        'start2': values2[0],
+        'end1': values1[len(values1)-1],
+        'end2': values2[len(values2)-1],
+        'direction1': '',
+        'direction2': '',
+        'above': [],
+        'below': [],
+    }
+    if len(values1) != len(values2):
+        return return_dict
+
+    if return_dict['start1'] < return_dict['end1']:
+        return_dict['direction1'] = 'up'
+    elif return_dict['start1'] > return_dict['end1']:
+        return_dict['direction1'] = 'down'
+
+    if return_dict['start2'] < return_dict['end2']:
+        return_dict['direction2'] = 'up'
+    elif return_dict['start2'] > return_dict['end2']:
+        return_dict['direction2'] = 'down'
+
+    below1, below2, failures = 0, 0, 0
+    for index in range(len(values1)):
+        if not values1[index] or not values2[index]:
+            failures += 1
+            continue
+        if values1[index] < values2[index]:
+            below1 += 1
+        elif values1[index] > values2[index]:
+            below2 += 1
+
+    return_dict.update({
+        'flag': False if below1 != len(values1) else True,
+        'above': values1 if below1 < below2 else values2,
+        'below': values1 if below1 > below2 else values2,
+    })
     return return_dict
 
 

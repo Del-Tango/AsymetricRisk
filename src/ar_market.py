@@ -581,7 +581,7 @@ class TradingMarket(Client):
     # COMPUTERS
 
     # TODO
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_volume_history_from_candle_info(self, candle_info, **kwargs):
         '''
         [ RETURN ]: [{'value':, 'backtrack': ,}]
@@ -595,7 +595,7 @@ class TradingMarket(Client):
             })
         return volume_history
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_price_history_support(self, price_history):
         log.debug('')
         if not price_history or \
@@ -605,7 +605,7 @@ class TradingMarket(Client):
             price_history[index]['value'] for index in range(len(price_history))
         ])
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_price_history_resistance(self, price_history):
         log.debug('')
         if not price_history or \
@@ -641,7 +641,7 @@ class TradingMarket(Client):
 
     # UPDATERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_price_volume_history(self, *update_targets,
                                     timestamp=str(time.time()), **kwargs):
         '''
@@ -691,7 +691,7 @@ class TradingMarket(Client):
             )
         return return_dict['history']
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_indicator_history(self, *update_targets,
                                  timestamp=str(time.time()), **kwargs):
         '''
@@ -963,7 +963,7 @@ class TradingMarket(Client):
             )
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_details(self, *args, **kwargs):
         '''
         [ INPUT  ]: *(
@@ -1036,7 +1036,9 @@ class TradingMarket(Client):
                     'backtrack': 0,
                 }, ...],
                 "adx": [{
-                    "value": 26.47395654961293,
+                    "adx": 26.47395654961293,
+                    "plusdi": ...,
+                    "minusdi": ...,
                     "backtrack": 0
                 }, ...],
                 "macd": [{

@@ -25,6 +25,8 @@ def scan_value_sets(values1, values2, look_for='crossover', **kwargs):
         'convergence-peaks': check_value_set_convergence_peaks,
         'divergence-peaks': check_value_set_divergence_peaks,
         'crossover': check_value_set_crossover,
+        'above': check_value_set_above,
+        'below': check_value_set_below,
     }
     return handlers[look_for](values1, values2, **kwargs)
 

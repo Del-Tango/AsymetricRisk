@@ -132,7 +132,7 @@ class TradingBot():
 
     # ENSURANCE
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def ensure_trading_market_setup(self, **kwargs):
         log.debug('')
         if not self.market:
@@ -141,7 +141,7 @@ class TradingBot():
 
     # ACTIONS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
@@ -167,7 +167,7 @@ class TradingBot():
             time.sleep(cool_down_seconds)
         return failures
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade(self, *args, **kwargs):
         '''
         [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
@@ -478,7 +478,7 @@ class TradingBot():
         reporter = TradingReporter(**kwargs)
         return reporter
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def setup_market(self, **kwargs):
         log.debug('')
         market = TradingMarket(

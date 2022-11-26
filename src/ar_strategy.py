@@ -47,6 +47,482 @@ class TradingStrategy():
             'trade': self.evaluate_trade,
         }
 
+    # STRATEGIES
+
+    @pysnooper.snoop()
+    def strategy_ma(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Moving Average
+
+        [ NOTE ]: Technical indicator that sums up the data points of a financial
+                  security over a specific time period and divides the total by
+                  the number of data points to arrive at an average.
+
+                  It's called a "Moving" Average because it is continually
+                  recalculated based on the latest price data.
+
+        [ NOTE ]: Used to examine support and resistance by evaluating the
+                  movements of an assets price.
+
+        [ NOTE ]: The general rule is that if the price trades above the moving
+                  average, we’re in an uptrend. As long as we stay above the
+                  exponential moving average, we should expect higher prices.
+
+                  Conversely, if we’re trading below, we’re in a downtrend.
+                  As long as we trade below the moving average, we should expect
+                  lower prices.
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-trend': self.check_ma_bullish_trend(*args, **kwargs),
+            'bearish-trend': self.check_ma_bearish_trend(*args, **kwargs),
+            'interval': kwargs.get('ma-interval', kwargs.get('interval')),
+            'period': kwargs.get('ma-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'description': 'Moving Average Strategy',
+        }
+        if return_dict['bullish-trend']['flag']:
+            stdout_msg(
+                'MA Bullish Trend Confirmation detected! Triggered when price '
+                'is above MA.',  ok=True
+            )
+        elif return_dict['bearish-trend']['flag']:
+            stdout_msg(
+                'MA Bearish Trend Confirmation detected! Triggered when price '
+                'is below MA.', ok=True
+            )
+        return_dict['risk'] = self.compute_ma_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict[label]['flag'] for label in (
+                'bullish-trend', 'bearish-trend'
+            )
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-trend', 'bearish-trend'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+    @pysnooper.snoop()
+    def strategy_ema(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Exponential Moving Average
+
+        [ NOTE ]: A Moving Average which gives more weight to the most recent
+                  price points to make it more responsive to recent data points.
+
+        [ NOTE ]: For more details check docstring of method strategy_ma()
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-trend': self.check_ema_bullish_trend(*args, **kwargs),
+            'bearish-trend': self.check_ema_bearish_trend(*args, **kwargs),
+            'interval': kwargs.get('ema-interval', kwargs.get('interval')),
+            'period': kwargs.get('ema-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'description': 'Exponential Moving Average Strategy',
+        }
+        if return_dict['bullish-trend']['flag']:
+            stdout_msg(
+                'EMA Bullish Trend Confirmation detected! Triggered when price '
+                'is above EMA.',  ok=True
+            )
+        elif return_dict['bearish-trend']['flag']:
+            stdout_msg(
+                'EMA Bearish Trend Confirmation detected! Triggered when price '
+                'is below EMA.', ok=True
+            )
+        return_dict['risk'] = self.compute_ema_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict[label]['flag'] for label in (
+                'bullish-trend', 'bearish-trend'
+            )
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-trend', 'bearish-trend'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+#   @pysnooper.snoop()
+    def strategy_vwap(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Volume Weighted Average Price
+
+        [ NOTE ]: Buy when price is trading below VWAP and then breaks to begin
+                  to trade above it - Bullish Trend Confirmation
+
+        [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
+                  to trade below it - Bearish Trend Confirmation
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-crossover': self.check_vwap_bullish_trend_confirmation(*args, **kwargs),
+            'bearish-crossover': self.check_vwap_bearish_trend_confirmation(*args, **kwargs),
+            'interval': kwargs.get('vwap-interval', kwargs.get('interval')),
+            'period': kwargs.get('vwap-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'description': 'Volume Weighted Average Price Strategy',
+        }
+        if return_dict['bullish-crossover']['flag']:
+            stdout_msg(
+                'VWAP Bullish Trend Confirmation detected! Triggered when when '
+                'price is trading below VWAP and then breaks to begin to trade '
+                'above it.',  ok=True
+            )
+        elif return_dict['bearish-crossover']['flag']:
+            stdout_msg(
+                'VWAP Bearish Trend Confirmation detected! Triggered when price '
+                'is trading above VWAP and the breaks to begin to trade below it ',
+                ok=True
+            )
+        return_dict['risk'] = self.compute_vwap_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict[label]['flag'] for label in (
+                'bullish-crossover', 'bearish-crossover'
+            )
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-crossover', 'bearish-crossover'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+#   @pysnooper.snoop()
+    def strategy_rsi(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Relative Strength Index
+
+        [ NOTE ]: When to buy? When a Bullish Divergence occurs (when price
+                  makes lower lows but RSI makes higher lows).
+
+                  This could be a sign that downward momentum is waining and a
+                  bullish reversal may follow.
+
+                  After spotting a Bullish Divergence an investor might use a
+                  crossback above 30 as an entry signal.
+
+        [ NOTE ]: When to sell? When a Bearish Divergence occurs (when price
+                  makes higher highs, but RSI makes lower highs).
+
+                  This could be a sign that upward momentum is slowing, and a
+                  Bearish Reversal may occur.
+
+                  After spotting a Bearish Divergence an investor might use a
+                  crossback below 70 as an exit signal.
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-divergence': self.check_rsi_bullish_divergence(*args, **kwargs),
+            'bearish-divergence': self.check_rsi_bearish_divergence(*args, **kwargs),
+            'interval': kwargs.get('rsi-interval', kwargs.get('interval')),
+            'period': kwargs.get('rsi-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'side': '',
+            'description': 'Relative Strength Index Strategy',
+        }
+
+        if return_dict['bullish-divergence']['flag']:
+            stdout_msg('RSI Bullish Divergence detected!')
+        elif return_dict['bearish-divergence']['flag']:
+            stdout_msg('RSI Bearish Divergence detected!')
+
+        return_dict['risk'] = self.compute_rsi_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if True in [
+            return_dict[label]['flag'] for label in (
+                'bullish-divergence', 'bearish-divergence',
+            )
+        ] else False
+
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-divergence', 'bearish-divergence'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+#   @pysnooper.snoop()
+    def strategy_macd(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Moving Average Convergence Divergence
+
+        [ NOTE ]: When to buy? Glad you asked!
+                  When a Bullish Crossover occurs (when MACD crosses above its
+                  signal line following a brief downside correction within a
+                  long-term uptrend)
+
+                  or when a Bullish Divergence occurs (when MACD makes two rising
+                  lows corresponding with two falling lows in the price).
+
+        [ NOTE ]: When to sell?... well ok, guess we're doing this now -
+                  When a Bearish Crossover occurs (when MACD crosses below it's
+                  signal line following a brief move higher withing a long-term
+                  downtrend)
+
+                  or when a Bearish Divergence occurs (when MACD forms a series
+                  of two falling highs that correspond with two rising highs in
+                  the price).
+
+        [ NOTE ]: A Bearish Divergence that appears during a long-term bearish
+                  trend is considered confirmation that the trend is likely to
+                  continue.
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-crossover': self.check_macd_bullish_crossover(*args, **kwargs),
+            'bearish-crossover': self.check_macd_bearish_crossover(*args, **kwargs),
+            'bullish-divergence': self.check_macd_bullish_divergence(*args, **kwargs),
+            'bearish-divergence': self.check_macd_bearish_divergence(*args, **kwargs),
+            'interval': kwargs.get('macd-interval', kwargs.get('interval')),
+            'period': kwargs.get('macd-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'side': '',
+            'description': 'Moving Average Convergence Divergence Strategy',
+        }
+
+        if return_dict['bullish-crossover']['flag']:
+            stdout_msg('MACD Bullish Crossover detected!')
+        elif return_dict['bearish-crossover']['flag']:
+            stdout_msg('MACD Bearish Crossover detected!')
+
+        if return_dict['bullish-divergence']['flag']:
+            stdout_msg('MACD Bullish Divergence detected!')
+        elif return_dict['bearish-divergence']['flag']:
+            stdout_msg('MACD Bearish Divergence detected!')
+
+        return_dict['risk'] = self.compute_macd_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if True in [
+            return_dict[label]['flag'] for label in (
+                'bullish-crossover', 'bearish-crossover',
+                'bullish-divergence', 'bearish-divergence',
+            )
+        ] else False
+
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-crossover', 'bearish-crossover',
+                    'bullish-divergence', 'bearish-divergence'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+    def strategy_adx(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Average Directional Index
+
+        [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
+                  25 and the +DI line moves upward, which is from below to above
+                  the -DI line), we must buy at the next candle after the
+                  Crossover and place the stop-loss lower than the previous candle.
+
+        [ NOTE ]: When a Bearish Crossover occurs (when the ADX line is above 25
+                  and the +DI line moves downward, which is from above to below
+                  the -DI line), we must sell at the next candle after the
+                  Crossover and place the stop-loss higher than the previous candle.
+
+        [ INPUT ]:
+        [ RETURN ]:
+        '''
+        log.debug('')
+        return_dict = {
+            'bullish-crossover': self.check_adx_bullish_crossover(*args, **kwargs),
+            'bearish-crossover': self.check_adx_bearish_crossover(*args, **kwargs),
+            'interval': kwargs.get('adx-interval', kwargs.get('interval')),
+            'period': kwargs.get('adx-period', kwargs.get('period')),
+            'risk': 0,
+            'trade': False,
+            'description': 'Average Directional Index Strategy',
+        }
+        if return_dict['bullish-crossover']['flag']:
+            stdout_msg(
+                'ADX Bullish Crossover detected! Triggered when ADX is above '
+                '{} and +DI goes from bellow to above -DI.'
+                .format(self.adx_bottom),  ok=True
+            )
+        elif return_dict['bearish-crossover']['flag']:
+            stdout_msg(
+                'ADX Bearish Crossover detected! Triggered when ADX is above '
+                '{} and +DI goes from above to below -DI. '
+                .format(self.adx_bottom),
+                ok=True
+            )
+        return_dict['risk'] = self.compute_adx_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict['bullish-crossover']['flag'],
+            return_dict['bearish-crossover']['flag'],
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = [
+                return_dict[item]['side'] for item in (
+                    'bullish-crossover', 'bearish-crossover'
+                ) if return_dict[item]['flag']
+            ][0]
+        return return_dict
+
+    def strategy_volume(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Trading Volume
+        [ NOTE ]: A large volume movement upwards can validate a large price
+                  movement either side.
+        [ INPUT ]:
+        [ RETURN ]: {
+            'volume-movement': {flag: True, ...},
+            'interval': '1h',
+            'period': 14,
+            'value': 20903.77,
+            'risk': 3,
+            'side': 'buy',
+            'trade': True,
+            'description': 'Volume Strategy',
+        }
+        '''
+        log.debug('')
+        return_dict = {
+            'volume-movement': self.check_large_volume_movement(*args, **kwargs),
+            'interval': kwargs.get('volume-interval', kwargs.get('interval')),
+            'period': kwargs.get('volume-period', kwargs.get('period')),
+            'value': kwargs.get('volume'),
+            'risk': 0,
+            'side': '',
+            'trade': False,
+            'description': 'Volume Strategy',
+        }
+        return_dict['risk'] = self.compute_volume_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = False if return_dict['risk'] \
+            > self.risk_tolerance or return_dict['risk'] == 0 else True
+        return_dict['side'] = '' if not return_dict['trade'] \
+            else return_dict['volume-movement']['side']
+        return return_dict
+
+#   @pysnooper.snoop()
+    def strategy_price(self, *args, **kwargs):
+        '''
+        [ STRATEGY ]: Price Action
+
+        [ NOTE ]: Generates weak buy signal when it detects a large price
+                  movement up, and a sell signal when it detects a large price
+                  movement down. The signal is strengthened when the price
+                  movement is confirmed by a large volume movement up.
+
+        [ INPUT ]: kwargs[details] {
+            'ticker-symbol': 'BTC/USDT',
+            'buy-price': 20903.77,
+            'sell-price': 20904.5,
+            'volume': 7270.56273,
+            'indicators': {
+                'adx': 25.79249660682844,
+                'macd': -55.08962670456458,
+                'macd-signal': -18.088430567653305,
+                'macd-hist': -37.001196136911275,
+                'ma': 21216.220666666643,
+                'ema': 21216.220700066643,
+                'rsi': 25.931456303405913,
+                'vwap': 20592.650164735693
+            },
+            'history': {
+                'price-support': 1234,
+                'price-resistance': 1235,
+                'price': [{'value': 1234, backtrack: 1}, ...],
+                'volume': [{'value': 1234, backtrack: 1}, ...],
+                "adx": [{'value': 1234, backtrack: 1}, ...],
+                "+di": [{'value': 1234, backtrack: 1}, ...],
+                "-di": [{'value': 1234, backtrack: 1}, ...],
+                'macd': [{'value': 1234, backtrack: 1}, ...],
+                'macd-signal': [{'value': 1234, backtrack: 1}, ...],
+                'macd-hist': [{'value': 1234, backtrack: 1}, ...],
+                'ma': [{'value': 1234, backtrack: 1}, ...],
+                'ema': [{'value': 1234, backtrack: 1}, ...],
+                'rsi': [{'value': 1234, backtrack: 1}, ...],
+                'vwap': [{'value': 1234, backtrack: 1}, ...],
+            }
+        }
+
+        [ RETURN ]: {
+            'price-movement': {flag: True, ...},
+            'confirmed-by-volume': {flag: True, volume: {flag: ...}},
+            'interval': '1h',
+            'period': 14,
+            'value': 20903.77,
+            'risk': 3,
+            'side': 'buy',
+            'trade': True,
+            'description': 'Price Action Strategy',
+        }
+        '''
+        log.debug('')
+        return_dict = {
+            'price-movement': self.check_large_price_movement(*args, **kwargs),
+            'confirmed-by-volume': {},
+            'interval': kwargs.get('price-interval', kwargs.get('interval')),
+            'period': kwargs.get('price-period', kwargs.get('period')),
+            'value': kwargs.get('details', {}).get('sell-price') \
+                if kwargs.get('side') == 'sell' \
+                else kwargs.get('details', {}).get('buy-price'),
+            'risk': 0,
+            'side': '',
+            'trade': False,
+            'description': 'Price Action Strategy',
+        }
+        if return_dict['price-movement']['flag']:
+            stdout_msg(
+                'Large {}% price movement detected! Triggered over {}%'.format(
+                    move_percent, price_movement
+                ), ok=True
+            )
+            details = kwargs.copy()
+            details.update({
+                'volume-period': kwargs.get('price-period', kwargs.get('period')),
+                'volume-interval': kwargs.get('price-interval', kwargs.get('interval')),
+            })
+            return_dict['confirmed-by-volume'] = \
+                self.check_price_movement_confirmed_by_volume(
+                    return_dict['price-movement'], **details
+                )
+        if return_dict['confirmed-by-volume'] and \
+                not return_dict['confirmed-by-volume'].get('error'):
+            if return_dict['confirmed-by-volume'].get('flag'):
+                stdout_msg(
+                    'Large {}% volume movement detected! Triggered over {}%\n'
+                    'Price movement validated by volume!'.format(
+                        return_dict['confirmed-by-volume'].get('moved-percentage'),
+                        return_dict['confirmed-by-volume'].get('trigger-percentage')
+                    ), ok=True
+                )
+        return_dict['risk'] = self.compute_price_trade_risk(return_dict, **kwargs)
+        return_dict['trade'] = False if return_dict['risk'] \
+            > self.risk_tolerance or return_dict['risk'] == 0 else True
+        return_dict['side'] = '' if not return_dict['trade'] \
+            else return_dict['price-movement']['side']
+        return return_dict
+
     # FETCHERS
 
     # SETTERS
@@ -59,6 +535,112 @@ class TradingStrategy():
         return self.risk_tolerance
 
     # CHECKERS
+
+    def check_ma_bullish_trend(self, *args, **kwargs):
+        '''
+        [ NOTE ]:
+        '''
+        log.debug('')
+        trend = self.check_ma_trend(*args, direction='bullish', **kwargs)
+        if trend['flag'] and trend['price-direction'] == 'up' \
+                and trend['scan']['start2'] < trend['scan']['start1']:
+            trend['side'] = 'buy'
+        else:
+            trend['flag'] = False
+        return trend
+
+    def check_ma_bearish_trend(self, *args, **kwargs):
+        '''
+        [ NOTE ]:
+        '''
+        log.debug('')
+        trend = self.check_ma_trend(*args, direction='bearish', **kwargs)
+        if trend['flag'] and trend['price-direction'] == 'down' \
+                and trend['scan']['start2'] > trend['scan']['start1']:
+            trend['side'] = 'sell'
+        else:
+            trend['flag'] = False
+        return trend
+
+    def check_ma_trend(self, *args, direction='bullish', **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
+        ma_values = {
+            'ma': [ float(details['ma'][index]['value'])
+                    for index in range(len(details['ma'])) ],
+            'price': [ float(details['price'][index]['value'])
+                     for index in range(len(details['price'])) ],
+        }
+        scan = scan_value_sets(
+            ma_values['ma'], ma_values['price'],
+            look_for='above' if direction == 'bullish' else 'below'
+        )
+        return_dict = {
+            'flag': scan['flag'],
+            'start-candle': details['ema'][len(details['ema'])-1]['backtrack'],
+            'stop-candle': details['ema'][0]['backtrack'],
+            'ma-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'side': '',
+            'values': ma_values,
+            'scan': scan,
+        }
+        return return_dict
+
+    def check_ema_bullish_trend(self, *args, **kwargs):
+        '''
+        [ NOTE ]:
+        '''
+        log.debug('')
+        trend = self.check_ema_trend(*args, direction='bullish', **kwargs)
+        if trend['flag'] and trend['price-direction'] == 'up' \
+                and trend['scan']['start2'] < trend['scan']['start1']:
+            trend['side'] = 'buy'
+        else:
+            trend['flag'] = False
+        return trend
+
+    def check_ema_bearish_trend(self, *args, **kwargs):
+        '''
+        [ NOTE ]:
+        '''
+        log.debug('')
+        trend = self.check_ema_trend(*args, direction='bearish', **kwargs)
+        if trend['flag'] and trend['price-direction'] == 'down' \
+                and trend['scan']['start2'] > trend['scan']['start1']:
+            trend['side'] = 'sell'
+        else:
+            trend['flag'] = False
+        return trend
+
+    def check_ema_trend(self, *args, direction='bullish', **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
+        ema_values = {
+            'ema': [ float(details['ema'][index]['value'])
+                    for index in range(len(details['ema'])) ],
+            'price': [ float(details['price'][index]['value'])
+                     for index in range(len(details['price'])) ],
+        }
+        scan = scan_value_sets(
+            ema_values['ema'], ema_values['price'],
+            look_for='above' if direction == 'bullish' else 'below'
+        )
+        return_dict = {
+            'flag': scan['flag'],
+            'start-candle': details['ema'][len(details['ema'])-1]['backtrack'],
+            'stop-candle': details['ema'][0]['backtrack'],
+            'ema-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'side': '',
+            'values': ema_values,
+            'scan': scan,
+        }
+        return return_dict
 
     def check_vwap_bullish_trend_confirmation(self, *args, **kwargs):
         '''
@@ -547,6 +1129,12 @@ class TradingStrategy():
     # COMPUTERS
 
     # TODO
+    def compute_ma_trade_risk(self, return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
+    def compute_ema_trade_risk(self, return_dict, **kwargs):
+        log.debug('TODO - Under construction, building...')
+        return 0
     def compute_vwap_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
@@ -554,9 +1142,6 @@ class TradingStrategy():
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_macd_trade_risk(self, return_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        return 0
-    def compute_trade_flag(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_adx_trade_risk(self, return_dict, **kwargs):
@@ -589,36 +1174,21 @@ class TradingStrategy():
 
     # EVALUATORS
 
-
-    # TODO
+#   @pysnooper.snoop()
     def evaluate_buy(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
+        log.debug('')
         instruction_set = kwargs.copy()
         instruction_set.update({'side': 'buy'})
         return self.evaluate_risk(evaluations_dict, **instruction_set)
-#       if not evaluations_dict:
-#           return False
-#       trade_flag, risk_index = False, 0
-#       return trade_flag, risk_index
+
+#   @pysnooper.snoop()
     def evaluate_sell(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
+        log.debug('')
         instruction_set = kwargs.copy()
         instruction_set.update({'side': 'sell'})
         return self.evaluate_risk(evaluations_dict, **instruction_set)
-#       if not evaluations_dict:
-#           return False
-#       trade_flag, risk_index = False, 0
-#       risk_values = [
-#           int(evaluations_dict[indicator_label]['risk'])
-#           for indicator_label in evaluations_dict
-#       ]
-#       risk_index = sum(risk_values) / len(risk_values)
-#       trade_flag = True if risk_index <= self.risk_tolerance \
-#           and risk_index != 0 else False
-#       return trade_flag, risk_index
 
-
-
+    @pysnooper.snoop()
     def evaluate_risk(self, evaluations_dict, **kwargs):
         '''
         [ NOTE ]: Risk index is evaluated from the given indicator/strategy count
@@ -638,9 +1208,9 @@ class TradingStrategy():
             ...
         }
         '''
-        log.debug('TODO - Under construction, building...')
-        log.info('evaluations_dict - {}'.format(evaluations_dict))
-        log.info('kwargs - {}'.format(kwargs))
+        log.debug('')
+        log.debug('evaluations_dict - {}'.format(evaluations_dict))
+        log.debug('kwargs - {}'.format(kwargs))
         if not evaluations_dict:
             stdout_msg(
                 'Necessary data set for risk evaluation not found!', err=True
@@ -711,410 +1281,11 @@ class TradingStrategy():
         log.debug('')
         return self.base_evaluators['trade'](evaluations_dict, **kwargs)
 
-    # STRATEGIES
-
-    # TODO
-    def strategy_ma(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Moving Average
-
-        [ NOTE ]: Technical indicator that sums up the data points of a financial
-                  security over a specific time period and divides the total by
-                  the number of data points to arrive at an average.
-
-                  It's called a "Moving" Average because it is continually
-                  recalculated based on the latest price data.
-
-        [ NOTE ]: Used to examine support and resistance by evaluating the
-                  movements of an assets price.
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('TODO - Under construction, building...')
-        # TODO - Research
-    def strategy_ema(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Exponential Moving Average
-
-        [ NOTE ]: A Moving Average which gives more weight to the most recent
-                  price points to make it more responsive to recent data points.
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('TODO - Under construction, building...')
-        # TODO - Research
-
-    @pysnooper.snoop()
-    def strategy_vwap(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Volume Weighted Average Price
-
-        [ NOTE ]: Buy when price is trading below VWAP and then breaks to begin
-                  to trade above it - Bullish Trend Confirmation
-
-        [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
-                  to trade below it - Bearish Trend Confirmation
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('')
-        return_dict = {
-            'bullish-crossover': self.check_vwap_bullish_trend_confirmation(*args, **kwargs),
-            'bearish-crossover': self.check_vwap_bearish_trend_confirmation(*args, **kwargs),
-            'interval': kwargs.get('vwap-interval', kwargs.get('interval')),
-            'period': kwargs.get('vwap-period', kwargs.get('period')),
-            'risk': 0,
-            'trade': False,
-            'description': 'Volume Weighted Average Price Strategy',
-        }
-        if return_dict['bullish-crossover']['flag']:
-            stdout_msg(
-                'VWAP Bullish Trend Confirmation detected! Triggered when when '
-                'price is trading below VWAP and then breaks to begin to trade '
-                'above it.',  ok=True
-            )
-        elif return_dict['bearish-crossover']['flag']:
-            stdout_msg(
-                'VWAP Bearish Trend Confirmation detected! Triggered when price '
-                'is trading above VWAP and the breaks to begin to trade below it ',
-                ok=True
-            )
-        return_dict['risk'] = self.compute_vwap_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = True if check_majority_in_set(True, [
-            return_dict[label]['flag'] for label in (
-                'bullish-crossover', 'bearish-crossover'
-            )
-        ]) else False
-        if return_dict['trade']:
-            return_dict['side'] = [
-                return_dict[item]['side'] for item in (
-                    'bullish-crossover', 'bearish-crossover'
-                ) if return_dict[item]['flag']
-            ][0]
-        return return_dict
-
-    @pysnooper.snoop()
-    def strategy_rsi(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Relative Strength Index
-
-        [ NOTE ]: When to buy? When a Bullish Divergence occurs (when price
-                  makes lower lows but RSI makes higher lows).
-
-                  This could be a sign that downward momentum is waining and a
-                  bullish reversal may follow.
-
-                  After spotting a Bullish Divergence an investor might use a
-                  crossback above 30 as an entry signal.
-
-        [ NOTE ]: When to sell? When a Bearish Divergence occurs (when price
-                  makes higher highs, but RSI makes lower highs).
-
-                  This could be a sign that upward momentum is slowing, and a
-                  Bearish Reversal may occur.
-
-                  After spotting a Bearish Divergence an investor might use a
-                  crossback below 70 as an exit signal.
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('')
-        return_dict = {
-            'bullish-divergence': self.check_rsi_bullish_divergence(*args, **kwargs),
-            'bearish-divergence': self.check_rsi_bearish_divergence(*args, **kwargs),
-            'interval': kwargs.get('rsi-interval', kwargs.get('interval')),
-            'period': kwargs.get('rsi-period', kwargs.get('period')),
-            'risk': 0,
-            'trade': False,
-            'side': '',
-            'description': 'Relative Strength Index Strategy',
-        }
-
-        if return_dict['bullish-divergence']['flag']:
-            stdout_msg('RSI Bullish Divergence detected!')
-        elif return_dict['bearish-divergence']['flag']:
-            stdout_msg('RSI Bearish Divergence detected!')
-
-        return_dict['risk'] = self.compute_rsi_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = True if True in [
-            return_dict[label]['flag'] for label in (
-                'bullish-divergence', 'bearish-divergence',
-            )
-        ] else False
-
-        if return_dict['trade']:
-            return_dict['side'] = [
-                return_dict[item]['side'] for item in (
-                    'bullish-divergence', 'bearish-divergence'
-                ) if return_dict[item]['flag']
-            ][0]
-        return return_dict
-
-    @pysnooper.snoop()
-    def strategy_macd(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Moving Average Convergence Divergence
-
-        [ NOTE ]: When to buy? Glad you asked!
-                  When a Bullish Crossover occurs (when MACD crosses above its
-                  signal line following a brief downside correction within a
-                  long-term uptrend)
-
-                  or when a Bullish Divergence occurs (when MACD makes two rising
-                  lows corresponding with two falling lows in the price).
-
-        [ NOTE ]: When to sell?... well ok, guess we're doing this now -
-                  When a Bearish Crossover occurs (when MACD crosses below it's
-                  signal line following a brief move higher withing a long-term
-                  downtrend)
-
-                  or when a Bearish Divergence occurs (when MACD forms a series
-                  of two falling highs that correspond with two rising highs in
-                  the price).
-
-        [ NOTE ]: A Bearish Divergence that appears during a long-term bearish
-                  trend is considered confirmation that the trend is likely to
-                  continue.
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('')
-        return_dict = {
-            'bullish-crossover': self.check_macd_bullish_crossover(*args, **kwargs),
-            'bearish-crossover': self.check_macd_bearish_crossover(*args, **kwargs),
-            'bullish-divergence': self.check_macd_bullish_divergence(*args, **kwargs),
-            'bearish-divergence': self.check_macd_bearish_divergence(*args, **kwargs),
-            'interval': kwargs.get('macd-interval', kwargs.get('interval')),
-            'period': kwargs.get('macd-period', kwargs.get('period')),
-            'risk': 0,
-            'trade': False,
-            'side': '',
-            'description': 'Moving Average Convergence Divergence Strategy',
-        }
-
-        if return_dict['bullish-crossover']['flag']:
-            stdout_msg('MACD Bullish Crossover detected!')
-        elif return_dict['bearish-crossover']['flag']:
-            stdout_msg('MACD Bearish Crossover detected!')
-
-        if return_dict['bullish-divergence']['flag']:
-            stdout_msg('MACD Bullish Divergence detected!')
-        elif return_dict['bearish-divergence']['flag']:
-            stdout_msg('MACD Bearish Divergence detected!')
-
-        return_dict['risk'] = self.compute_macd_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = True if True in [
-            return_dict[label]['flag'] for label in (
-                'bullish-crossover', 'bearish-crossover',
-                'bullish-divergence', 'bearish-divergence',
-            )
-        ] else False
-
-        if return_dict['trade']:
-            return_dict['side'] = [
-                return_dict[item]['side'] for item in (
-                    'bullish-crossover', 'bearish-crossover',
-                    'bullish-divergence', 'bearish-divergence'
-                ) if return_dict[item]['flag']
-            ][0]
-        return return_dict
-
-    def strategy_adx(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Average Directional Index
-
-        [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
-                  25 and the +DI line moves upward, which is from below to above
-                  the -DI line), we must buy at the next candle after the
-                  Crossover and place the stop-loss lower than the previous candle.
-
-        [ NOTE ]: When a Bearish Crossover occurs (when the ADX line is above 25
-                  and the +DI line moves downward, which is from above to below
-                  the -DI line), we must sell at the next candle after the
-                  Crossover and place the stop-loss higher than the previous candle.
-
-        [ INPUT ]:
-        [ RETURN ]:
-        '''
-        log.debug('')
-        return_dict = {
-            'bullish-crossover': self.check_adx_bullish_crossover(*args, **kwargs),
-            'bearish-crossover': self.check_adx_bearish_crossover(*args, **kwargs),
-            'interval': kwargs.get('adx-interval', kwargs.get('interval')),
-            'period': kwargs.get('adx-period', kwargs.get('period')),
-            'risk': 0,
-            'trade': False,
-            'description': 'Average Directional Index Strategy',
-        }
-        if return_dict['bullish-crossover']['flag']:
-            stdout_msg(
-                'ADX Bullish Crossover detected! Triggered when ADX is above '
-                '{} and +DI goes from bellow to above -DI.'
-                .format(self.adx_bottom),  ok=True
-            )
-        elif return_dict['bearish-crossover']['flag']:
-            stdout_msg(
-                'ADX Bearish Crossover detected! Triggered when ADX is above '
-                '{} and +DI goes from above to below -DI. '
-                .format(self.adx_bottom),
-                ok=True
-            )
-        return_dict['risk'] = self.compute_adx_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = True if check_majority_in_set(True, [
-            return_dict['bullish-crossover']['flag'],
-            return_dict['bearish-crossover']['flag'],
-        ]) else False
-        if return_dict['trade']:
-            return_dict['side'] = [
-                return_dict[item]['side'] for item in (
-                    'bullish-crossover', 'bearish-crossover'
-                ) if return_dict[item]['flag']
-            ][0]
-        return return_dict
-
-    def strategy_volume(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Trading Volume
-        [ NOTE ]: A large volume movement upwards can validate a large price
-                  movement either side.
-        [ INPUT ]:
-        [ RETURN ]: {
-            'volume-movement': {flag: True, ...},
-            'interval': '1h',
-            'period': 14,
-            'value': 20903.77,
-            'risk': 3,
-            'side': 'buy',
-            'trade': True,
-            'description': 'Volume Strategy',
-        }
-        '''
-        log.debug('')
-        return_dict = {
-            'volume-movement': self.check_large_volume_movement(*args, **kwargs),
-            'interval': kwargs.get('volume-interval', kwargs.get('interval')),
-            'period': kwargs.get('volume-period', kwargs.get('period')),
-            'value': kwargs.get('volume'),
-            'risk': 0,
-            'side': '',
-            'trade': False,
-            'description': 'Volume Strategy',
-        }
-        return_dict['risk'] = self.compute_volume_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = False if return_dict['risk'] \
-            > self.risk_tolerance or return_dict['risk'] == 0 else True
-        return_dict['side'] = '' if not return_dict['trade'] \
-            else return_dict['volume-movement']['side']
-        return return_dict
-
-    @pysnooper.snoop()
-    def strategy_price(self, *args, **kwargs):
-        '''
-        [ STRATEGY ]: Price Action
-
-        [ NOTE ]: Generates weak buy signal when it detects a large price
-                  movement up, and a sell signal when it detects a large price
-                  movement down. The signal is strengthened when the price
-                  movement is confirmed by a large volume movement up.
-
-        [ INPUT ]: kwargs[details] {
-            'ticker-symbol': 'BTC/USDT',
-            'buy-price': 20903.77,
-            'sell-price': 20904.5,
-            'volume': 7270.56273,
-            'indicators': {
-                'adx': 25.79249660682844,
-                'macd': -55.08962670456458,
-                'macd-signal': -18.088430567653305,
-                'macd-hist': -37.001196136911275,
-                'ma': 21216.220666666643,
-                'ema': 21216.220700066643,
-                'rsi': 25.931456303405913,
-                'vwap': 20592.650164735693
-            },
-            'history': {
-                'price-support': 1234,
-                'price-resistance': 1235,
-                'price': [{'value': 1234, backtrack: 1}, ...],
-                'volume': [{'value': 1234, backtrack: 1}, ...],
-                "adx": [{'value': 1234, backtrack: 1}, ...],
-                "+di": [{'value': 1234, backtrack: 1}, ...],
-                "-di": [{'value': 1234, backtrack: 1}, ...],
-                'macd': [{'value': 1234, backtrack: 1}, ...],
-                'macd-signal': [{'value': 1234, backtrack: 1}, ...],
-                'macd-hist': [{'value': 1234, backtrack: 1}, ...],
-                'ma': [{'value': 1234, backtrack: 1}, ...],
-                'ema': [{'value': 1234, backtrack: 1}, ...],
-                'rsi': [{'value': 1234, backtrack: 1}, ...],
-                'vwap': [{'value': 1234, backtrack: 1}, ...],
-            }
-        }
-
-        [ RETURN ]: {
-            'price-movement': {flag: True, ...},
-            'confirmed-by-volume': {flag: True, volume: {flag: ...}},
-            'interval': '1h',
-            'period': 14,
-            'value': 20903.77,
-            'risk': 3,
-            'side': 'buy',
-            'trade': True,
-            'description': 'Price Action Strategy',
-        }
-        '''
-        log.debug('')
-        return_dict = {
-            'price-movement': self.check_large_price_movement(*args, **kwargs),
-            'confirmed-by-volume': {},
-            'interval': kwargs.get('price-interval', kwargs.get('interval')),
-            'period': kwargs.get('price-period', kwargs.get('period')),
-            'value': kwargs.get('details', {}).get('sell-price') \
-                if kwargs.get('side') == 'sell' \
-                else kwargs.get('details', {}).get('buy-price'),
-            'risk': 0,
-            'side': '',
-            'trade': False,
-            'description': 'Price Action Strategy',
-        }
-        if return_dict['price-movement']['flag']:
-            stdout_msg(
-                'Large {}% price movement detected! Triggered over {}%'.format(
-                    move_percent, price_movement
-                ), ok=True
-            )
-            details = kwargs.copy()
-            details.update({
-                'volume-period': kwargs.get('price-period', kwargs.get('period')),
-                'volume-interval': kwargs.get('price-interval', kwargs.get('interval')),
-            })
-            return_dict['confirmed-by-volume'] = \
-                self.check_price_movement_confirmed_by_volume(
-                    return_dict['price-movement'], **details
-                )
-        if return_dict['confirmed-by-volume'] and \
-                not return_dict['confirmed-by-volume'].get('error'):
-            if return_dict['confirmed-by-volume'].get('flag'):
-                stdout_msg(
-                    'Large {}% volume movement detected! Triggered over {}%\n'
-                    'Price movement validated by volume!'.format(
-                        return_dict['confirmed-by-volume'].get('moved-percentage'),
-                        return_dict['confirmed-by-volume'].get('trigger-percentage')
-                    ), ok=True
-                )
-        return_dict['risk'] = self.compute_price_trade_risk(return_dict, **kwargs)
-        return_dict['trade'] = False if return_dict['risk'] \
-            > self.risk_tolerance or return_dict['risk'] == 0 else True
-        return_dict['side'] = '' if not return_dict['trade'] \
-            else return_dict['price-movement']['side']
-        return return_dict
-
-
 # CODE DUMP
+
+#   def compute_trade_flag(self, evaluations_dict, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       return False
 
 #       details = kwargs['details']['history']
 #       adx_top = float(kwargs.get('adx-top', self.adx_top))
