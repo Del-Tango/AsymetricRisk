@@ -517,15 +517,14 @@ def create_command_line_parser():
 
 def process_command_line_options(parser):
     '''
-    [ NOTE ]: In order to avoid a bad time in STDOUT land, please process the
-              silence flag before all others.
+    [ NOTE ]:
     '''
     log.debug('')
     (options, args) = parser.parse_args()
     processed = {
+        'config_file': process_config_file_argument(parser, options),
         'silence_flag': process_silence_argument(parser, options),
         'debug_flag': process_debug_mode_argument(parser, options),
-        'config_file': process_config_file_argument(parser, options),
         'log_file': process_log_file_argument(parser, options),
         'action_csv': process_action_csv_argument(parser, options),
         'base_currency': process_base_currency_argument(parser, options),
@@ -1692,6 +1691,10 @@ def process_config_file_argument(parser, options):
     AR_DEFAULT['conf-file'] = filter_file_name_from_path(file_path)
     # NOTE: You must load_config_json() after setting a new config file path in
     #       order to benefit of the new configuration.
+    stdout_msg('Loading config file...', info=True)
+    config_setup = load_config_json()
+    if not config_setup:
+        stdout_msg('Could not load config file!', warn=True)
     stdout_msg(
         'Config file setup ({})'.format(AR_DEFAULT['conf-file']), ok=True
     )
@@ -2325,11 +2328,11 @@ if __name__ == '__main__':
     parse_command_line_arguments()
     if not update_log():
         stdout_msg('Could not properly set up logger!', warn=True)
-    stdout_msg('Loading config file...', info=True)
-    config_setup = load_config_json()
-    if not config_setup:
-        stdout_msg('Could not load config file!', warn=True)
-    clear_screen()
+    # NOTE: The first processed argument is the --config file. If the argument
+    # is given with a valid file path, the new config loaded, after which the
+    # rest of the arguments are processed.
+    # TODO - Uncomment 1 down
+#   clear_screen()
     EXIT_CODE = 1
     try:
         log.debug('AR_DEFAULT - {}'.format(AR_DEFAULT))

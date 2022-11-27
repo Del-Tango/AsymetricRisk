@@ -452,6 +452,7 @@ class TradingMarket(Client):
     # GENERAL
 
     # TODO - add take profit and stop loss / trailing stop limits
+    # TODO - Check max trade target achieved for current day
     @pysnooper.snoop()
     def buy(self, amount, *args, take_profit=None, stop_loss=None,
             trailing_stop=None, **kwargs):
@@ -483,6 +484,7 @@ class TradingMarket(Client):
         return order
 
     # TODO - add take profit and stop loss / trailing stop limits
+    # TODO - Check max trade target achieved for current day
     @pysnooper.snoop()
     def sell(self, amount, *args, take_profit=None, stop_loss=None,
              trailing_stop=None,  **kwargs):
