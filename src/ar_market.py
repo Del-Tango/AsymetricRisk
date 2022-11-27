@@ -655,7 +655,7 @@ class TradingMarket(Client):
             'price-resistance': None,
         }}
         details = kwargs.copy()
-        stdout_msg('Updating market price/volume history...', info=True)
+        stdout_msg('Updating market price action history...', info=True)
         if not kwargs.get('backtrack') and not kwargs.get('backtracks'):
             stdout_msg(
                 'No default backtrack(s) values specified! '
@@ -887,12 +887,14 @@ class TradingMarket(Client):
             'volume-backtracks': None,
         })
         stdout_msg('Updating market indicator details...', info=True)
-        stdout_msg(
-            'This may take a long time! If you used free API keys from \n{} '
-            'leave the default of 18 seconds between API calls.\nIf not - you '
-            'can speed this process up by modifying the \nindicator-update-delay '
-            'value in the .config file in accordance with the \nplan you purchased.'
-            .format(self.taapi_url), warn=True)
+        if kwargs.get('indicator-update-delay'):
+            stdout_msg(
+                'This may take a long time! If you used free API keys from \n{} '
+                'leave the default of 18 seconds between API calls.\nIf not - you '
+                'can speed this process up by modifying the \nindicator-update-delay '
+                'value in the .config file in accordance with the \nplan you purchased.'
+                .format(self.taapi_url), warn=True
+            )
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'adx' in update_targets:
             self.adx, self.plusdi, self.minusdi = self.fetch_adx_value(**details)

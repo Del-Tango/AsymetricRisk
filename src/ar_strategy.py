@@ -554,6 +554,32 @@ class TradingStrategy():
 
     # CHECKERS
 
+    def check_vwap_crossover(self, *args, direction='bullish', **kwargs):
+        log.debug('')
+        details = kwargs['details']['history']
+        vwap_values = {
+            'vwap': [ float(details['vwap'][index]['value'])
+                    for index in range(len(details['vwap'])) ],
+            'price': [ float(details['price'][index]['value'])
+                     for index in range(len(details['price'])) ],
+        }
+        scan = scan_value_sets(
+            vwap_values['vwap'], vwap_values['price'], look_for='crossover'
+        )
+        return_dict = {
+            'flag': scan['flag'],
+            'start-candle': details['vwap'][len(details['vwap'])-1]['backtrack'],
+            'stop-candle': details['vwap'][0]['backtrack'],
+            'vwap-direction': scan['direction1'] if direction == 'bullish' \
+                else scan['direction2'],
+            'price-direction': scan['direction2'] if direction == 'bullish' \
+                else scan['direction1'],
+            'side': '',
+            'values': vwap_values,
+            'scan': scan,
+        }
+        return return_dict
+
     def check_ma_bullish_trend(self, *args, **kwargs):
         '''
         [ NOTE ]:
@@ -687,32 +713,6 @@ class TradingStrategy():
         else:
             crossover['flag'] = False
         return crossover
-
-    def check_vwap_crossover(self, *args, direction='bullish', **kwargs):
-        log.debug('')
-        details = kwargs['details']['history']
-        vwap_values = {
-            'vwap': [ float(details['vwap'][index]['value'])
-                    for index in range(len(details['vwap'])) ],
-            'price': [ float(details['price'][index]['value'])
-                     for index in range(len(details['price'])) ],
-        }
-        scan = scan_value_sets(
-            vwap_values['vwap'], vwap_values['price'], look_for='crossover'
-        )
-        return_dict = {
-            'flag': scan['flag'],
-            'start-candle': details['vwap'][len(details['vwap'])-1]['backtrack'],
-            'stop-candle': details['vwap'][0]['backtrack'],
-            'vwap-direction': scan['direction1'] if direction == 'bullish' \
-                else scan['direction2'],
-            'price-direction': scan['direction2'] if direction == 'bullish' \
-                else scan['direction1'],
-            'side': '',
-            'values': vwap_values,
-            'scan': scan,
-        }
-        return return_dict
 
     def check_rsi_bullish_divergence(self, *args, **kwargs):
         log.debug('')
@@ -1160,8 +1160,9 @@ class TradingStrategy():
                 'Invalid signal! Cannot look for ({}) in strategy evaluation!'
                 .format(signal), err=True
             )
+        instruction_set = kwargs.copy()
         signals = self.filter_signals_from_strategy_evaluation(
-            evaluations_dict, **kwargs
+            evaluations_dict, **instruction_set
         )
         if not signals:
             stdout_msg(
@@ -1181,16 +1182,30 @@ class TradingStrategy():
     def scan_strategy_evaluation_for_buy_signals(self, evaluations_dict,
                                                  *args, **kwargs):
         log.debug('')
-        return self.scan_strategy_evaluation_for_signals(
+        scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='buy', **kwargs
         )
+        log.info(pretty_dict_print(scan))
+#       stdout_msg(
+#           pretty_dict_print(scan), symbol='BUY',
+#           red=False if scan['flag'] else True,
+#           green=False if not scan['flag'] else True,
+#       )
+        return scan
 
     def scan_strategy_evaluation_for_sell_signals(self, evaluations_dict,
                                                   *args, **kwargs):
         log.debug('')
-        return self.scan_strategy_evaluation_for_signals(
+        scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='sell', **kwargs
         )
+        log.info(pretty_dict_print(scan))
+#       stdout_msg(
+#           pretty_dict_print(scan), symbol='SELL',
+#           red=False if scan['flag'] else True,
+#           green=False if not scan['flag'] else True,
+#       )
+        return scan
 
     # ACTIONS
 
@@ -1232,33 +1247,675 @@ class TradingStrategy():
 
     # COMPUTERS
 
-    # TODO - Called by the strategy methods
-    #      - Calculate trade strategy if stragy generated any kind of signal
-    #        based on current data
+    # [ NOTE ]: Usually called by the strategy methods.
+    #
+    #     [ EX ]: Risk computers calculate the possibility of success of a given
+    #             strategy based on the given data set containing market info -
+    #             created as a result of the previous strategy evaluation.
+
+    # TODO
     def compute_ma_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ NOTE ]:
+        [ INPUT ]: return_dict - {
+            "value": 16483.029333333347,
+            "bullish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ma-direction": "down",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "ma": [
+                        16482.977333333347,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16482.977333333347,
+                    "start2": 16505.62,
+                    "end1": 16467.150000000012,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "above": [
+                        16505.62,
+                        ...
+                    ],
+                    "below": [
+                        16482.977333333347,
+                        ...
+                    ]
+                }
+            },
+            "bearish-trend": {
+                "flag": true,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ma-direction": "down",
+                "price-direction": "down",
+                "side": "sell",
+                "values": {
+                    "ma": [
+                        16482.977333333347,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 16482.977333333347,
+                    "start2": 16505.62,
+                    "end1": 16467.150000000012,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "above": [
+                        16505.62,
+                        ...
+                    ],
+                    "below": [
+                        16482.977333333347,
+                        ...
+                    ]
+                }
+            },
+            "interval": "5m",
+            "period": 30,
+            "risk": 0,
+            "side": "sell",
+            "trade": true,
+            "description": "Moving Average Strategy"
+        }
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_ema_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ NOTE ]:
+        [ INPUT ]: return_dict - {
+            "value": 16487.849183889644,
+            "bullish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "down",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "ema": [
+                        16487.764022599324,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {                                                                                                                                                                                                                    [251/1151]
+                    "flag": false,
+                    "start1": 16487.764022599324,
+                    "start2": 16505.62,
+                    "end1": 16473.804433927868,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "above": [
+                        16505.62,
+                        ...
+                    ],
+                    "below": [
+                        16487.764022599324,
+                        ...
+                    ]
+                }
+            },
+            "bearish-trend": {                                                                                                                                                                                                               [213/1151]
+                "flag": true,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "down",
+                "price-direction": "down",
+                "side": "sell",
+                "values": {
+                    "ema": [
+                        16487.764022599324,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 16487.764022599324,
+                    "start2": 16505.62,
+                    "end1": 16473.804433927868,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "above": [
+                        16505.62,
+                        ...
+                    ],
+                    "below": [
+                        16487.764022599324,
+                        ...
+                    ]
+                }
+            },
+            "interval": "5m",
+            "period": 30,
+            "risk": 0,
+            "side": "sell",
+            "trade": true,
+            "description": "Exponential Moving Average Strategy"
+        }
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_vwap_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ NOTE ]:
+        [ INPUT ]: return_dict - {
+            "value": 16555.80715383378,
+            "bullish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "vwap-direction": "up",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "vwap": [
+                        16555.76937941112,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16555.76937941112,
+                    "start2": 16505.62,
+                    "end1": 16558.417521669006,
+                    "end2": 16489.36,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "bearish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "vwap-direction": "down",
+                "price-direction": "up",
+                "side": "",
+                "values": {
+                    "vwap": [
+                        16555.76937941112,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16555.76937941112,
+                    "start2": 16505.62,
+                    "end1": 16558.417521669006,
+                    "end2": 16489.36,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Volume Weighted Average Price Strategy"
+        }
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_rsi_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ NOTE ]:
+        [ INPUT ]: return_dict - {
+            "value": 58.90586376132454,
+            "bullish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "rsi-direction": "down",
+                "price-direction": "down",
+                "values": {
+                    "rsi": [
+                        55.326016988209915,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 55.326016988209915,
+                    "start2": 16505.62,
+                    "end1": 51.83256650185657,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            "bearish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "rsi-direction": "down",
+                "price-direction": "down",
+                "values": {
+                    "rsi": [
+                        55.326016988209915,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16505.62,
+                    "start2": 55.326016988209915,
+                    "end1": 16489.36,
+                    "end2": 51.83256650185657,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "trade": false,
+            "side": "",
+            "description": "Relative Strength Index Strategy"
+
+        }
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
     def compute_macd_trade_risk(self, return_dict, **kwargs):
+        '''
+        [ NOTE ]:
+
+        [ INPUT ]: return_dict - {
+            "value": 9.612356611120049,
+            "signal": 7.690181601169617,
+            "history": 1.9221750099504318,
+            "bullish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "down",
+                "signal-direction": "down",
+                "values": {
+                    "macd": [
+                        9.392185670949402,
+                        ...
+                    ],
+                    "signal": [
+                        7.646147413135488,
+                        ...
+                    ],
+                    "history": [
+                        1.7460382578139146,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 9.392185670949402,
+                    "start2": 7.646147413135488,
+                    "end1": 4.334602813487436,
+                    "end2": 1.5826985725254976,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            "bearish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "down",
+                "signal-direction": "down",
+                "values": {
+                    "macd": [
+                        9.392185670949402,
+                        ...
+                    ],
+                    "signal": [
+                        7.646147413135488,
+                        ...
+                    ],
+                    "history": [
+                        1.7460382578139146,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 9.392185670949402,
+                    "start2": 7.646147413135488,
+                    "end1": 4.334602813487436,
+                    "end2": 1.5826985725254976,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            "bullish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "down",
+                "price-direction": "down",
+                "values": {
+                    "macd": [
+                        9.392185670949402,
+                        ...
+                    ],
+                    "signal": [
+                        7.646147413135488,
+                        ...
+                    ],
+                    "history": [
+                        1.7460382578139146,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 9.392185670949402,
+                    "start2": 16505.62,
+                    "end1": 4.334602813487436,
+                    "end2": 16489.36,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "peaks": [],
+                    "peaks1": [],
+                    "peaks2": []
+                }
+            },
+            "bearish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "down",
+                "price-direction": "down",
+                "values": {
+                    "macd": [
+                        9.392185670949402,
+                        ...
+                    ],
+                    "signal": [
+                        7.646147413135488,
+                        ...
+                    ],
+                    "history": [
+                        1.7460382578139146,
+                        ...
+                    ],
+                    "price": [
+                        16505.62,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16505.62,
+                    "start2": 9.392185670949402,
+                    "end1": 16489.36,
+                    "end2": 4.334602813487436,
+                    "direction1": "down",
+                    "direction2": "down",
+                    "peaks": [],
+                    "peaks1": [],
+                    "peaks2": []
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "trade": false,
+            "side": "",
+            "description": "Moving Average Convergence Divergence Strategy"
+
+        }
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
         log.debug('TODO - Under construction, building...')
         return 0
+
+    @pysnooper.snoop()
     def compute_adx_trade_risk(self, return_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        return 0
+        '''
+        [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
+            nothing. If a bullish/bearish crossover occured, it sets the risk to 5.
+
+            The risk index value is then decremented in each of the following
+            situations -
+
+            * If bullish/bearish crossover values distanced enough after
+              crossing each other to be considered confirmed movements.
+
+            * If a trendy number of crossovers (1, 3).
+
+            * If the general directions of +di and -di are not identical.
+
+            * If the analyzed period interval is big enough.
+
+        [ INPUT ]: return_dict - {
+            'value': 28.387662183452495,
+            'bullish-crossover': {
+                "flag": false,                                                                                                                                                                                                               [581/1151]
+                "start-candle": 11,
+                "stop-candle": 0,
+                "side": "",
+                "values": {
+                    "adx": [
+                        28.387662183452495,
+                        ...
+                    ],
+                    "+di": [
+                        29.865486688207103,
+                        ...
+                    ],
+                    "-di": [
+                        14.748729573272595,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 29.865486688207103,
+                    "start2": 14.748729573272595,
+                    "end1": 26.451916528236602,
+                    "end2": 12.451346689528274,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            'bearish-crossover': {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,                                                                                                                                                                                                            [579/1151]
+                "side": "",
+                "values": {
+                    "adx": [
+                        28.387662183452495,
+                        ...
+                    ],
+                    "+di": [
+                        29.865486688207103,
+                        ...
+                    ],
+                    "-di": [
+                        14.748729573272595,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 29.865486688207103,
+                    "start2": 14.748729573272595,
+                    "end1": 26.451916528236602,
+                    "end2": 12.451346689528274,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "down"
+                }
+            },
+            'interval': '5m',
+            'period': 11,
+            'side': '',
+            'risk': 0,
+            'trade': False,
+            'description': 'Average Directional Index Strategy',
+        }
+
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish croosover occured
+        if return_dict['bullish-crossover']['flag'] \
+                or return_dict['bearish-crossover']['flag']:
+            risk_index = 5
+        safer_crossover_number = [1, 3]
+        for label in ('bullish-crossover', 'bearish-crossover'):
+            # NOTE: If bullish/bearish crossover values distanced enough after
+            # crossover to be considered confirmed.
+            if risk_index and return_dict[label]['flag'] \
+                    and return_dict[label]['scan']['confirmed']:
+                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+            # NOTE: A trendy number of crossovers is always plus in technical
+            # analysis numerology.. :) You're well entitled to judge btw -
+            # judging makes the world go round.
+            if risk_index and len(
+                        return_dict[label]['scan']['crossovers']
+                    ) in safer_crossover_number:
+                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+            # NOTE: If the general directions of +di and -di are not identical.
+            if return_dict[label]['scan']['direction1'] \
+                    != return_dict[label]['scan']['direction2']:
+                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+        # NOTE: If period and period interval decently sized
+        if risk_index and (return_dict['interval'] in safer_intervals \
+                and return_dict['volume-movement']['start-candle'] >= safety_period):
+            risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+        return risk_index
+
     def compute_volume_trade_risk(self, return_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        return 0
-    def compute_risk_index(self, evaluations_dict, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        return 0
+        '''
+        [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
+            nothing. If a big volume movement was detected, it sets the risk to 5.
+
+            The risk index value is then decremented in each of the following
+            situations -
+
+            * If the analyzed period interval is big enough.
+
+            * If the volume not only moved, but moved in an uppward direction.
+
+            * If the volume movement percentage is at least double the price
+                movement detection threshold percentage, the risk index.
+
+        [ INPUT ]: return_dict - {
+            "value": 175238.38863,
+            "volume-movement": {
+                "flag": true,
+                "start-value": 27.9612,
+                "stop-value": 563.3785,
+                "min-value": 27.9612,
+                "max-value": 1330.81484,
+                "period-average": 691.7491621428572,
+                "volume-direction": "up",
+                "start-candle": 13,
+                "stop-candle": 0,
+                "min-candle": 13,
+                "max-candle": 7,
+                "side": "up",
+                "moved": 1302.85364,
+                "moved-percentage": 188.3419180392068,
+                "trigger-percentage": 5
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Volume Strategy"
+        }
+
+        [ RETURN ]: risk_index - type int - values low.1-5.high
+        '''
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If volume-movement triggered
+        if return_dict['volume-movement']['flag']:
+            risk_index = 5
+        # NOTE: If volume-movement sustained in uppward direction (more volume)
+        if risk_index and return_dict['volume-movement']['volume-direction'] == 'up':
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
+        # NOTE: If period and period interval decently sized
+        if risk_index and (return_dict['interval'] in safer_intervals \
+                and return_dict['volume-movement']['start-candle'] >= safety_period):
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
+        # NOTE: If volume-movement is at least double than trigger percentage
+        if risk_index \
+                and return_dict['volume-movement']['moved-percentage'] \
+                >= (return_dict['volume-movement']['trigger-percentage'] * 2):
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
+        return risk_index
 
     @pysnooper.snoop()
     def compute_price_trade_risk(self, return_dict, **kwargs):
@@ -1269,28 +1926,62 @@ class TradingStrategy():
             The risk index value is then decremented in each of the following
             situations -
 
-            * If the price movement is confirmed by a volume movement, the
-                risk becomes 4.
+            * If the price movement is confirmed by a volume movement.
 
-            * If the analyzed period interval is big enough, the risk is 3.
+            * If the analyzed period interval is big enough.
 
             * If the volume not only moved, but moved in an uppward direction
-                during the price-movement, the risk becomes 2.
+                during the price-movement.
 
             * If the price movement percentage is at least double the price
                 movement detection threshold percentage, the risk index.
 
         [ INPUT ]: return_dict - {
-            'price-movement': ,
-            'confirmed-by-volume': ,
-            'interval': ,
-            'value': ,
-            'risk': ,
-            'trade': ,
-            'description': ,
+            "price-movement": {
+                "flag": false,
+                "start-value": 16489.36,
+                "stop-value": 16505.62,
+                "min-value": 16485.56,
+                "max-value": 16516.74,
+                "period-average": 16498.616666666665,
+                "price-direction": "up",
+                "start-candle": 11,
+                "stop-candle": 0,
+                "min-candle": 6,
+                "max-candle": 3,
+                "moved": 31.18000000000029,
+                "side": "up",
+                "moved-percentage": 0.18898554121204278,
+                "trigger-percentage": 5
+            },
+            "confirmed-by-volume": {
+                "flag": false,
+                "volume": {
+                    "flag": true,
+                    "start-value": 27.9612,
+                    "stop-value": 563.3785,
+                    "min-value": 27.9612,
+                    "max-value": 1330.81484,
+                    "period-average": 691.7491621428572,
+                    "volume-direction": "up",
+                    "start-candle": 13,
+                    "stop-candle": 0,
+                    "min-candle": 13,
+                    "max-candle": 7,
+                    "side": "up",
+                    "moved": 1302.85364,
+                    "moved-percentage": 188.3419180392068,
+                    "trigger-percentage": 5
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "value": 16505.46,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Price Action Strategy"
         }
-
-        kwargs - {}
 
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
@@ -1298,28 +1989,28 @@ class TradingStrategy():
         log.debug('kwargs - {}'.format(kwargs))
         log.debug('return_dict - {}'.format(return_dict))
         safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
-        safety_periods = 14
+        safety_period = 14
         risk_index = 0
-        # NOTE: If price-movement confirmed:
+        # NOTE: If price-movement triggered:
         if return_dict['price-movement']['flag']:
             risk_index = 5
         # NOTE: If price-movement confirmed-by-value
         if risk_index and return_dict['confirmed-by-volume']['flag']:
-            risk_index -= 1
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
         # NOTE: If period and period interval decently sized
         if risk_index and (return_dict['interval'] in safer_intervals \
                 and return_dict['price-movement']['start-candle'] >= safety_period):
-            risk_index -= 1
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
         # NOTE: If volume was high when price movement occured
         if risk_index and (return_dict['confirmed-by-volume']['flag'] \
                 and return_dict['confirmed-by-volume']['volume-direction'] == 'up') \
                 and return_dict['price-movement']['price-direction'] in ('up', 'down'):
-            risk_index -= 1
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
         # NOTE: If price-movement is at least double than trigger percentage
         if risk_index \
                 and return_dict['price-movement']['moved-percentage'] \
                 >= (return_dict['price-movement']['trigger-percentage'] * 2):
-            risk_index -= 1
+            risk_index = risk_index if risk_index == 1 else risk_index - 1
         return risk_index
 
     # EVALUATORS
@@ -1356,7 +2047,9 @@ class TradingStrategy():
                   the percentage resulted from the number of confirmed signals
                   and the number of applied strategies plus the percentage
                   resulted from the risk tolerance and the maximum risk value
-                  is below 100%
+                  is below 100% - this sums up the warning of - the more trading
+                  strategies you chain, the lower they're signal strength as the
+                  final decision lies in an average of all strategy signals.
 
                   [ EX ]: >>> compute_percentage_of(
                         len(scan['confirmed']), len(scan['signals'])
@@ -1390,7 +2083,7 @@ class TradingStrategy():
             if evaluations_dict[indicator_label]
         ]
         risk_sum = sum(risk_values)
-        risk_index = 0 if not risk_sum else risk_sum / len(risk_values)
+        risk_index = 0 if not risk_sum else int(risk_sum / len(risk_values))
         trade_flag = True if risk_index <= self.risk_tolerance \
             and risk_index != 0 else False
         signal_scanners = {
@@ -1474,6 +2167,10 @@ class TradingStrategy():
         return self.base_evaluators['trade'](evaluations_dict, **kwargs)
 
 # CODE DUMP
+
+#   def compute_risk_index(self, evaluations_dict, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       return 0
 
 #   def compute_trade_flag(self, evaluations_dict, **kwargs):
 #       log.debug('TODO - Under construction, building...')

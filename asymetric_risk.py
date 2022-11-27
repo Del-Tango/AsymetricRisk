@@ -11,8 +11,7 @@ import optparse
 import json
 import time
 
-#from time import sleep
-from subprocess import Popen, PIPE
+#from subprocess import Popen, PIPE
 
 from src.backpack.bp_log import log_init
 from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exist
@@ -150,9 +149,6 @@ def fetch_action_handlers():
         'deposit-report': action_deposit_report,
         'single-trade': action_single_trade,
         'view-report': action_view_report,
-#       'view-trade-report': action_view_trade_report,
-#       'view-withdrawal-report': action_view_withdrawal_report,
-#       'view-deposit-report': action_view_deposit_report,
         'account-details': action_account_details,
         'market-details': action_market_details,
         'supported-coins': action_supported_coins,
@@ -229,18 +225,6 @@ def check_log_file(**kwargs):
 # ACTIONS
 
 # TODO - DEPENDENCY - TradeReporter
-#   def action_view_trade_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Trade Report', bold=True)
-#   def action_view_withdrawal_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
-#   def action_view_deposit_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
 def action_view_report(*args, **kwargs):
     log.debug('')
     # TODO - No mods in trading bot
@@ -1707,7 +1691,8 @@ def process_config_file_argument(parser, options):
         return False
     AR_DEFAULT['conf-dir'] = filter_directory_from_path(file_path)
     AR_DEFAULT['conf-file'] = filter_file_name_from_path(file_path)
-#   load_config_json()
+    # NOTE: You must load_config_json() after setting a new config file path in
+    #       order to benefit of the new configuration.
     stdout_msg(
         'Config file setup ({})'.format(AR_DEFAULT['conf-file']), ok=True
     )
@@ -2353,6 +2338,20 @@ if __name__ == '__main__':
     exit(EXIT_CODE)
 
 # CODE DUMP
+
+#   def action_view_trade_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Trade Report', bold=True)
+#   def action_view_withdrawal_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
+#   def action_view_deposit_report(*args, **kwargs):
+#       log.debug('TODO - Under construction, building...')
+#       # TODO - No mods in trading bot
+#       stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
+
 
 #TradingBot(**AR_DEFAULT)
 
