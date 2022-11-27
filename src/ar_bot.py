@@ -243,11 +243,6 @@ class TradingBot():
             .format(trading_strategy), info=True
         )
         market_update_args = trading_strategy.split(',')
-#       for strategy in market_update_args:
-#           if strategy in ('vwap', 'rsi', 'ma', 'ema', 'macd', 'adx'):
-#               if 'indicators' not in market_update_args:
-#                   market_update_args.append('indicators')
-#               break
         market_details = market.update_details(*market_update_args, **details)
         trade_flag, risk_index, trade = False, 0, None
         trade_amount = self.compute_trade_amount(

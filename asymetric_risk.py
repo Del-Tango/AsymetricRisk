@@ -2332,7 +2332,7 @@ if __name__ == '__main__':
     # is given with a valid file path, the new config loaded, after which the
     # rest of the arguments are processed.
     # TODO - Uncomment 1 down
-#   clear_screen()
+    clear_screen()
     EXIT_CODE = 1
     try:
         log.debug('AR_DEFAULT - {}'.format(AR_DEFAULT))

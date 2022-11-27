@@ -160,7 +160,7 @@ class TradingStrategy():
             ][0]
         return return_dict
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def strategy_vwap(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Volume Weighted Average Price

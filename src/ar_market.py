@@ -973,7 +973,7 @@ class TradingMarket(Client):
             )
         return return_dict
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_details(self, *args, **kwargs):
         '''
         [ INPUT  ]: *(
@@ -1081,7 +1081,8 @@ class TradingMarket(Client):
         timestamp, return_dict = str(time.time()), {
             'ticker-symbol': self.ticker_symbol,
             'interval': kwargs.get('interval', self.period_interval),
-            'history': {}
+            'indicators': {},
+            'history': {},
         }
         update_targets = args or ('price', 'volume', 'trade-fee')
         if 'all' in update_targets or 'coin' in update_targets:
@@ -1100,7 +1101,13 @@ class TradingMarket(Client):
             )
         if 'all' in update_targets or 'trade-fee' in update_targets:
             self.update_trade_fee_details(timestamp=timestamp, **kwargs)
-        if 'all' in update_targets or 'indicators' in update_targets:
+        if 'all' in update_targets or 'indicators' in update_targets \
+                or 'vwap' in update_targets \
+                or 'rsi' in update_targets \
+                or 'macd' in update_targets \
+                or 'ma' in update_targets \
+                or 'ema' in update_targets \
+                or 'adx' in update_targets:
             return_dict.update(
                 self.update_indicator_details(
                     *args, timestamp=timestamp, **kwargs
