@@ -15,7 +15,7 @@ import numpy
 #import matplotlib.pyplot as plt   # needs pip install
 
 from binance.client import Client
-from binance import ThreadedWebsocketManager
+#from binance import ThreadedWebsocketManager
 from src.ar_indicator import TradingIndicator
 from src.backpack.bp_general import stdout_msg
 
@@ -86,7 +86,7 @@ class TradingMarket(Client):
 
     # FETCHERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def fetch_adx_value(self, **kwargs):
         '''
         [ RETURN ]: adx-value, plus-dmi, minus-dmi
@@ -102,7 +102,6 @@ class TradingMarket(Client):
             return False
         self.update_indicator_timestamp()
         values = self.raw_api_response_convertor(raw_value)
-
         if not kwargs.get('backtrack', kwargs.get('adx-backtrack')) \
                 and not kwargs.get('backtracks', kwargs.get('adx-backtracks')):
             if not isinstance(values, dict):
@@ -110,11 +109,6 @@ class TradingMarket(Client):
             return values.get('adx'), values.get('plusdi'), \
                 values.get('minusdi')
         return values
-
-#       return value_dict.get('adx'), value_dict.get('plusdi'), value_dict.get('minusdi') \
-#           if not kwargs.get('backtrack', kwargs.get('adx-backtrack')) \
-#           and not kwargs.get('backtracks', kwargs.get('adx-backtracks')) \
-#           else value_dict
 
     def fetch_candle_info_column_labels(self):
         log.debug('')
@@ -353,10 +347,16 @@ class TradingMarket(Client):
         log.debug('Formatter kwargs - {}'.format(kwargs))
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('price-interval', kwargs.get('interval', self.period_interval)),
             'period': kwargs.get('price-period', 14),
-            'backtrack': kwargs.get('price-backtrack') or kwargs.get('backtrack'),
-            'backtracks': kwargs.get('price-backtracks') or kwargs.get('backtracks'),
+            'interval': kwargs.get(
+                'price-interval', kwargs.get('interval', self.period_interval)
+            ),
+            'backtrack': kwargs.get(
+                'price-backtrack', kwargs.get('backtrack')
+            ),
+            'backtracks': kwargs.get(
+                'price-backtracks', kwargs.get('backtracks')
+            ),
             'chart': kwargs.get('price-chart', kwargs.get('chart', self.chart)),
         })
         log.debug('Formatted Price Indicator kwargs - {}'.format(return_dict))
@@ -368,7 +368,9 @@ class TradingMarket(Client):
         log.debug('Formatter kwargs - {}'.format(kwargs))
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('adx-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get(
+                'adx-interval', kwargs.get('interval', self.period_interval)
+            ),
             'period': kwargs.get('adx-period', 14),
             'backtrack': kwargs.get('adx-backtrack') or kwargs.get('backtrack'),
             'backtracks': kwargs.get('adx-backtracks') or kwargs.get('backtracks'),

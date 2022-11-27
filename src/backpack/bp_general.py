@@ -68,8 +68,10 @@ def clear_screen(silence=False):
     return os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def stdout_msg(message, silence=False, red=False, info=False, warn=False,
+def stdout_msg(message, silence=False, symbol='', red=False, info=False, warn=False,
                err=False, done=False, bold=False, green=False, ok=False, nok=False):
+    if symbol:
+        message = '[ ' + symbol + ' ]: ' + message
     if red:
         display_line = '\033[91m' + str(message) + '\033[0m'
     elif green:

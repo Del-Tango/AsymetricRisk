@@ -49,6 +49,8 @@ class TradingStrategy():
 
     # STRATEGIES
 
+    # TODO - Add value: tag
+
     @pysnooper.snoop()
     def strategy_ma(self, *args, **kwargs):
         '''
@@ -77,11 +79,13 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['ma'],
             'bullish-trend': self.check_ma_bullish_trend(*args, **kwargs),
             'bearish-trend': self.check_ma_bearish_trend(*args, **kwargs),
             'interval': kwargs.get('ma-interval', kwargs.get('interval')),
             'period': kwargs.get('ma-period', kwargs.get('period')),
             'risk': 0,
+            'side': '',
             'trade': False,
             'description': 'Moving Average Strategy',
         }
@@ -124,11 +128,13 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['ema'],
             'bullish-trend': self.check_ema_bullish_trend(*args, **kwargs),
             'bearish-trend': self.check_ema_bearish_trend(*args, **kwargs),
             'interval': kwargs.get('ema-interval', kwargs.get('interval')),
             'period': kwargs.get('ema-period', kwargs.get('period')),
             'risk': 0,
+            'side': '',
             'trade': False,
             'description': 'Exponential Moving Average Strategy',
         }
@@ -172,11 +178,13 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['vwap'],
             'bullish-crossover': self.check_vwap_bullish_trend_confirmation(*args, **kwargs),
             'bearish-crossover': self.check_vwap_bearish_trend_confirmation(*args, **kwargs),
             'interval': kwargs.get('vwap-interval', kwargs.get('interval')),
             'period': kwargs.get('vwap-period', kwargs.get('period')),
             'risk': 0,
+            'side': '',
             'trade': False,
             'description': 'Volume Weighted Average Price Strategy',
         }
@@ -234,6 +242,7 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['rsi'],
             'bullish-divergence': self.check_rsi_bullish_divergence(*args, **kwargs),
             'bearish-divergence': self.check_rsi_bearish_divergence(*args, **kwargs),
             'interval': kwargs.get('rsi-interval', kwargs.get('interval')),
@@ -295,6 +304,9 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['macd'],
+            'signal': kwargs['details']['indicators']['macd-signal'],
+            'history': kwargs['details']['indicators']['macd-hist'],
             'bullish-crossover': self.check_macd_bullish_crossover(*args, **kwargs),
             'bearish-crossover': self.check_macd_bearish_crossover(*args, **kwargs),
             'bullish-divergence': self.check_macd_bullish_divergence(*args, **kwargs),
@@ -353,10 +365,12 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['indicators']['adx'],
             'bullish-crossover': self.check_adx_bullish_crossover(*args, **kwargs),
             'bearish-crossover': self.check_adx_bearish_crossover(*args, **kwargs),
             'interval': kwargs.get('adx-interval', kwargs.get('interval')),
             'period': kwargs.get('adx-period', kwargs.get('period')),
+            'side': '',
             'risk': 0,
             'trade': False,
             'description': 'Average Directional Index Strategy',
@@ -406,10 +420,10 @@ class TradingStrategy():
         '''
         log.debug('')
         return_dict = {
+            'value': kwargs['details']['volume'],
             'volume-movement': self.check_large_volume_movement(*args, **kwargs),
             'interval': kwargs.get('volume-interval', kwargs.get('interval')),
             'period': kwargs.get('volume-period', kwargs.get('period')),
-            'value': kwargs.get('volume'),
             'risk': 0,
             'side': '',
             'trade': False,
@@ -499,8 +513,12 @@ class TradingStrategy():
             )
             details = kwargs.copy()
             details.update({
-                'volume-period': kwargs.get('price-period', kwargs.get('period')),
-                'volume-interval': kwargs.get('price-interval', kwargs.get('interval')),
+                'volume-period': kwargs.get(
+                    'price-period', kwargs.get('period')
+                ),
+                'volume-interval': kwargs.get(
+                    'price-interval', kwargs.get('interval')
+                ),
             })
             return_dict['confirmed-by-volume'] = \
                 self.check_price_movement_confirmed_by_volume(
@@ -991,6 +1009,7 @@ class TradingStrategy():
             'min-value': min_val,
             'max-value': max_val,
             'period-average': period_volume_avg,
+            'volume-direction': 'up' if volume_values[-1] < volume_values[0] else 'down',
             'start-candle': details['volume'][len(volume_values)-1]['backtrack'],
             'stop-candle': details['volume'][0]['backtrack'],
             'min-candle': min_candle or None,
@@ -1055,6 +1074,7 @@ class TradingStrategy():
             'min-value': min_val,
             'max-value': max_val,
             'period-average': period_price_avg,
+            'price-direction': 'up' if price_values[-1] < price_values[0] else 'down',
             'start-candle': details['price'][len(price_values)-1]['backtrack'],
             'stop-candle': details['price'][0]['backtrack'],
             'min-candle': min_candle or None,
@@ -1087,6 +1107,90 @@ class TradingStrategy():
             return False
         self.strategies.update(kwargs)
         return self.strategies
+
+    # FILTERS
+
+    @pysnooper.snoop()
+    def filter_signals_from_strategy_evaluation(self, evaluations_dict, **kwargs):
+        log.debug('TODO - FIX ME')
+        if not evaluations_dict or not isinstance(evaluations_dict, dict):
+            stdout_msg(
+                'No strategy evaluation found to fetch signals from!', err=True
+            )
+            return False
+        signals = []
+        for strategy_label in evaluations_dict:
+            if not evaluations_dict[strategy_label]['trade']:
+                signals.append(None)
+                continue
+            signals.append(evaluations_dict[strategy_label]['side'])
+        return signals
+
+    # SCANNERS
+
+    @pysnooper.snoop()
+    def scan_strategy_evaluation_for_signals(self, evaluations_dict, *args,
+                                             signal='buy', **kwargs):
+        '''
+        [ NOTE ]: Currently supported signals - (buy | sell)
+
+        [ INPUT ]: evaluations_dict {
+            'vwap': {flag: ...},
+            'rsi': {flag: ...},
+            'price': {flag: ...},
+            ...
+        }
+
+        [ RETURN ]: {
+            'flag': True ,
+            'signal': 'buy',
+            'signals': [None, 'buy', 'buy', 'sell'],
+            'confirmed': ['sell', 'sell'],
+            'strategy': {
+                'vwap': {flag: ...},
+                'rsi': {flag: ...},
+                'price': {flag: ...},
+                ...
+            },
+        }
+        '''
+        log.debug('')
+        if signal not in ('buy', 'sell'):
+            stdout_msg(
+                'Invalid signal! Cannot look for ({}) in strategy evaluation!'
+                .format(signal), err=True
+            )
+        signals = self.filter_signals_from_strategy_evaluation(
+            evaluations_dict, **kwargs
+        )
+        if not signals:
+            stdout_msg(
+                'Could not filter trading signals from strategy evaluation!',
+                err=True
+            )
+            return False
+        return_dict = {
+            'flag': True if signals and signal in signals else False,
+            'signal': signal,
+            'signals': signals,
+            'confirmed': [item for item in signals if item == signal],
+            'strategy': evaluations_dict,
+        }
+        return return_dict
+
+    def scan_strategy_evaluation_for_buy_signals(self, evaluations_dict,
+                                                 *args, **kwargs):
+        log.debug('')
+        return self.scan_strategy_evaluation_for_signals(
+            evaluations_dict, signal='buy', **kwargs
+        )
+
+    def scan_strategy_evaluation_for_sell_signals(self, evaluations_dict,
+                                                  *args, **kwargs):
+        log.debug('')
+        return self.scan_strategy_evaluation_for_signals(
+            evaluations_dict, signal='sell', **kwargs
+        )
 
     # ACTIONS
 
@@ -1128,7 +1232,9 @@ class TradingStrategy():
 
     # COMPUTERS
 
-    # TODO
+    # TODO - Called by the strategy methods
+    #      - Calculate trade strategy if stragy generated any kind of signal
+    #        based on current data
     def compute_ma_trade_risk(self, return_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
@@ -1153,8 +1259,27 @@ class TradingStrategy():
     def compute_risk_index(self, evaluations_dict, **kwargs):
         log.debug('TODO - Under construction, building...')
         return 0
+
+    @pysnooper.snoop()
     def compute_price_trade_risk(self, return_dict, **kwargs):
         '''
+        [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
+            nothing. If a big price movement was detected, it sets the risk to 5.
+
+            The risk index value is then decremented in each of the following
+            situations -
+
+            * If the price movement is confirmed by a volume movement, the
+                risk becomes 4.
+
+            * If the analyzed period interval is big enough, the risk is 3.
+
+            * If the volume not only moved, but moved in an uppward direction
+                during the price-movement, the risk becomes 2.
+
+            * If the price movement percentage is at least double the price
+                movement detection threshold percentage, the risk index.
+
         [ INPUT ]: return_dict - {
             'price-movement': ,
             'confirmed-by-volume': ,
@@ -1169,8 +1294,33 @@ class TradingStrategy():
 
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        log.debug('kwargs - {}'.format(kwargs))
+        log.debug('return_dict - {}'.format(return_dict))
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_periods = 14
+        risk_index = 0
+        # NOTE: If price-movement confirmed:
+        if return_dict['price-movement']['flag']:
+            risk_index = 5
+        # NOTE: If price-movement confirmed-by-value
+        if risk_index and return_dict['confirmed-by-volume']['flag']:
+            risk_index -= 1
+        # NOTE: If period and period interval decently sized
+        if risk_index and (return_dict['interval'] in safer_intervals \
+                and return_dict['price-movement']['start-candle'] >= safety_period):
+            risk_index -= 1
+        # NOTE: If volume was high when price movement occured
+        if risk_index and (return_dict['confirmed-by-volume']['flag'] \
+                and return_dict['confirmed-by-volume']['volume-direction'] == 'up') \
+                and return_dict['price-movement']['price-direction'] in ('up', 'down'):
+            risk_index -= 1
+        # NOTE: If price-movement is at least double than trigger percentage
+        if risk_index \
+                and return_dict['price-movement']['moved-percentage'] \
+                >= (return_dict['price-movement']['trigger-percentage'] * 2):
+            risk_index -= 1
+        return risk_index
 
     # EVALUATORS
 
@@ -1179,20 +1329,38 @@ class TradingStrategy():
         log.debug('')
         instruction_set = kwargs.copy()
         instruction_set.update({'side': 'buy'})
-        return self.evaluate_risk(evaluations_dict, **instruction_set)
+        return self.evaluate_risk(evaluations_dict, signal='buy', **instruction_set)
 
 #   @pysnooper.snoop()
     def evaluate_sell(self, evaluations_dict, **kwargs):
         log.debug('')
         instruction_set = kwargs.copy()
         instruction_set.update({'side': 'sell'})
-        return self.evaluate_risk(evaluations_dict, **instruction_set)
+        return self.evaluate_risk(evaluations_dict, signal='sell', **instruction_set)
 
     @pysnooper.snoop()
-    def evaluate_risk(self, evaluations_dict, **kwargs):
+    def evaluate_risk(self, evaluations_dict, signal='buy', **kwargs):
         '''
-        [ NOTE ]: Risk index is evaluated from the given indicator/strategy count
-                  divided by no: vwap, rsi, ma, ema, adx, macd, price, volume
+        [ NOTE ]: Risk index takes into account generated buy|sell signals
+                  filtered from the strategy evaluation results as well as the
+                  number of strategies used and risk tolerance to generate a
+                  number from 1 to 5 (risk_index) and a GO/No GO result (trade_flag).
+
+                  The resulted risk_index value is computed from the sum of all
+                  the risk assesements from all applied strategies divided by the
+                  number of strategies.
+
+                  If the resulted risk_index is below the risk_tolerance value,
+                  the trading_flag will show a GO (True), unless -
+
+                  the percentage resulted from the number of confirmed signals
+                  and the number of applied strategies plus the percentage
+                  resulted from the risk tolerance and the maximum risk value
+                  is below 100%
+
+                  [ EX ]: >>> compute_percentage_of(
+                        len(scan['confirmed']), len(scan['signals'])
+                      ) + compute_percentage_of(risk_tolerance, 5) < 100
 
         [ INPUT ]: evaluations_dict - {
             'vwap': {value: 2435.897674764, interval: 5m, risk: 3, trade: False, description: VWAP},
@@ -1208,23 +1376,47 @@ class TradingStrategy():
             ...
         }
         '''
-        log.debug('')
+        log.debug('TODO - Refactor')
         log.debug('evaluations_dict - {}'.format(evaluations_dict))
         log.debug('kwargs - {}'.format(kwargs))
-        if not evaluations_dict:
+        if not evaluations_dict or signal not in ('buy', 'sell'):
             stdout_msg(
                 'Necessary data set for risk evaluation not found!', err=True
             )
             return False
-        trade_flag, risk_index = False, 0
-        risk_values = [
+        trade_flag, risk_index, risk_values = False, 0, [
             int(evaluations_dict[indicator_label]['risk'])
             for indicator_label in evaluations_dict
             if evaluations_dict[indicator_label]
         ]
-        risk_index = sum(risk_values) / len(risk_values)
+        risk_sum = sum(risk_values)
+        risk_index = 0 if not risk_sum else risk_sum / len(risk_values)
         trade_flag = True if risk_index <= self.risk_tolerance \
             and risk_index != 0 else False
+        signal_scanners = {
+            'buy': self.scan_strategy_evaluation_for_buy_signals,
+            'sell': self.scan_strategy_evaluation_for_sell_signals,
+        }
+        scan = signal_scanners[signal](evaluations_dict, **kwargs)
+        if not scan['flag']:
+            stdout_msg(
+                'No ({}) signals detected during strategy evaluation.'
+                .format(signal), info=True
+            )
+            return trade_flag, risk_index
+        confirmed_sig_percentage = compute_percentage_of(
+            len(scan['confirmed']), len(scan['signals'])
+        )
+        risk_tolerance_percentage = compute_percentage_of(
+            self.risk_tolerance, 5
+        )
+        if not (confirmed_sig_percentage + risk_tolerance_percentage) >= 100:
+            trade_flag = False
+            stdout_msg(
+                'Trade ({}) too risky for specified risk tolerance! ({})'
+                .format(signal, self.risk_tolerance), nok=True
+            )
+            return trade_flag, risk_index
         return trade_flag, risk_index
 
     def evaluate_trade(self, evaluations_dict, **kwargs):
