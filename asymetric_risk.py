@@ -375,10 +375,9 @@ def action_start_watchdog(*args, **kwargs):
 
 # HANDLERS
 
-# TODO
 @pysnooper.snoop()
 def handle_actions(actions=[], *args, **kwargs):
-    log.debug('TODO - FIX ME')
+    log.debug('')
     failure_count = 0
     handlers = fetch_action_handlers()
     for action_label in actions:
@@ -1801,7 +1800,10 @@ def add_command_line_parser_options(parser):
     parser.add_option(
         '-T', '--strategy', dest='strategy', type='string', metavar='CSV',
         help='Strategies to apply when taking into consideration the generation '
-             'of buy and sell signals. Default is {}'.format(AR_DEFAULT['strategy']),
+             'of buy and sell signals. Default is {}\n'
+             'WARNING: The more trading strategies you chain, the weaker their '
+             'signal strength as the final decision lies in the average of all '
+             'strategy signals.'.format(AR_DEFAULT['strategy']),
     )
     parser.add_option(
         '-u', '--taapi-url', dest='taapi_url', type='string', metavar='URL',

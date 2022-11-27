@@ -49,8 +49,6 @@ class TradingStrategy():
 
     # STRATEGIES
 
-    # TODO - Add value: tag
-
     @pysnooper.snoop()
     def strategy_ma(self, *args, **kwargs):
         '''
@@ -1112,7 +1110,7 @@ class TradingStrategy():
 
     @pysnooper.snoop()
     def filter_signals_from_strategy_evaluation(self, evaluations_dict, **kwargs):
-        log.debug('TODO - FIX ME')
+        log.debug('')
         if not evaluations_dict or not isinstance(evaluations_dict, dict):
             stdout_msg(
                 'No strategy evaluation found to fetch signals from!', err=True
@@ -1185,7 +1183,7 @@ class TradingStrategy():
         scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='buy', **kwargs
         )
-        log.info(pretty_dict_print(scan))
+        log.info('[ BUY ]: ' + pretty_dict_print(scan))
 #       stdout_msg(
 #           pretty_dict_print(scan), symbol='BUY',
 #           red=False if scan['flag'] else True,
@@ -1199,7 +1197,7 @@ class TradingStrategy():
         scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='sell', **kwargs
         )
-        log.info(pretty_dict_print(scan))
+        log.info('[ SELL ]: ' + pretty_dict_print(scan))
 #       stdout_msg(
 #           pretty_dict_print(scan), symbol='SELL',
 #           red=False if scan['flag'] else True,
@@ -1253,7 +1251,7 @@ class TradingStrategy():
     #             strategy based on the given data set containing market info -
     #             created as a result of the previous strategy evaluation.
 
-    # TODO
+    @pysnooper.snoop()
     def compute_ma_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1336,10 +1334,35 @@ class TradingStrategy():
             "trade": true,
             "description": "Moving Average Strategy"
         }
+
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish trend confirmed
+        if return_dict['bullish-trend']['flag'] \
+                or return_dict['bearish-trend']['flag']:
+            risk_index = 5
+        if risk_index:
+            for label in ('bullish-trend', 'bearish-trend'):
+                # NOTE: Check general price direction over entire period
+                if return_dict[label]['flag'] and (label == 'bullish-trend' \
+                        and return_dict[label]['price-direction'] == 'up') \
+                        or (label == 'bearish-trend' \
+                        and return_dict[label]['price-direction'] == 'down'):
+                    risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
+                # NOTE: If period and period interval decently sized
+                if return_dict[label]['flag'] \
+                        and (return_dict['interval'] in safer_intervals \
+                        and return_dict[label]['start-candle'] >= safety_period):
+                    risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+        return risk_index
+
+    @pysnooper.snoop()
     def compute_ema_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1422,10 +1445,35 @@ class TradingStrategy():
             "trade": true,
             "description": "Exponential Moving Average Strategy"
         }
+
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish trend confirmed
+        if return_dict['bullish-trend']['flag'] \
+                or return_dict['bearish-trend']['flag']:
+            risk_index = 5
+        if risk_index:
+            for label in ('bullish-trend', 'bearish-trend'):
+                # NOTE: Check general price direction over entire period
+                if return_dict[label]['flag'] and (label == 'bullish-trend' \
+                        and return_dict[label]['price-direction'] == 'up') \
+                        or (label == 'bearish-trend' \
+                        and return_dict[label]['price-direction'] == 'down'):
+                    risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
+                # NOTE: If period and period interval decently sized
+                if return_dict[label]['flag'] \
+                        and (return_dict['interval'] in safer_intervals \
+                        and return_dict[label]['start-candle'] >= safety_period):
+                    risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+        return risk_index
+
+    @pysnooper.snoop()
     def compute_vwap_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1496,10 +1544,46 @@ class TradingStrategy():
             "trade": false,
             "description": "Volume Weighted Average Price Strategy"
         }
+
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish croosover/divergence occured
+        if return_dict['bullish-crossover']['flag'] \
+                or return_dict['bearish-crossover']['flag']:
+            risk_index = 5
+        safer_crossover_number = [1, 3]
+        if risk_index:
+            for label in ('bullish-crossover', 'bearish-crossover'):
+                if return_dict[label]['flag']:
+                    if return_dict[label]['scan']['confirmed']:
+                        risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+                    # NOTE: Check general price direction over entire period
+                    if (label == 'bullish-crossover' \
+                            and return_dict[label]['scan']['direction2'] == 'up') \
+                            or (label == 'bearish-crossover' \
+                            and return_dict[label]['scan']['direction2'] == 'down'):
+                        risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+                    # NOTE: A trendy number of crossovers is always plus in
+                    # technical analysis
+                    if len(return_dict[label]['scan']['crossovers']) \
+                            in safer_crossover_number:
+                        risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+                # NOTE: If period and period interval decently sized
+                if return_dict[label]['flag'] \
+                        and (return_dict['interval'] in safer_intervals \
+                        and return_dict[label]['start-candle'] >= safety_period):
+                    risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+        return risk_index
+
+    @pysnooper.snoop()
     def compute_rsi_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1565,10 +1649,36 @@ class TradingStrategy():
             "description": "Relative Strength Index Strategy"
 
         }
+
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish croosover/divergence occured
+        if return_dict['bullish-divergence']['flag'] \
+                or return_dict['bearish-divergence']['flag']:
+            risk_index = 5
+        safer_crossover_number = [1, 3]
+        if risk_index:
+            for label in ('bullish-divergence', 'bearish-divergence'):
+                # NOTE: If bullish/bearish divergence values distanced enough after
+                # crossover to be considered confirmed.
+                if return_dict[label]['flag'] \
+                        and return_dict[label]['scan']['direction1'] == 'up' \
+                        and return_dict[label]['scan']['direction2'] == 'down':
+                    risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+                # NOTE: If period and period interval decently sized
+                if return_dict[label]['flag'] \
+                        and (return_dict['interval'] in safer_intervals \
+                        and return_dict[label]['start-candle'] >= safety_period):
+                    risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+        return risk_index
+
+    @pysnooper.snoop()
     def compute_macd_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1723,10 +1833,49 @@ class TradingStrategy():
             "description": "Moving Average Convergence Divergence Strategy"
 
         }
+
         [ RETURN ]: risk_index - type int - values low.1-5.high
         '''
-        log.debug('TODO - Under construction, building...')
-        return 0
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period = 14
+        risk_index = 0
+        # NOTE: If bullish/bearish croosover/divergence occured
+        if return_dict['bullish-crossover']['flag'] \
+                or return_dict['bearish-crossover']['flag'] \
+                or return_dict['bullish-divergence']['flag'] \
+                or return_dict['bearish-divergence']['flag']:
+            risk_index = 5
+        safer_crossover_number = [1, 3]
+        if risk_index:
+            for label in ('bullish-crossover', 'bearish-crossover',
+                        'bullish-divergence', 'bearish-divergence'):
+                # NOTE: If bullish/bearish crossover/divergence values distanced enough after
+                # crossover to be considered confirmed.
+                if return_dict[label]['flag']:
+                    if label in ('bullish-crossover', 'bearish-crossover') \
+                            and return_dict[label]['scan']['confirmed']:
+                        risk_index = 1 if risk_index == 1 \
+                            or risk_index < 0 else risk_index - 1
+                        # NOTE: A trendy number of crossovers is always plus in technical
+                        # analysis numerology.. :) You're well entitled to judge btw -
+                        # judging makes the world go round.
+                        if risk_index and len(
+                                    return_dict[label]['scan']['crossovers']
+                                ) in safer_crossover_number:
+                            risk_index = 1 if risk_index == 1 \
+                                or risk_index < 0 else risk_index - 1
+                    else: # Check bearish/bullish divergence
+                        if return_dict[label]['scan']['direction1'] == 'up' \
+                                and return_dict[label]['scan']['direction2'] == 'down':
+                            risk_index = 1 if risk_index == 1 \
+                                or risk_index < 0 else risk_index - 1
+        # NOTE: If period and period interval decently sized
+        if risk_index and (return_dict['interval'] in safer_intervals \
+                and return_dict['volume-movement']['start-candle'] >= safety_period):
+            risk_index = 1 if risk_index == 1 \
+                or risk_index < 0 else risk_index - 1
+        return risk_index
 
     @pysnooper.snoop()
     def compute_adx_trade_risk(self, return_dict, **kwargs):
@@ -1829,23 +1978,25 @@ class TradingStrategy():
                 or return_dict['bearish-crossover']['flag']:
             risk_index = 5
         safer_crossover_number = [1, 3]
-        for label in ('bullish-crossover', 'bearish-crossover'):
-            # NOTE: If bullish/bearish crossover values distanced enough after
-            # crossover to be considered confirmed.
-            if risk_index and return_dict[label]['flag'] \
-                    and return_dict[label]['scan']['confirmed']:
-                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
-            # NOTE: A trendy number of crossovers is always plus in technical
-            # analysis numerology.. :) You're well entitled to judge btw -
-            # judging makes the world go round.
-            if risk_index and len(
-                        return_dict[label]['scan']['crossovers']
-                    ) in safer_crossover_number:
-                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
-            # NOTE: If the general directions of +di and -di are not identical.
-            if return_dict[label]['scan']['direction1'] \
-                    != return_dict[label]['scan']['direction2']:
-                risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+        if risk_index:
+            for label in ('bullish-crossover', 'bearish-crossover'):
+                # NOTE: If bullish/bearish crossover values distanced enough after
+                # crossover to be considered confirmed.
+                if return_dict[label]['flag'] \
+                        and return_dict[label]['scan']['confirmed']:
+                    risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+                # NOTE: A trendy number of crossovers is always plus in technical
+                # analysis numerology.. :) You're well entitled to judge btw -
+                # judging makes the world go round.
+                if len(return_dict[label]['scan']['crossovers']) \
+                        in safer_crossover_number:
+                    risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
+                # NOTE: If the general directions of +di and -di are not identical.
+                if return_dict[label]['scan']['direction1'] \
+                        != return_dict[label]['scan']['direction2']:
+                    risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
         # NOTE: If period and period interval decently sized
         if risk_index and (return_dict['interval'] in safer_intervals \
                 and return_dict['volume-movement']['start-candle'] >= safety_period):
@@ -2069,7 +2220,7 @@ class TradingStrategy():
             ...
         }
         '''
-        log.debug('TODO - Refactor')
+        log.debug('')
         log.debug('evaluations_dict - {}'.format(evaluations_dict))
         log.debug('kwargs - {}'.format(kwargs))
         if not evaluations_dict or signal not in ('buy', 'sell'):

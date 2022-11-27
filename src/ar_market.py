@@ -469,14 +469,17 @@ class TradingMarket(Client):
             )
         else:
             stdout_msg('Creating buy order...', info=True)
-            order = self.create_order(
-                symbol=sanitized_ticker,
-                side=self.SIDE_BUY,
-                type=self.ORDER_TYPE_MARKET,
-                quoteOrderQty=amount,
-                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-                recvWindow=kwargs.get('recvWindow', 60000),
-            )
+#           order = self.create_order(
+#               symbol=sanitized_ticker,
+#               side=self.SIDE_BUY,
+#               type=self.ORDER_TYPE_MARKET,
+#               quoteOrderQty=amount,
+#               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+#               recvWindow=kwargs.get('recvWindow', 60000),
+#           )
+            # TODO - Remove
+            order = None
+            stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
         return order
 
     # TODO - add take profit and stop loss / trailing stop limits
@@ -497,14 +500,17 @@ class TradingMarket(Client):
             )
         else:
             stdout_msg('Creating sell order...', info=True)
-            order = self.create_order(
-                symbol=sanitized_ticker,
-                side=self.SIDE_SELL,
-                type=self.ORDER_TYPE_MARKET,
-                quoteOrderQty=amount,
-                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-                recvWindow=kwargs.get('recvWindow', 60000),
-            )
+#           order = self.create_order(
+#               symbol=sanitized_ticker,
+#               side=self.SIDE_SELL,
+#               type=self.ORDER_TYPE_MARKET,
+#               quoteOrderQty=amount,
+#               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+#               recvWindow=kwargs.get('recvWindow', 60000),
+#           )
+            # TODO - Remove
+            order = None
+            stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
         return order
 
 #   @pysnooper.snoop()
@@ -582,19 +588,17 @@ class TradingMarket(Client):
 
     # COMPUTERS
 
-    # TODO
 #   @pysnooper.snoop()
     def compute_volume_history_from_candle_info(self, candle_info, **kwargs):
         '''
         [ RETURN ]: [{'value':, 'backtrack': ,}]
         '''
-        log.debug('TODO - Under construction')
-        info_dict, volume_history = candle_info.to_dict(), []
-        for candle_index in info_dict['volume']:
-            volume_history.append({
-                'value': info_dict['volume'][candle_index],
-                'backtrack': candle_index
-            })
+        log.debug('')
+        info_dict = candle_info.to_dict()
+        volume_history = [
+            {'value': info_dict['volume'][candle_index], 'backtrack': candle_index}
+            for candle_index in info_dict['volume']
+        ]
         return volume_history
 
 #   @pysnooper.snoop()
@@ -699,7 +703,7 @@ class TradingMarket(Client):
         '''
         [ NOTE ]: Data fetched from taapi.io
         '''
-        log.debug('TODO - display more data')
+        log.debug('')
         return_dict, details = {'history': {}}, kwargs.copy()
         stdout_msg('Updating market indicator history...', info=True)
         if not details.get('backtrack') and not details.get('backtracks'):

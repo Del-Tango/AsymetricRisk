@@ -407,7 +407,7 @@ class TradingBot():
 
     # REPORT MANAGEMENT
 
-    def generate_report(self):
+    def generate_report(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
             log.error('No trading reporter set up!')
