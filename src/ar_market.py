@@ -47,6 +47,8 @@ class TradingMarket(Client):
         self.history_backtrack = kwargs.get('backtrack', 5),
         self.history_backtracks = kwargs.get('backtracks', 14),
         self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # seconds
+        self.market_open = kwargs.get('market-open', '08:00')                   # Hour at which the bot's mission begins!!
+        self.market_close = kwargs.get('market-close', '22:00')                 # Hour at which the bot starts generating reports for the past day
         # WARNING: Longer delays between indicator api calls will result in
         # longer execution time. Delays that are too short may not retreive all
         # necessary data (depending on chosen Taapi API plan specifications)
@@ -454,66 +456,126 @@ class TradingMarket(Client):
     # TODO - add take profit and stop loss / trailing stop limits
     # TODO - Check max trade target achieved for current day
     @pysnooper.snoop()
-    def buy(self, amount, *args, take_profit=None, stop_loss=None,
+    def buy(self, trade_amount, *args, take_profit=None, stop_loss=None,
             trailing_stop=None, **kwargs):
+        '''
+        [ EXCEPTIONS ]:
+
+            binance.exceptions.BinanceAPIException: APIError(code=-1013): \
+                Filter failure: MIN_NOTIONAL
+
+            This error appears because you are trying to create an order with a
+            quantity lower than the minimun required.
+
+            You can access the minimun required of a specific pair with:
+
+            >>> info = client.get_symbol_info('ETHUSDT')
+            >>> print(info)
+
+            Output a dictionary with information about that pair. Now you can
+            access the minimun quantity required with:
+
+            >>> print(info['filters'][2]['minQty'])
+            # 0.00001
+        '''
         log.debug('TODO - Under construction, building...')
-        sanitized_ticker = self.ticker_symbol.replace('/', '')
-        if kwargs.get('test'):
-            stdout_msg('Creating test buy order...', info=True)
-            order = self.create_test_order(
-                symbol=sanitized_ticker,
-                side=self.SIDE_BUY,
-                type=self.ORDER_TYPE_MARKET,
-                quoteOrderQty=amount,
-                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-                recvWindow=kwargs.get('recvWindow', 60000),
-            )
-        else:
-            stdout_msg('Creating buy order...', info=True)
-#           order = self.create_order(
-#               symbol=sanitized_ticker,
-#               side=self.SIDE_BUY,
-#               type=self.ORDER_TYPE_MARKET,
-#               quoteOrderQty=amount,
-#               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-#               recvWindow=kwargs.get('recvWindow', 60000),
-#           )
-            # TODO - Remove
-            order = None
-            stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-        return order
+        sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
+        try:
+            if kwargs.get('test'):
+                stdout_msg('Creating test buy order...', info=True)
+                order = self.create_test_order(
+                    symbol=sanitized_ticker,
+                    side=self.SIDE_BUY,
+                    type=self.ORDER_TYPE_MARKET,
+#                   price=0,
+                    quantity=trade_amount,
+                    quoteOrderQty=None if trade_amount \
+                        else kwargs.get('quote-trade-amount'),
+                    recvWindow=kwargs.get('recvWindow', 60000),
+                )
+            else:
+                stdout_msg('Creating buy order...', info=True)
+
+                # TODO - Uncomment
+    #           order = self.create_order(
+    #               symbol=sanitized_ticker,
+    #               side=self.SIDE_BUY,
+    #               type=self.ORDER_TYPE_MARKET,
+    #               quoteOrderQty=trade_amount,
+    #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+    #               recvWindow=kwargs.get('recvWindow', 60000),
+    #           )
+
+                # TODO - Remove
+                order = None
+                stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
+
+        except Exception as e:
+            log.error(e)
+        finally:
+            return order
 
     # TODO - add take profit and stop loss / trailing stop limits
     # TODO - Check max trade target achieved for current day
     @pysnooper.snoop()
-    def sell(self, amount, *args, take_profit=None, stop_loss=None,
+    def sell(self, trade_amount, *args, take_profit=None, stop_loss=None,
              trailing_stop=None,  **kwargs):
+        '''
+        [ EXCEPTIONS ]:
+
+            binance.exceptions.BinanceAPIException: APIError(code=-1013): \
+                Filter failure: MIN_NOTIONAL
+
+            This error appears because you are trying to create an order with a
+            quantity lower than the minimun required.
+
+            You can access the minimun required of a specific pair with:
+
+            >>> info = client.get_symbol_info('ETHUSDT')
+            >>> print(info)
+
+            Output a dictionary with information about that pair. Now you can
+            access the minimun quantity required with:
+
+            >>> print(info['filters'][2]['minQty'])
+            # 0.00001
+        '''
         log.debug('TODO - Under construction, building...')
-        sanitized_ticker = self.ticker_symbol.replace('/', '')
-        if kwargs.get('test'):
-            stdout_msg('Creating test sell order...', info=True)
-            order = self.create_test_order(
-                symbol=sanitized_ticker,
-                side=self.SIDE_SELL,
-                type=self.ORDER_TYPE_MARKET,
-                quoteOrderQty=amount,
-                newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-                recvWindow=kwargs.get('recvWindow', 60000),
-            )
-        else:
-            stdout_msg('Creating sell order...', info=True)
-#           order = self.create_order(
-#               symbol=sanitized_ticker,
-#               side=self.SIDE_SELL,
-#               type=self.ORDER_TYPE_MARKET,
-#               quoteOrderQty=amount,
-#               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-#               recvWindow=kwargs.get('recvWindow', 60000),
-#           )
-            # TODO - Remove
-            order = None
-            stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-        return order
+        sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
+        try:
+            if kwargs.get('test'):
+                stdout_msg('Creating test sell order...', info=True)
+                order = self.create_test_order(
+                    symbol=sanitized_ticker,
+                    side=self.SIDE_SELL,
+                    type=self.ORDER_TYPE_MARKET,
+                    price=0,
+                    quantity=trade_amount,
+                    quoteOrderQty=None if trade_amount \
+                        else kwargs.get('quote-trade-amount'),
+                    recvWindow=kwargs.get('recvWindow', 60000),
+                )
+            else:
+                stdout_msg('Creating sell order...', info=True)
+
+                # TODO - Uncomment
+    #           order = self.create_order(
+    #               symbol=sanitized_ticker,
+    #               side=self.SIDE_SELL,
+    #               type=self.ORDER_TYPE_MARKET,
+    #               quoteOrderQty=trade_amount,
+    #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+    #               recvWindow=kwargs.get('recvWindow', 60000),
+    #           )
+
+                # TODO - Remove
+                order = None
+                stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
+
+        except Exception as e:
+            log.error(e)
+        finally:
+            return order
 
 #   @pysnooper.snoop()
     def build_candle_info_data_frame(self, *args, **kwargs):
@@ -699,7 +761,7 @@ class TradingMarket(Client):
             )
         return return_dict['history']
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_indicator_history(self, *update_targets,
                                  timestamp=str(time.time()), **kwargs):
         '''
@@ -762,7 +824,7 @@ class TradingMarket(Client):
         if 'all' in update_targets or 'indicators' in update_targets \
                 or 'rsi' in update_targets:
             rsi_history = self.fetch_rsi_value(**details)
-            if ema_history:
+            if rsi_history:
                 stdout_msg(
                     'RSI History - {} periods of {} candles'.format(
                         kwargs.get('period', self.period),

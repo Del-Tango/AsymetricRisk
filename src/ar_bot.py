@@ -6,6 +6,7 @@
 
 import os
 import time
+import datetime
 import logging
 import pysnooper
 
@@ -26,12 +27,15 @@ class TradingBot():
     def __init__(self, *args, **kwargs):
         log.debug('')
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
+        self.max_trades = kwargs.get('max-trades', 3)
         self.market = {}
         self.start_account_value = float()
         self.current_account_value = float()
         self.profit_baby = float(10)
-        self.trade_amount = float(1)
+        self.quote_amount = float(1) # Account value percentage of quote currency
+        self.trade_amount = float()  # Account value percentage of base currency
         self.profit_target = float()
+        self.trading_done_for = None    # DateTime object
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
                 self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
@@ -50,11 +54,13 @@ class TradingBot():
         self.markets.update(self.market)
         self.reporter = self.setup_reporter(**kwargs)
         self.analyzer = self.setup_analyzer(**kwargs)
+        self.trades_today = {}
+        self.trades_archive = {}
 
     # FETCHERS
 
 #   @pysnooper.snoop()
-    def fetch_account_value(self, **kwargs):
+    def fetch_account_value(self, currency='base', **kwargs):
         log.debug('')
         market = self.fetch_active_market()
         if not market:
@@ -64,8 +70,10 @@ class TradingBot():
             return False
         base, quote = self.fetch_market_currency()
         response = market.get_asset_balance(
-            base, recvWindow=kwargs.get('recvWindow', 60000)
+            base if currency == 'base' else quote,
+            recvWindow=kwargs.get('recvWindow', 60000)
         )
+        log.debug('response: {}'.format(response))
         if kwargs.get('free') or kwargs.get('locked'):
             total_value = float(response['free']) if kwargs.get('free') \
                 else float(response['locked'])
@@ -120,11 +128,52 @@ class TradingBot():
         self.trading_strategy = strategy
         return self.trading_strategy
 
+    # CHECKERS
+
+    def check_market_hours(self, opening=[8, 00], closing=[22, 00]):
+        log.debug('')
+        now = datetime.datetime.now()
+        if (now.hour >= opening[0] or now.minute >= opening[1]) \
+                and (now.hour <= closing[0] or now.minute <= closing[1]):
+            return True
+        return False
+
+    def check_new_day(self, **kwargs):
+        log.debug('')
+        if not self.trading_done_for:
+            return False
+        now = datetime.datetime.now()
+        if now.weekday() != self.trading_done_for.weekday():
+            return True
+        return False
+
+    def check_trade_count(self, *args, **kwargs):
+        log.debug('')
+        if len(kwargs.get('trades-today', self.trades_today)) \
+                >= kwargs.get('max-trades', self.max_trades):
+            if not self.trading_done_for:
+                self.trading_done_for = datetime.datetime.now()
+            return True
+        return False
+
     # UPDATERS
 
-    def update_current_account_value(self, **kwargs):
+    def update_trades(self, trade_dict, target='today', **kwargs):
         log.debug('')
-        value = self.fetch_account_value(**kwargs)
+        targets = {
+            'today': self.trades_today,
+            'archive': self.trades_archive
+        }
+        if target not in targets:
+            log.error('Invalid target! ({})'.format(target))
+            return False
+        targets[target].update({trade_dict['orderId']: trade_dict})
+        return True
+
+    @pysnooper.snoop()
+    def update_current_account_value(self, currency='quote', **kwargs):
+        log.debug('')
+        value = self.fetch_account_value(currency=currency, **kwargs)
         if not value:
             return False
         self.current_account_value = value
@@ -141,16 +190,45 @@ class TradingBot():
 
     # ACTIONS
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
             'watchdog-anchor-file', '.ar-bot.anch'
         )
         ensure_files_exist(anchor_file)
+        cool_down_seconds = kwargs.get('watchdog-interval', 60)
+        market_hours = {
+            'opening': [
+                int(item) for item in
+                kwargs.get('market-open', '08:00').split(':')
+            ],
+            'closing': [
+                int(item) for item in
+                kwargs.get('market-close', '22:00').split(':')
+            ]
+        }
         while True:
             if anchor_file and not os.path.exists(anchor_file):
                 break
+            check_time = self.check_market_hours(**market_hours)
+            if not check_time:
+                # TODO - Deal with over night reporting here
+                self.bot_cooldown(cool_down_seconds)
+                continue
+            check_max_reached = self.check_trade_count()
+            if check_max_reached:
+                if self.check_new_day():
+                    reset = self.reset_trading_day()
+                    if not reset:
+                        stdout_msg(
+                            'Could not reset trading day! Max-trades (per day) '
+                            'parameter can no longer be considered.', err=True
+                        )
+                        failures += 1
+                else:
+                    self.bot_cooldown(cool_down_seconds)
+                    continue
             trade = self.trade(*args, **kwargs)
             if not trade:
                 if isinstance(trade, dict) and trade.get('error'):
@@ -160,14 +238,12 @@ class TradingBot():
                     and self.current_account_value >= self.profit_target:
                 self.mission_accomplished()
                 break
-            cool_down_seconds = kwargs.get('watchdog-interval', 60)
-            stdout_msg(
-                'Bot cool down: {} seconds'.format(cool_down_seconds), red=True
-            )
-            time.sleep(cool_down_seconds)
+            if trade:
+                self.update_trades(trade, target='today', **kwargs)
+            self.bot_cooldown(cool_down_seconds)
         return failures
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def trade(self, *args, **kwargs):
         '''
         [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
@@ -223,6 +299,7 @@ class TradingBot():
                 'price-chart': candles,
                 'price-interval': 5m,
             }
+
         [ RETURN ]: {
             'trade-id': 142324,
         }
@@ -248,27 +325,36 @@ class TradingBot():
         trade_amount = self.compute_trade_amount(
             details.get('trade-amount', 1), **details
         )
+        quote_amount = self.compute_quote_amount(
+            details.get('quote-trade-amount', 1), **details
+        )
         if details.get('analyze-risk'):
             details.update({
                 'details': market_details,
                 'strategy': trading_strategy,
-                'amount': trade_amount,
+                'amount': 0 if not trade_amount else trade_amount,
+                'quote-amount': 0 if not quote_amount else quote_amount,
                 'side': kwargs.get('side', 'auto'),
             })
             stdout_msg('Analyzing trading risk', info=True)
             trade_flag, risk_index, trade_side, failures = self.analyzer.analyze_risk(
                 **details
             )
-        if risk_index == 0:
+        if risk_index == 0 or not trade_flag:
             # [ NOTE ]: Trading cycle should stop here according to specified
             #           risk tolerance. Do nothing, try again later.
             stdout_msg('[ N/A ]: Skipping trade, not a good ideea right now.')
             return False
         if trade_flag:
-            if trade_side == 'buy':
-                trade = market.buy(trade_amount, **details)
-            elif trade_side == 'sell':
-                trade = market.sell(trade_amount, **details)
+            trade_sides = {'buy': market.buy, 'sell': market.sell,}
+            trade = trade_sides[trade_side](trade_amount, **details)
+            if not trade:
+                stdout_msg(
+                    'Something went wrong! Errors occured during trade! \n'
+                    'Check log file ({}) for more details. God speed!!!'.format(
+                        kwargs.get('log-file')
+                    ), err=True
+                )
         else:
             return False
         return False if (not trade or trade.get('error')) else trade
@@ -281,7 +367,7 @@ class TradingBot():
         [ NOTE ]: When in a short-trade (sell) exit at the next price support
                   level.
 
-        [ INPUT ]: *args    - trade ID's (type str)
+        [ INPUT ]: *args    - trade orderId's (type str)
                    **kwargs - symbol (type str) - ticker symbol, default is
                               active market
                             - recvWindow (type int) - binance API response
@@ -295,17 +381,41 @@ class TradingBot():
 
     # COMPUTERS
 
+    @pysnooper.snoop()
+    def compute_quote_amount(self, percentage, **kwargs):
+        log.debug('')
+        value = self.fetch_account_value(currency='quote', **kwargs)
+        if not value:
+            return False
+        self.quote_amount = 0 if not value or not percentage\
+            else compute_percentage(percentage, value)
+        if kwargs.get('test') and not self.quote_amount:
+            stdout_msg(
+                'Running in TEST mode! Quote currency trade amount set to (100)',
+                warn=True
+            )
+            self.quote_amount = 100
+        return self.quote_amount
+
+    @pysnooper.snoop()
     def compute_trade_amount(self, percentage, **kwargs):
         log.debug('')
-        self.trade_amount = 1 if not self.current_account_value \
-            else compute_percentage(
-                percentage, self.current_account_value
+        value = self.fetch_account_value(currency='base', **kwargs)
+        if not value:
+            return False
+        self.trade_amount = 0 if not value or not percentage\
+            else compute_percentage(percentage, value)
+        if kwargs.get('test') and not self.trade_amount:
+            stdout_msg(
+                'Running in TEST mode! Base currency trade amount set to (100)',
+                warn=True
             )
+            self.trade_amount = 100
         return self.trade_amount
 
     def compute_profit_baby(self, percentage, **kwargs):
         log.debug('')
-        account_value = self.fetch_account_value(**kwargs)
+        account_value = self.fetch_account_value(currency='quote', **kwargs)
         self.start_account_value = account_value
         self.current_account_value = account_value
         self.profit_baby = 0 if not self.start_account_value \
@@ -316,6 +426,27 @@ class TradingBot():
         return self.profit_baby
 
     # GENERAL
+
+    def bot_cooldown(self, cool_down_seconds):
+        log.debug('')
+        stdout_msg(
+            'Bot cool down: {} seconds'.format(cool_down_seconds), red=True
+        )
+        time.sleep(cool_down_seconds)
+        return True
+
+    def reset_trading_day(self, **kwargs):
+        log.debug('')
+        self.archive_current_day_trades(**kwargs)
+        self.trading_done_for = None
+        self.trades_today = {}
+        return True
+
+    def archive_current_day_trades(self, *args, **kwargs):
+        log.debug('')
+        self.trades_archive.update({time.time(): self.trades_today.copy(),})
+        self.trades_today = {}
+        return True
 
     def mission_accomplished(self):
         log.debug('HELL YES!')
@@ -490,16 +621,4 @@ class TradingBot():
 
 # CODE DUMP
 
-#       strategy = ['all'] if not kwargs.get('strategy') else kwargs['strategy'].split(',')
-#           trading_strategy = (arg[-1] if len(args) == 1 else ','.join(args)) \
-#               if args else kwargs.get('strategy', 'vwap')
-
-#               account_value = self.fetch_account_value(**kwargs)
-#               self.start_account_value = account_value
-#               self.current_account_value = account_value
-#               self.profit_baby = 0 if not self.start_account_value \
-#                   else compute_percentage(
-#                       kwargs.get('profit-baby', 10), self.start_account_value
-#                   )
-#               self.profit_target = (self.start_account_value + self.profit_baby)
 
