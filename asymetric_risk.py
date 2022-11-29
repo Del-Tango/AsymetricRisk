@@ -4,6 +4,22 @@
 #
 # ASYMETRIC RISK - (A)Risk
 
+# [ NOTE ]: Supported order types for the Binance API -
+#
+#     * Order Types in SPOT trading:
+#         * MARKET
+#         * LIMIT
+#         * STOP_LIMIT
+#         * OCO
+#         * TRAILING_STOP
+#
+#     * Order Types in FUTURES trading:
+#         * LIMIT
+#         * MARKET
+#         * STOP_LIMIT
+#         * STOP_MARKET
+#         * TRAILING_STOP
+
 import os
 import logging
 import pysnooper
@@ -53,12 +69,23 @@ AR_DEFAULT = {
     "taapi-key":                os.environ.get('taapi_api'),
     "api-url":                  'https://testnet.binance.vision/api',
     "taapi-url":                "https://api.taapi.io",
-    "trade-amount":             1,
-    "quote-trade-amount":       1000,
+    "max-trades":               3,
+    "trade-amount":             0,
+    "quote-trade-amount":       1,
+    "trading-account-type":     "SPOT",
+    "trading-order-type":       "OCO",
     "profit-baby":              10,
     "base-currency":            'BTC',
     "quote-currency":           'USDT',
     "ticker-symbol":            'BTC/USDT',
+    "order-time-in-force":      "GTC",
+    "order-response-type":      "JSON",
+    "order-recv-window":        60000,
+    "order-list-id":            "",
+    "order-limit-id":           "",
+    "order-stop-id":            "",
+    "order-iceberg-quantity":   0,
+    "order-price":              0,
     "period-start":             '01-10-2022',
     "period-end":               '01-11-2022',
     "indicator-update-delay":   18,
@@ -77,6 +104,11 @@ AR_DEFAULT = {
     "market-close":             "22:00",
     "backtrack":                1,
     "backtracks":               10,
+    "stop-limit":               0,
+    "stop-price":               0,
+    "stop-limit-price":         0,
+    "stop-iceberg-quantity":    0,
+    "stop-limit-time-in-force": "GTC",
     "stop-loss":                10,
     "take-profit":              30,
     "trailing-stop":            10,
@@ -466,11 +498,14 @@ def create_command_line_parser():
             -q  | --quote-currency USDT \\      # Measure base currency value in -
             -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
             -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
+            -x  | --max-trades 3 \\             # Maximum number of trades allowed per trading day
                 | --history-backtrack 14 \\     # General period backtrack value for indicator history
                 | --history-backtracks 14 \\    # General period backtracks value for indicator history
                 | --stop-loss 10 \\             # Set trading stop loss at X% of amount
                 | --take-profit 30 \\           # Set trading take profit at X% of amount
                 | --trailing-stop 10 \\         # Set trailing stop at X% of amount
+                | --market-open "08:00" \\      # HH:MM time when the bot can start trading
+                | --market-close "22:00" \\     # HH:MM time when the bot should stop trading
                 | --price-movement 5 \\         # Set price movement trigger at X% per interval
                 | --rsi-top 70 \\               # Specify strong RSI value (1-100)
                 | --rsi-bottom 30 \\            # Specify low RSI value (1-100)
@@ -595,8 +630,62 @@ def process_command_line_options(parser):
         'price_backtracks': process_price_backtracks_argument(parser, options),
         'price_chart': process_price_chart_argument(parser, options),
         'price_interval': process_price_interval_argument(parser, options),
+        'max-trades': process_max_trades_argument(parser, options),
+        'market-open': process_market_open_argument(parser, options),
+        'market-close': process_market_close_argument(parser, options),
     }
     return processed
+
+def process_max_trades_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.market_open
+    if value == None:
+        log.warning(
+            'No max trades/day provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['max-trades'])
+        )
+        return False
+    AR_DEFAULT['max-trades'] = value
+    stdout_msg(
+        'Max. Trades/day setup ({})'.format(AR_DEFAULT['max-trades']),
+        ok=True
+    )
+    return True
+
+def process_market_open_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.market_open
+    if value == None:
+        log.warning(
+            'No market open hours provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['market-open'])
+        )
+        return False
+    AR_DEFAULT['market-open'] = value
+    stdout_msg(
+        'Market Open hours setup ({})'.format(AR_DEFAULT['market-open']),
+        ok=True
+    )
+    return True
+
+def process_market_close_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.market_close
+    if value == None:
+        log.warning(
+            'No market close hours provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['market-close'])
+        )
+        return False
+    AR_DEFAULT['market-close'] = value
+    stdout_msg(
+        'Market Close hours setup ({})'.format(AR_DEFAULT['market-close']),
+        ok=True
+    )
+    return True
 
 def process_price_period_argument(parser, options):
     global AR_DEFAULT
@@ -1880,6 +1969,20 @@ def add_command_line_parser_options(parser):
     parser.add_option(
         '', '--take-profit', dest='take_profit', type='int', metavar='PERCENTAGE',
         help='Price percentage of when to cash in on a trade.',
+    )
+    parser.add_option(
+        '-x', '--max-trades', dest='max_trades', type='int', metavar='COUNT',
+        help='Maximum number of trades allowed per trading day.',
+    )
+    parser.add_option(
+        '', '--market-open', dest='market_open', type='int', metavar='HH:MM',
+        help='Hour at which the market opens and the trading bot is allowed to start '
+             'trading.',
+    )
+    parser.add_option(
+        '', '--market-close', dest='market_close', type='int', metavar='HH:MM',
+        help='Hour at which the market closes and the trading bot has to stop '
+             'trading.',
     )
     parser.add_option(
         '', '--vwap-interval', dest='vwap_interval', type='string', metavar='INTERVAL',
