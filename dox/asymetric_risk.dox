@@ -47,11 +47,14 @@ Usage:
             -q  | --quote-currency USDT \\      # Measure base currency value in -
             -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
             -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
+            -x  | --max-trades 3 \\             # Maximum number of trades allowed per trading day
                 | --history-backtrack 14 \\     # General period backtrack value for indicator history
                 | --history-backtracks 14 \\    # General period backtracks value for indicator history
                 | --stop-loss 10 \\             # Set trading stop loss at X% of amount
                 | --take-profit 30 \\           # Set trading take profit at X% of amount
                 | --trailing-stop 10 \\         # Set trailing stop at X% of amount
+                | --market-open "08:00" \\      # HH:MM time when the bot can start trading
+                | --market-close "22:00" \\     # HH:MM time when the bot should stop trading
                 | --price-movement 5 \\         # Set price movement trigger at X% per interval
                 | --rsi-top 70 \\               # Specify strong RSI value (1-100)
                 | --rsi-bottom 30 \\            # Specify low RSI value (1-100)
@@ -130,7 +133,10 @@ Options:
   -T CSV, --strategy=CSV
                         Strategies to apply when taking into consideration the
                         generation of buy and sell signals. Default is
-                        vwap,rsi,macd,adx,ma,ema,price,volume
+                        vwap,rsi,macd,adx,ma,ema,price,volume WARNING: The
+                        more trading strategies you chain, the weaker their
+                        signal strength as the final decision lies in the
+                        average of all strategy signals.
   -u URL, --taapi-url=URL
                         Taapi API URL target. Default is https://api.taapi.io
   -U URL, --api-url=URL
@@ -154,13 +160,16 @@ Options:
                         Stop trading when hitting this profit target, relative
                         to the account value when the bot was initialized.
                         Default is 1%
+  -x COUNT, --max-trades=COUNT
+                        Maximum number of trades allowed per trading day.
   -a CSV, --action=CSV  Action to execute - valid values include one or more
                         of the following labels given as a CSV string: (start-
                         watchdog | stop-watchdog | trade-report | withdrawal-
                         report | deposit-report | single-trade | view-trade-
                         report | view-withdrawal-report | view-deposit-report
                         | account-details | market-details | supported-coins |
-                        supported-tickers)
+                        supported-tickers | list-reports | remove-report |
+                        report)
   --history-backtrack=PERIOD
                         General backtrack value for indicator history.
                         Backtrack returns a single candle value from X periods
@@ -179,6 +188,10 @@ Options:
                         before hitting the --take-profit value.
   --take-profit=PERCENTAGE
                         Price percentage of when to cash in on a trade.
+  --market-open=HH:MM   Hour at which the market opens and the trading bot is
+                        allowed to start trading.
+  --market-close=HH:MM  Hour at which the market closes and the trading bot
+                        has to stop trading.
   --vwap-interval=INTERVAL
                         Time interval used when computing the Volume-Weighted
                         Average Price. Supported time frames: 1m, 5m, 15m,
@@ -401,3 +414,4 @@ Options:
                         into the matching engine..
 
 EOF
+

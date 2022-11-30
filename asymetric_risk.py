@@ -4,22 +4,6 @@
 #
 # ASYMETRIC RISK - (A)Risk
 
-# [ NOTE ]: Supported order types for the Binance API -
-#
-#     * Order Types in SPOT trading:
-#         * MARKET
-#         * LIMIT
-#         * STOP_LIMIT
-#         * OCO
-#         * TRAILING_STOP
-#
-#     * Order Types in FUTURES trading:
-#         * LIMIT
-#         * MARKET
-#         * STOP_LIMIT
-#         * STOP_MARKET
-#         * TRAILING_STOP
-
 import os
 import logging
 import pysnooper
@@ -93,7 +77,7 @@ AR_DEFAULT = {
     "test":                     True,
     "debug":                    True,
     "silence":                  False,
-    "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report)
+    "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report | report | remove-report)
     "analyze-risk":             True,
     "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
     "side":                     "auto",
@@ -153,7 +137,6 @@ AR_DEFAULT = {
     "price-backtracks":         12,
     "price-chart":              "candles",
     "price-interval":           "5m",
-    "report-prefix":            "ar-",
     "report-id":                "",
     "report-id-length":         8,
     "report-id-characters":     "abcdefghijklmnopqrstuvwxyz0123456789",
@@ -190,8 +173,6 @@ def fetch_action_handlers():
         'supported-tickers': action_supported_tickers,
         'get-config': action_get_config,
     }
-
-# SETTERS
 
 # CHECKERS
 
@@ -265,9 +246,8 @@ def action_report(*args, **kwargs):
     [ NOTE ]: Generates all reports.
     '''
     log.debug('')
-    stdout_msg('[ ACTION ]: Generate Reports', bold=True)
+    stdout_msg('[ ACTION ]: Generate All Reports', bold=True)
     generate = trading_bot.generate_report(**kwargs)
-    # TODO - View reports here
     if not generate:
         return 1
     return 0
@@ -276,7 +256,6 @@ def action_trade_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Trade Report', bold=True)
     generate = trading_bot.generate_report('trade-history', **kwargs)
-    # TODO - View report here
     if not generate:
         return 1
     return 0
@@ -285,7 +264,6 @@ def action_withdrawal_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
     generate = trading_bot.generate_report('withdrawal-history', **kwargs)
-    # TODO - View report here
     if not generate:
         return 1
     return 0
@@ -298,11 +276,12 @@ def action_deposit_report(*args, **kwargs):
         return 1
     return 0
 
-
 def action_view_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Report', bold=True)
-    generate = trading_bot.view_report(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    generate = trading_bot.view_report(
+        *AR_DEFAULT['report-id'].split(','), **kwargs
+    )
     if not generate:
         return 1
     return 0
@@ -310,7 +289,9 @@ def action_view_report(*args, **kwargs):
 def action_remove_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Remove Reports', bold=True)
-    remove = trading_bot.remove_report(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    remove = trading_bot.remove_report(
+        *AR_DEFAULT['report-id'].split(','), **kwargs
+    )
     if not remove:
         return 1
     return 0
@@ -318,7 +299,9 @@ def action_remove_report(*args, **kwargs):
 def action_list_reports(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: List Reports', bold=True)
-    reports = trading_bot.list_reports(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    reports = trading_bot.list_reports(
+        *AR_DEFAULT['report-id'].split(','), **kwargs
+    )
     if not reports:
         return 1
     return 0
@@ -2498,7 +2481,6 @@ if __name__ == '__main__':
     # NOTE: The first processed argument is the --config file. If the argument
     # is given with a valid file path, the new config loaded, after which the
     # rest of the arguments are processed.
-    # TODO - Uncomment 1 down
     clear_screen()
     EXIT_CODE = 1
     try:
@@ -2510,46 +2492,4 @@ if __name__ == '__main__':
     exit(EXIT_CODE)
 
 # CODE DUMP
-
-#   def action_view_trade_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Trade Report', bold=True)
-#   def action_view_withdrawal_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Withdrawal Report', bold=True)
-#   def action_view_deposit_report(*args, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       # TODO - No mods in trading bot
-#       stdout_msg('[ ACTION ]: View Deposit Report', bold=True)
-
-
-#TradingBot(**AR_DEFAULT)
-
-#   log_init(
-#       '/'.join([AR_DEFAULT['log-dir'], AR_DEFAULT['log-file']]),
-#       AR_DEFAULT['log-format'], AR_DEFAULT['timestamp-format'],
-#       AR_DEFAULT['debug'], log_name=AR_SCRIPT_NAME
-#   )
-
-#   print(format_header_string())
-
-#       stdout_msg(
-#           '[ NOK ]: Trading bot failures detected! Exit code ({})'
-#           .format(watchdog)
-#       )
-#   else:
-
-#   return False if os.path.exists(AR_DEFAULT['watchdog-anchor-file']) else True
-
-#       {
-#           'error': True, 'exit': 1,
-#           'description': 'Could not stop trading bot!'
-#       }
-
-#   {
-#       'error': True, 'exit': 1,
-#       'description': 'Trading bot watchdog terminated abruptly!',
-#   }
 

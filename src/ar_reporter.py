@@ -48,6 +48,10 @@ class TradingReporter():
             'trade-history': self.generate_trade_history_report,
             'current-trades': self.generate_current_trades_report,
             'success-rate': self.generate_success_rate_report,
+            'market-snapshot': self.generate_market_snapshot_report,
+            'account-snapshot': self.generate_account_snapshot_report,
+            'api-permissions': self.generate_api_permissions_report,
+            'coin-details': self.generate_coin_details_report,
         }
 
     # INTERFACE
@@ -136,13 +140,6 @@ class TradingReporter():
                 )
                 continue
             self.display_report_content(report_id, all_reports[report_id])
-#           file_path = all_reports[report_id]
-#           out, err, exit = shell_cmd('cat ' + file_path + ' 2> /dev/null')
-#           stdout_msg(
-#               '{} - {}\n{}\n'.format(
-#                   report_id, file_path, pretty_dict_print(json2dict(file_path))
-#               ), symbol='REPORT', bold=True
-#           )
         return False if failures else True
 
     @pysnooper.snoop()
@@ -157,7 +154,7 @@ class TradingReporter():
 
         [ INPUT ]: *args - (<report-type>, ...)
 
-                   **kwargs - {
+                   **kwargs - Context + {
                         ...
                         'evaluation': {
                             'buy': {},
@@ -174,6 +171,8 @@ class TradingReporter():
                     'report-id': '',
                     'report-type': '',
                     'report-location': '',
+                    'raw-data': {},
+                    'report': {},
                 },
                 'deposit-history': {
                     'timestamp': '',
@@ -191,18 +190,27 @@ class TradingReporter():
                     'timestamp': '',
                     ...
                 },
+                'market-snapshot': {
+                    'timestamp': '',
+                    ...
+                },
+                'account-snapshot': {
+                    'timestamp': '',
+                    ...
+                },
+                'coin-details': {
+                    'timestamp': '',
+                    ...
+                },
+                'api-permissions': {
+                    'timestamp': '',
+                    ...
+                },
             }
             'errors': [{msg: '', type: '', code: ,}],
         }
         '''
         log.debug('')
-        report_types = {
-            'deposit-history': self.generate_deposit_history_report,
-            'withdrawal-history': self.generate_withdrawal_history_report,
-            'trade-history': self.generate_trade_history_report,
-            'current-trades': self.generate_current_trades_report,
-            'success-rate': self.generate_success_rate_report,
-        }
         return_dict = {
             'flag': False,
             'reports': {
@@ -211,10 +219,14 @@ class TradingReporter():
                 'withdrawal-history': {},
                 'current-trades': {},
                 'success-rate': {},
+                'market-snapshot': {},
+                'account-snapshot': {},
+                'coin-details': {},
+                'api-permissions': {},
             },
             'errors': [],
         }
-        report_labels = args or list(report_types.keys())
+        report_labels = args or list(self.report_generators.keys())
         for label in report_labels:
             if label not in self.report_generators.keys():
                 continue
@@ -259,6 +271,58 @@ class TradingReporter():
         return return_dict
 
     # GENERATORS
+
+    def generate_coin_details_report(self, *args, **kwargs):
+        log.debug('')
+        return_dict = self.generate_default_report_details(*args, **kwargs)
+        return_dict.update({
+            'report-extension': '.cdt',
+            'report-type': 'Coin Details',
+        })
+        return_dict.update(
+            self.format_coin_details_report_details(*args, **kwargs)
+        )
+        write_to_file = self.write_report_to_file(return_dict, **kwargs)
+        return return_dict
+
+    def generate_api_permissions_report(self, *args, **kwargs):
+        log.debug('')
+        return_dict = self.generate_default_report_details(*args, **kwargs)
+        return_dict.update({
+            'report-extension': '.api',
+            'report-type': 'Api Permissions',
+        })
+        return_dict.update(
+            self.format_api_permissions_report_details(*args, **kwargs)
+        )
+        write_to_file = self.write_report_to_file(return_dict, **kwargs)
+        return return_dict
+
+    def generate_market_snapshot_report(self, *args, **kwargs):
+        log.debug('')
+        return_dict = self.generate_default_report_details(*args, **kwargs)
+        return_dict.update({
+            'report-extension': '.mks',
+            'report-type': 'Market Snapshot',
+        })
+        return_dict.update(
+            self.format_market_snapshot_report_details(*args, **kwargs)
+        )
+        write_to_file = self.write_report_to_file(return_dict, **kwargs)
+        return return_dict
+
+    def generate_account_snapshot_report(self, *args, **kwargs):
+        log.debug('')
+        return_dict = self.generate_default_report_details(*args, **kwargs)
+        return_dict.update({
+            'report-extension': '.acs',
+            'report-type': 'Account Snapshot',
+        })
+        return_dict.update(
+            self.format_account_snapshot_report_details(*args, **kwargs)
+        )
+        write_to_file = self.write_report_to_file(return_dict, **kwargs)
+        return return_dict
 
     def generate_withdrawal_history_report(self, *args, **kwargs):
         log.debug('')
@@ -338,70 +402,86 @@ class TradingReporter():
 
     # FORMATTERS
 
-    # TODO
-    def format_withdrawal_report_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
+    def format_api_permissions_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
-        return {}
-    def format_deposit_report_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
-        return {}
-    def format_current_trades_report_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
-        return {}
-    def format_success_rate_report_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
-        return {}
-    def format_trade_history_report_details(self, *args, **kwargs):
-        log.debug('TODO - Under construction, building...')
-        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
-        return {}
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['api-permissions'],
+            'report': kwargs['raw-report-data']['api-permissions'],
+        }
 
+    def format_coin_details_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['coin-details'],
+            'report': kwargs['raw-report-data']['coin-details'],
+        }
+
+    def format_market_snapshot_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['market-snapshot'],
+            'report': kwargs['raw-report-data']['market-snapshot'],
+        }
+
+    def format_account_snapshot_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['account-snapshot'],
+            'report': kwargs['raw-report-data']['account-snapshot'],
+        }
+
+    def format_withdrawal_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['withdrawal-history'],
+            'report': kwargs['raw-report-data']['withdrawal-history'],
+        }
+
+    def format_deposit_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['deposit-history'],
+            'report': kwargs['raw-report-data']['deposit-history'],
+        }
+
+    def format_current_trades_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['current-trades'],
+            'report': kwargs['raw-report-data']['current-trades'],
+        }
+
+    def format_success_rate_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['success-rate'],
+            'report': kwargs['raw-report-data']['success-rate'],
+        }
+
+    def format_trade_history_report_details(self, *args, **kwargs):
+        log.debug('TODO - Actually format something pretty, bro')
+        log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        # TODO - Formatt report data
+        return {
+            'raw-data': kwargs['raw-report-data']['trade-history'],
+            'report': kwargs['raw-report-data']['trade-history'],
+        }
 
 # CODE DUMP
-
-#       report_file_path = return_dict['report-location'] + '/' \
-#           + return_dict['report-id'] + return_dict['report-extension']
-#       write = write2file(
-#           dict2json(return_dict), file_path=report_file_path, mode='w'
-#       )
-#       if not write:
-#           stdout_msg(
-#               'Could not write Trade History report to file! ({})'.format(
-#                   report_file_path
-#               ), err=True
-#           )
-#       else:
-#           return_dict.append({'report-file': report_file_path})
-
-#       report_file_path = return_dict['report-location'] + '/' \
-#           + return_dict['report-id'] + return_dict['report-extension']
-#       write = write2file(
-#           dict2json(return_dict), file_path=report_file_path, mode='w'
-#       )
-#       if not write:
-#           stdout_msg(
-#               'Could not write Trade History report to file! ({})'.format(
-#                   report_file_path
-#               ), err=True
-#           )
-#       else:
-#           return_dict.append({'report-file': report_file_path})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

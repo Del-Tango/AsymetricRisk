@@ -70,7 +70,12 @@ class TradingBot():
         self.current_account_value_locked = float()
         self.profit_baby = float(10)
         self.trading_done_for = None    # DateTime object
-        self.nightly_reports = ('current-trades', 'success-rate')
+        self.nightly_reports = kwargs.get(
+            'nightly-reports', (
+                'current-trades', 'success-rate', 'account-snapshot',
+                'api-permissions'
+            )
+        )
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
                 setup = self._bot_pre_setup(*args, **kwargs)
@@ -137,9 +142,28 @@ class TradingBot():
             return False, False
         return market.base_currency, market.quote_currency
 
-    def fetch_supported_trading_strategies(self):
+    def fetch_valid_report_types(self):
+        '''
+        [ NOTE ]: Fetch all report types supported by the used version of the
+                  report engine.
+        '''
         log.debug('')
-        return ['vwap', 'rsi', 'macd', 'ma', 'ema', 'adx', 'volume', 'price']
+        return [
+            'trade-history', 'success-rate', 'current-trades', 'deposit-history',
+            'withdrawal-history', 'api-permissions', 'coin-details',
+            'market-snapshot', 'account-snapshot'
+        ]
+
+    def fetch_supported_trading_strategies(self):
+        '''
+        [ NOTE ]: Fetch all trading strategy names supported by the used version
+                  of the market strategy analyzer.
+        '''
+        log.debug('')
+        return [
+            'vwap', 'rsi', 'macd', 'ma', 'ema', 'adx', 'volume', 'price',
+            'intuition-reversal'
+        ]
 
     def fetch_active_market(self):
         log.debug('')
@@ -155,6 +179,20 @@ class TradingBot():
             )
             return False
         return market
+
+    def fetch_report_data_scrapers(self):
+        log.debug('')
+        return {
+            'trade-history': self.scrape_trade_history_report_data,
+            'deposit-history': self.scrape_deposit_history_report_data,
+            'withdrawal-history': self.scrape_withdrawal_history_report_data,
+            'current-trades': self.scrape_current_trades_report_data,
+            'success-rate': self.scrape_success_rate_report_data,
+            'market-snapshot': self.scrape_market_snapshot_report_data,
+            'account-snapshot': self.scrape_account_snapshot_report_data,
+            'coin-details': self.scrape_coin_details_report_data,
+            'api-permissions': self.scrape_api_permissions_report_data,
+        }
 
     # SETTERS
 
@@ -256,7 +294,182 @@ class TradingBot():
             self.market = self.setup_market(**kwargs)
         return self.market
 
+    # SCRAPERS
+
+    def scrape_coin_details_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a deposit-history report.
+        '''
+        log.debug('')
+        return self.view_coin_details(**kwargs)
+
+    def scrape_api_permissions_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a deposit-history report.
+        '''
+        log.debug('')
+        return self.view_api_details(**kwargs)
+
+    def scrape_deposit_history_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a deposit-history report.
+        '''
+        log.debug('')
+        return self.view_deposit_details(**kwargs)
+
+    def scrape_withdrawal_history_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a withdrawal-history report.
+        '''
+        log.debug('')
+        return self.view_withdrawal_details(**kwargs)
+
+    def scrape_market_snapshot_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a market-snapshot report.
+        '''
+        log.debug('')
+        return self.view_market_details('all', **kwargs)
+
+    def scrape_account_snapshot_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a account-snapshot report.
+        '''
+        log.debug('')
+        return self.view_account_details(**kwargs)
+
+    def scrape_trade_history_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a trade-history report.
+        '''
+        log.debug('')
+        return self.view_trade_history(kwargs.get('ticker-symbol'), **kwargs)
+
+    def scrape_current_trades_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a current-trades report.
+        '''
+        log.debug('')
+        return self.view_trades(kwargs.get('ticker-symbol'), **kwargs)
+
+    def scrape_success_rate_report_data(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Uses API's to scrape data from the cloud thats needed by the
+                  report engine in order to generate a success-rate report.
+        '''
+        log.debug('')
+        return self.view_trade_history(kwargs.get('ticker-symbol'), **kwargs)
+
     # ACTIONS
+
+    def generate_nightly_reports(self, *args, **kwargs):
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
+        report_types = self.fetch_valid_report_types()
+        for report_label in self.nightly_reports:
+            if report_label not in report_types:
+                stdout_msg(
+                    'Invalid report label! Skipping ({})'.format(report_label),
+                    err=True
+                )
+                continue
+            elif report_label == 'success-rate' \
+                    and raw_data.get('trade-history'):
+                raw_data[report_label] = raw_data['trade-history']
+                continue
+            raw_data[report_label] = raw_data_scrapers[report_label](
+                *args, **kwargs
+            )
+        details['raw-report-data'] = raw_data
+        generate = self.reporter.generate(*args, **details)
+        return generate
+
+    @pysnooper.snoop()
+    def generate_report(self, *args, **kwargs):
+        '''
+        [ INPUT ]: args - Report type labels - *(
+                        trade-history, deposit-history, withdrawal-history,
+                        current-trades, success-rate, 'coin-details',
+                        api-permissions, account-snapshot, market-snapshot
+                    )
+                   kwargs - Context - **{}
+
+        [ RETURN ]: {
+            'flag': False,
+            'reports': {
+                'trade-history': {
+                    'timestamp': '',
+                    'report-id': '',
+                    'report-type': '',
+                    'report-location': '',
+                    'raw-data': {},
+                    'report': {},
+                },
+                'deposit-history': {},
+                'withdrawal-history': {},
+                'current-trades': {},
+                'success-rate': {},
+                'market-snapshot': {},
+                'account-snapshot': {},
+                'api-permissions': {},
+                'coin-details': {},
+
+            }
+            'errors': [{msg: '', type: '', code: ,}],
+        }
+        '''
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
+        report_types = self.fetch_valid_report_types()
+        target_reports, details = args or report_types, kwargs.copy()
+        for report_label in target_reports:
+            if report_label not in report_types:
+                stdout_msg(
+                    'Invalid report label! Skipping ({})'.format(report_label),
+                    err=True
+                )
+                continue
+            elif report_label == 'success-rate' \
+                    and raw_data.get('trade-history'):
+                raw_data[report_label] = raw_data['trade-history']
+                continue
+            raw_data[report_label] = raw_data_scrapers[report_label](
+                *args, **kwargs
+            )
+        details['raw-report-data'] = raw_data
+        generate = self.reporter.generate(*args, **details)
+        for report_type in generate['reports']:
+            report_id = generate['reports'][report_type]['report-id']
+            file_path = generate['reports'][report_type]['report-file']
+            stdout_msg(
+                '{} - {}\n{}\n'.format(
+                    report_id, file_path,
+                    pretty_dict_print(json2dict(file_path))
+                ), symbol='NEW REPORT', bold=True
+            )
+        return generate
+
+    def remove_report(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.remove(*args, **kwargs)
+
+    def list_reports(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.view(*args, **kwargs)
 
     @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
@@ -571,12 +784,6 @@ class TradingBot():
             return False
         self.quote_amount = 0 if not value or not percentage\
             else compute_percentage(percentage, value)
-#       if kwargs.get('test') and not self.quote_amount:
-#           stdout_msg(
-#               'Running in TEST mode! Quote currency trade amount set to (100)',
-#               warn=True
-#           )
-#           self.quote_amount = 100
         return self.quote_amount
 
     @pysnooper.snoop()
@@ -606,12 +813,6 @@ class TradingBot():
             return 0
         self.trade_amount = 0 if not value or not percentage\
             else compute_percentage(percentage, value)
-#       if kwargs.get('test') and not self.trade_amount:
-#           stdout_msg(
-#               'Running in TEST mode! Base currency trade amount set to (100)',
-#               warn=True
-#           )
-#           self.trade_amount = 100
         # WARNING: Cannot use both order-amount and order-quote-amount at the
         #          same time!
         # NOTE: order-amount specifies the amount value in base currency
@@ -673,6 +874,34 @@ class TradingBot():
         return message
 
     # VIEWERS
+
+    def view_coin_details(*args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        return market.fetch_supported_coins(*args, **kwargs)
+
+    def view_api_details(*args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        return market.fetch_api_permission_details(*args, **kwargs)
+
+    def view_deposit_details(self, *args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        return market.fetch_deposit_details(*args, **kwargs)
+
+    def view_withdrawal_details(self, *args, **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            return False
+        return market.fetch_withdrawal_details(*args, **kwargs)
 
     def view_report(self, *args, **kwargs):
         log.debug('')
@@ -747,74 +976,6 @@ class TradingBot():
         if not market:
             return False
         return market.fetch_supported_coins(**kwargs)
-
-    # REPORT MANAGEMENT
-
-    def remove_report(self, *args, **kwargs):
-        log.debug('')
-        return self.reporter.remove(*args, **kwargs)
-
-    def list_reports(self, *args, **kwargs):
-        log.debug('')
-        return self.reporter.view(*args, **kwargs)
-
-    # TODO
-    def generate_nightly_reports(self, *args, **kwargs):
-        log.debug('TODO - Under construction')
-#       for report_type in self.nightly_reports:
-
-#       report =
-#       if not report:
-#           stdout_msg(
-#               'Failures detected during daily report generation!',
-#               nok=True
-#           )
-#       else:
-#           stdout_msg(
-#               'Daily reports generated successfully!', ok=True
-#           )
-        return False
-
-    def generate_report(self, *args, **kwargs):
-        '''
-        [ INPUT ]: *(
-                        trade-history, deposit-history, withdrawal-history,
-                        current-trades, success-rate
-                    )
-                   **{}
-
-        [ RETURN ]: {
-            'flag': False,
-            'reports': {
-                'trade-history': {
-                    'timestamp': '',
-                    'report-id': '',
-                    'report-type': '',
-                    'report-location': '',
-                    ...
-                },
-                'deposit-history': {},
-                'withdrawal-history': {},
-                'current-trades': {},
-                'success-rate': {},
-            }
-            'errors': [{msg: '', type: '', code: ,}],
-        }
-        '''
-        log.debug('')
-        if not self.reporter:
-            log.error('No trading reporter set up!')
-            return False
-        generate = self.reporter.generate(*args, **kwargs)
-        for report_type in generate['reports']:
-            report_id = generate['reports'][report_type]['report-id']
-            file_path = generate['reports'][report_type]['report-file']
-            stdout_msg(
-                '{} - {}\n{}\n'.format(
-                    report_id, file_path, pretty_dict_print(json2dict(file_path))
-                ), symbol='NEW REPORT', bold=True
-            )
-        return generate
 
     # MARKET MANAGEMENT
 
@@ -950,47 +1111,5 @@ class TradingBot():
             )
         return False if failures else True
 
-
-
 # CODE DUMP
-
-#       self.reporter = self.setup_reporter(**kwargs)
-#       self.analyzer = self.setup_analyzer(**kwargs)
-
-
-#       self.order_quantity = float()
-#       self.order_quote_quantity = float()
-
-
-#   def compute_order_quantity(self, percentage, **kwargs):
-
-#       '''
-#       [ NOTE ]: amount:           N% of account value (1-100)
-
-#       [ NOTE ]: trade_amount:     N% of account value in base currency (BTC)
-
-#           [ Ex ]: How much BTC for 1% of account value in USD??
-#                   (with you, specifying the base currency amount in percentages)
-
-#               For a 1% trade_amount of an 100USD account, that would be how
-#               much BTC you would be able to buy for 1USD, which is 0.000000...
-#       '''
-#       log.debug('TODO - Under construction, building...')
-#   def compute_order_quote_quantity(self, percentage, **kwargs):
-#       '''
-#       [ NOTE ]: amount:           N% of account value (1-100)
-
-#       [ NOTE ]: quote_amount:     N% of account value in quote currency (USD)
-
-#           [ Ex ]: How much USD for 1% of account value in BTC??
-#                   (with you, specifying the quote currency amount in percentages)
-
-#               For a 1% quote_amount of an 100USD account, that would be how much
-#               BTC you would be able to buy for 1USD, if you were somehow able to.
-#               The point IS - it would come down to a quote_amount of 1 (USD)
-#       '''
-#       log.debug('TODO - Under construction, building...')
-
-
-
 

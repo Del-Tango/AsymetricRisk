@@ -28,17 +28,22 @@ class TradingMarket(Client):
     def __init__(self, *args, sync=False, **kwargs):
         calling_all_ancestors_from_beyond_the_grave = super().__init__(*args)
         self.base_currency = kwargs.get('base-currency', 'BTC')
-        self.API_URL = kwargs.get('api-url', 'https://testnet.binance.vision/api')      # Place where all the trades happen
+        self.API_URL = kwargs.get(
+            'api-url', 'https://testnet.binance.vision/api'
+        )                                                                       # Place where all the trades happen
         if not self.API_KEY:
             self.API_KEY = kwargs.get('api-key', os.environ.get('binance_api'))
         if not self.API_SECRET:
-            self.API_SECRET = kwargs.get('api-secret', os.environ.get('binance_secret'))
+            self.API_SECRET = kwargs.get(
+                'api-secret', os.environ.get('binance_secret')
+            )
         self.taapi_url = kwargs.get('taapi-url', "https://api.taapi.io")
         self.taapi_key = kwargs.get('taapi-key', os.environ.get('taapi_api'))
         self.quote_currency = kwargs.get('quote-currency', 'USDT')
-        self.ticker_symbol = kwargs.get('ticker-symbol', self.compute_ticker_symbol(
+        self.ticker_symbol = kwargs.get(
+            'ticker-symbol', self.compute_ticker_symbol(
                 base=self.base_currency, quote=self.quote_currency
-            ) # 'BTC/USDT'
+            )                                                                   # 'BTC/USDT'
         )
         self.period_interval = kwargs.get('period-interval', '1h')              # Time represented by each candle in chart
         self.period = kwargs.get('period', 30)                                  # No. of candles when backtracking a chart
@@ -69,8 +74,8 @@ class TradingMarket(Client):
         self.last_indicator_update_timestamp = None
         self.success_count = 0
         self.failure_count = 0
-        self.active_trades = {} #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
-        self.trades_to_report = {} # {id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.active_trades = {}                                                 #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.trades_to_report = {}                                              #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.supported_tickers_cache = {}
         self.supported_coins_cache = {}
         self.recent_trades_cache = {}
@@ -87,6 +92,223 @@ class TradingMarket(Client):
         return calling_all_ancestors_from_beyond_the_grave
 
     # FETCHERS
+
+    def fetch_deposit_details(*args, **kwargs):
+        '''
+        [ INPUT ] : *args - (), **kwargs - Context + {
+            :param coin: optional
+            :type coin: str
+
+            :type status: optional - 0(0:pending,1:success) optional
+            :type status: int
+
+            :param startTime: optional
+            :type startTime: long
+
+            :param endTime: optional
+            :type endTime: long
+
+            :param offset: optional - default:0
+            :type offset: long
+
+            :param limit: optional
+            :type limit: long
+
+            :param recvWindow: the number of milliseconds the request is valid for
+            :type recvWindow: int
+        }
+
+        [ RETURN ]: [
+            {
+                "amount":"0.00999800",
+                "coin":"PAXG",
+                "network":"ETH",
+                "status":1,
+                "address":"0x788cabe9236ce061e5a892e1a59395a81fc8d62c",
+                "addressTag":"",
+                "txId":"0xaad4654a3234aa6118af9b4b335f5ae81c360b2394721c019b5d1e75328b09f3",
+                "insertTime":1599621997000,
+                "transferType":0,
+                "confirmTimes":"12/12"
+            },
+            {
+                "amount":"0.50000000",
+                "coin":"IOTA",
+                "network":"IOTA",
+                "status":1,
+                "address":"SIZ9VLMHWATXKV99LH99CIGFJFUMLEHGWVZVNNZXRJJVWBPHYWPPBOSDORZ9EQSHCZAMPVAPGFYQAUUV9DROOXJLNW",
+                "addressTag":"",
+                "txId":"ESBFVQUTPIWQNJSPXFNHNYHSQNTGKRVKPRABQWTAXCDWOAKDKYWPTVG9BGXNVNKTLEJGESAVXIKIZ9999",
+                "insertTime":1599620082000,
+                "transferType":0,
+                "confirmTimes":"1/1"
+            }
+        ]
+        '''
+        log.debug('')
+        timestamp = str(time.time())
+        return_dict = self.get_deposit_history(
+            recvWindow=kwargs.get('order-recv-window', 60000), **kwargs
+        )
+        self.update_cache(return_dict, self.history_cache, label=timestamp,)
+        return self.account_cache[timestamp]
+
+    def fetch_withdrawal_details(*args, **kwargs):
+        '''
+        [ INPUT ]: *args(), **kwargs - Context + {
+            param coin: optional
+            type coin: str
+
+            type status: 0(0:Email Sent,1:Cancelled 2:Awaiting Approval 3:Rejected 4:Processing 5:Failure 6Completed) optional
+            type status: int
+
+            param offset: optional - default:0
+            type offset: int
+
+            param limit: optional
+            type limit: int
+
+            param startTime: optional - Default: 90 days from current timestamp
+            type startTime: int
+
+            param endTime: optional - Default: present timestamp
+            type endTime: int
+
+            param recvWindow: the number of milliseconds the request is valid for
+            type recvWindow: int
+        }
+
+        [ RETURN ]: [
+            {
+                "address": "0x94df8b352de7f46f64b01d3666bf6e936e44ce60",
+                "amount": "8.91000000",
+                "applyTime": "2019-10-12 11:12:02",
+                "coin": "USDT",
+                "id": "b6ae22b3aa844210a7041aee7589627c",
+                "withdrawOrderId": "WITHDRAWtest123",       # will not be returned if there's no withdrawOrderId for this withdraw.
+                "network": "ETH",
+                "transferType": 0,                          # 1 for internal transfer, 0 for external transfer
+                "status": 6,
+                "txId": "0xb5ef8c13b968a406cc62a93a8bd80f9e9a906ef1b3fcf20a2e48573c17659268"
+            },
+            {
+                "address": "1FZdVHtiBqMrWdjPyRPULCUceZPJ2WLCsB",
+                "amount": "0.00150000",
+                "applyTime": "2019-09-24 12:43:45",
+                "coin": "BTC",
+                "id": "156ec387f49b41df8724fa744fa82719",
+                "network": "BTC",
+                "status": 6,
+                "txId": "60fd9007ebfddc753455f95fafa808c4302c836e4d1eebc5a132c36c1d8ac354"
+            }
+        ]
+        '''
+        log.debug('')
+        timestamp = str(time.time())
+        return_dict = self.get_withdraw_history(
+            recvWindow=kwargs.get('order-recv-window', 60000), **kwargs
+        )
+        self.update_cache(return_dict, self.history_cache, label=timestamp,)
+        return self.account_cache[timestamp]
+
+    def fetch_api_permissions_details(self, *args, **kwargs):
+        '''
+        [ INPUT ]: *(), **kwargs - Context - {}
+
+        [ RETURN ]: {
+            "ipRestrict": false,
+            "createTime": 1623840271000,
+            "enableWithdrawals": false,                         # This option allows you to withdraw via API.
+                                                                # You must apply the IP Access Restriction filter
+                                                                # in order to enable withdrawals
+            "enableInternalTransfer": true,                     # This option authorizes this key to transfer funds
+                                                                # between your master account and your sub account instantly
+            "permitsUniversalTransfer": true,                   # Authorizes this key to be used for a dedicated universal
+                                                                # transfer API to transfer multiple supported currencies.
+                                                                # Each business's own transfer API rights are not affected
+                                                                # by this authorization
+            "enableVanillaOptions": false,                      # Authorizes this key to Vanilla options trading
+            "enableReading": true,
+            "enableFutures": false,                             # API Key created before your futures account opened does not
+                                                                # support futures API service
+            "enableMargin": false,                              # This option can be adjusted after the Cross Margin account
+                                                                # transfer is completed
+            "enableSpotAndMarginTrading": false,                # Spot and margin trading
+            "tradingAuthorityExpirationTime": 1628985600000     # Expiration time for spot and margin trading permission
+            "data": {                                           # API trading status detail
+                "isLocked": false,                              # API trading function is locked or not
+                "plannedRecoverTime": 0,                        # If API trading function is locked, this is the planned
+                                                                # recover time
+                "triggerCondition": {
+                        "GCR": 150,                             # Number of GTC orders
+                        "IFER": 150,                            # Number of FOK/IOC orders
+                        "UFR": 300                              # Number of orders
+                },
+                "indicators": {                                 # The indicators updated every 30 seconds
+                     "BTCUSDT": [                               # The symbol
+                        {
+                            "i": "UFR",                         # Unfilled Ratio (UFR)
+                            "c": 20,                            # Count of all orders
+                            "v": 0.05,                          # Current UFR value
+                            "t": 0.995                          # Trigger UFR value
+                        },
+                        {
+                            "i": "IFER",                        # IOC/FOK Expiration Ratio (IFER)
+                            "c": 20,                            # Count of FOK/IOC orders
+                            "v": 0.99,                          # Current IFER value
+                            "t": 0.99                           # Trigger IFER value
+                        },
+                        {
+                            "i": "GCR",                         # GTC Cancellation Ratio (GCR)
+                            "c": 20,                            # Count of GTC orders
+                            "v": 0.99,                          # Current GCR value
+                            "t": 0.99                           # Trigger GCR value
+                        }
+                    ],
+                    "ETHUSDT": [
+                        {
+                            "i": "UFR",
+                            "c": 20,
+                            "v": 0.05,
+                            "t": 0.995
+                        },
+                        {
+                            "i": "IFER",
+                            "c": 20,
+                            "v": 0.99,
+                            "t": 0.99
+                        },
+                        {
+                            "c": 20,
+                            "v": 0.99,
+                            "t": 0.99
+                        }
+                    ]
+                },
+                "updateTime": 1547630471725
+            }
+          }
+        }
+        '''
+        log.debug('')
+        timestamp, return_dict = str(time.time()), {}
+        return_dict.update(self.get_account_api_permissions(
+            recvWindow=kwargs.get('order-recv-window', 60000)
+        ))
+        return_dict.update(self.get_account_api_trading_status(
+            recvWindow=kwargs.get('order-recv-window', 60000)
+        ))
+        self.update_cache(return_dict, self.account_cache, label=timestamp,)
+        return self.account_cache[timestamp]
+
+    def fetch_server_time(self, *args, **kwargs):
+        '''
+        [ RETURN ]: {
+            "serverTime": 1499827319559
+        }
+        '''
+        log.debug('')
+        return self.get_server_time()
 
 #   @pysnooper.snoop()
     def fetch_adx_value(self, **kwargs):
@@ -173,12 +395,14 @@ class TradingMarket(Client):
 
     def fetch_account(self, *args, **kwargs):
         log.debug('')
-        timestamp = str(time.time())
-        self.update_cache(
-            self.get_account(recvWindow=kwargs.get('recvWindow', 60000)),
-            self.account_cache,
-            label=timestamp
+        timestamp, return_dict = str(time.time()), {}
+        return_dict.update(
+            self.get_account_status(recvWindow=kwargs.get('recvWindow', 60000))
         )
+        return_dict.update(
+            self.get_account(recvWindow=kwargs.get('recvWindow', 60000))
+        )
+        self.update_cache(return_dict, self.account_cache, label=timestamp)
         return self.account_cache[timestamp]
 
     def fetch_asset_balance(self, *args, **kwargs):
@@ -802,7 +1026,6 @@ class TradingMarket(Client):
             log.error('Invalid trade side! ({})'.format(side))
         hlabel, handlers = 'TEST' if kwargs.get('test') else 'GODSPEED', {
             'TEST': self.create_test_order,
-#           'GODSPEED': self.create_order,
             'GODSPEED': self.create_oco_order,
         }
         stdout_msg(
