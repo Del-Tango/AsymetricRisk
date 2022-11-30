@@ -17,7 +17,7 @@ import numpy
 from binance.client import Client
 #from binance import ThreadedWebsocketManager
 from src.ar_indicator import TradingIndicator
-from src.backpack.bp_general import stdout_msg
+from src.backpack.bp_general import stdout_msg, pretty_dict_print
 
 log = logging.getLogger('AsymetricRisk')
 
@@ -28,7 +28,7 @@ class TradingMarket(Client):
     def __init__(self, *args, sync=False, **kwargs):
         calling_all_ancestors_from_beyond_the_grave = super().__init__(*args)
         self.base_currency = kwargs.get('base-currency', 'BTC')
-        self.API_URL = kwargs.get('api-url', 'https://testnet.binance.vision/api')      # Place trades at
+        self.API_URL = kwargs.get('api-url', 'https://testnet.binance.vision/api')      # Place where all the trades happen
         if not self.API_KEY:
             self.API_KEY = kwargs.get('api-key', os.environ.get('binance_api'))
         if not self.API_SECRET:
@@ -40,13 +40,13 @@ class TradingMarket(Client):
                 base=self.base_currency, quote=self.quote_currency
             ) # 'BTC/USDT'
         )
-        self.period_interval = kwargs.get('period-interval', '1h')
-        self.period = kwargs.get('period', 30)
+        self.period_interval = kwargs.get('period-interval', '1h')              # Time represented by each candle in chart
+        self.period = kwargs.get('period', 30)                                  # No. of candles when backtracking a chart
         self.chart = kwargs.get('chart', 'candles')
-        self.cache_size_limit = kwargs.get('cache-size-limit', 20)
-        self.history_backtrack = kwargs.get('backtrack', 5),
-        self.history_backtracks = kwargs.get('backtracks', 14),
-        self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # seconds
+        self.cache_size_limit = kwargs.get('cache-size-limit', 20)              # Records (dict keys)
+        self.history_backtrack = kwargs.get('backtrack', 5),                    # Candles
+        self.history_backtracks = kwargs.get('backtracks', 14),                 # Candles
+        self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # Seconds
         self.market_open = kwargs.get('market-open', '08:00')                   # Hour at which the bot's mission begins!!
         self.market_close = kwargs.get('market-close', '22:00')                 # Hour at which the bot starts generating reports for the past day
         # WARNING: Longer delays between indicator api calls will result in
@@ -341,7 +341,301 @@ class TradingMarket(Client):
         res = self.get_server_time()
         return res.get('serverTime') - int(time.time() * 1000)
 
+    # CHECKERS
+
+#   @pysnooper.snoop()
+    def check_minimum_required_quantity_for_trade(self, quantity=0, **kwargs):
+        log.debug('')
+        info = self.get_symbol_info(kwargs['symbol'])
+        log.debug('Ticker Symbol Info {} - {}'.format(kwargs['symbol'], info))
+        if not quantity:
+            stdout_msg('No trade quantity specified!', err=True)
+            return False
+        if quantity < info['filters'][2]['minQty']:
+            stdout_msg(
+                'Not enough funds to trade withing specified parameters! '
+                'Quantity {} is below the minimum required of {} {}.'
+                .format(
+                    quantity,
+                    info['filters'][2]['minQty'],
+                    kwargs['base-currency']
+                ), warn=True
+            )
+            return False
+        return True
+
     # FORMATTERS
+
+    def format_trading_order_general_args_kwargs(self, label, trade_amount=None,
+                                         take_profit=None, stop_loss=None,
+                                         trailing_stop=None, side=None, **kwargs):
+        '''
+        [ NOTE ]: Returns all possible arguments used for trading in order for
+                  them to be filtered according to account and order types
+                  afterwards.
+        '''
+        log.debug('')
+        sanitized_ticker = self.ticker_symbol.replace('/', '')
+        return_args, return_kwargs = (), {
+            'symbol': sanitized_ticker,
+            'side': side.upper(),
+            'type': kwargs.get('trading-order-type'),
+            'quantity': trade_amount or kwargs.get('trade-amount'),
+            'quoteOrderQty': kwargs.get('quote-amount'),
+            'timeInForce': kwargs.get('order-time-in-force'),
+            'stopLimitTimeInForce': kwargs.get('order-time-in-force'),
+            'price': kwargs.get('order-price'),
+            'stopPrice': kwargs.get('stop-price'),
+            'stopLimitPrice': kwargs.get('stop-limit-price'),
+            'newClientOrderId': kwargs.get('order-id'),
+            'icebergQty': kwargs.get('order-iceberg-quantity'),
+            'newOrderRespType': kwargs.get('order-response-type'),
+            'recvWindow': kwargs.get('recvWindow', 60000),
+        }
+        log.debug(
+            'return_kwargs - {}'.format(pretty_dict_print(return_kwargs))
+        )
+        return return_args, return_kwargs
+
+    @pysnooper.snoop()
+    def format_trading_order_spot_account_args_kwargs(self, label, trade_amount=None,
+                                         take_profit=None, stop_loss=None,
+                                         trailing_stop=None, side=None, **kwargs):
+        '''
+        [ NOTE ]: To create an OCO order, the following parameters are required:
+                  **{
+                        symbol, quantity, side, price, stopPrice, stopLimitPrice,
+                        stopLimitTimeInForce,
+                    }
+
+        [ EXAMPLE ]: OCO order -
+            * Symbol - ticker symbol for the order.
+            * Quantity - is the amount of crypto you want to purchase.
+            * Side - whether to buy or sell.
+            * stopLimitTimeInForce -
+                * GTC (Good-Till-Cancel): the order will last until it is
+                    completed or you cancel it.
+
+                * IOC (Immediate-Or-Cancel): the order will attempt to execute
+                    all or part of it immediately at the price and quantity
+                    available, then cancel any remaining, unfilled part of the
+                    order. If no quantity is available at the chosen price when
+                    you place the order, it will be canceled immediately. Please
+                    note that Iceberg orders are not supported.
+
+                * FOK (Fill-Or-Kill): the order is instructed to execute in full
+                    immediately (filled), otherwise it will be canceled (killed).
+                    Please note that Iceberg orders are not supported.
+
+            [ Limit order ]:
+                * Price - The price of your limit order.
+                    This order will be visible on the order book.
+
+            [ Stop-Limit order ]:
+                * StopPrice - The price at which your stop-limit order will be
+                    triggered (e.g., 0.0024950 BTC).
+
+                * StopLimitPrice - The actual price of your limit order after
+                    the stop is triggered (e.g., 0.0024900 BTC).
+
+        [ NOTE ]: Implications of order types -
+
+            Market Order:
+                Purchases an asset at the market price
+                Fills immediately
+                Manual
+
+            Limit Order:
+                Purchases an asset at a set price or better
+                Fills only at the limit order’s price or better
+                Can be set in advance
+
+        [ Q/A ]: What is an OCO order?
+
+            A One-Cancels-the-Other (OCO) order combines one stop limit order
+            and one limit order, where if one is fully or partially fulfilled,
+            the other is canceled.
+
+            An OCO order on Binance consists of a stop-limit order and a limit
+            order with the same order quantity. Both orders must be either buy
+            or sell orders. If you cancel one of the orders, the entire OCO
+            order pair will be canceled.
+
+        [ Q/A ]: What is a limit order?
+
+            A limit order is an order that you place on the order book with a
+            specific limit price. It will not be executed immediately like a
+            market order. Instead, the limit order will only be executed if the
+            market price reaches your limit price (or better). Therefore, you
+            may use limit orders to buy at a lower price or sell at a higher
+            price than the current market price.
+
+            For example, you place a buy limit order for 1 BTC at $60,000, and
+            the current BTC price is 50,000. Your limit order will be filled
+            immediately at $50,000, as it is a better price than the one you
+            set ($60,000).
+
+            Similarly, if you place a sell limit order for 1 BTC at $40,000 and
+            the current BTC price is $50,000. The order will be filled
+            immediately at $50,000 because it is a better price than $40,000.
+
+        [ Q/A ]: What is a stop-limit order?
+
+            A stop-limit order has a stop price and a limit price. You can set
+            the minimum amount of profit you’re happy to take or the maximum
+            you’re willing to spend or lose on a trade. When the trigger price
+            is reached, a limit order will be placed automatically.
+
+            Stop-limit orders are good tools for limiting the losses that may
+            incur in a trade. For example, BTC is trading at $40,000, and you
+            set up a stop-limit order at a stop price of $39,500 and a limit
+            price of $39,000. A limit order at $39,000 will be placed when the
+            price drops from $40,000 to $39,500.
+        '''
+        log.debug('')
+        return_args, return_kwargs = self.format_trading_order_general_args_kwargs(
+            label, trade_amount=trade_amount, take_profit=take_profit,
+            stop_loss=stop_loss, trailing_stop=trailing_stop, side=side,
+            **kwargs
+        )
+        whitelist = ('quantity', 'symbol')
+        kwargs_keys2rem = [
+            item for item in return_kwargs if not return_kwargs[item] if item
+            not in whitelist
+        ]
+        if label == 'TEST':
+            kwargs_keys2rem = kwargs_keys2rem + [
+                'newOrderRespType', 'stopLimitTimeInForce', 'quoteOrderQty'
+            ]
+        for rd_key in kwargs_keys2rem:
+            if rd_key not in kwargs_keys2rem:
+                continue
+            try:
+                del return_kwargs[rd_key]
+            except KeyError as e:
+                log.error(e)
+        log.debug(
+            'sanitized return_kwargs - {}'.format(pretty_dict_print(return_kwargs))
+        )
+        return return_args, return_kwargs
+
+    def format_trading_order_args_kwargs(self, label, trade_amount=None,
+                                         take_profit=None, stop_loss=None,
+                                         trailing_stop=None, side=None, **kwargs):
+        '''
+        [ NOTE ]: Any order with an icebergQty MUST have timeInForce set to GTC.
+
+        :param symbol: required
+        :type symbol: str
+        :valid for test orders
+
+        :param side: required
+        :type side: str
+        :valid for test orders
+
+        :param type: required
+        :type type: str
+        :valid for test orders
+
+        :param timeInForce: required if limit order
+        :type timeInForce: str
+        :valid for test orders
+
+        :param quantity: required
+        :type quantity: decimal
+        :valid for test orders
+
+        :param quoteOrderQty: amount the user wants to spend (when buying) or
+            receive (when selling) of the quote asset, applicable to MARKET orders
+        :type quoteOrderQty: decimal
+
+        :param price: required
+        :type price: str
+        :valid for test orders
+
+        :param newClientOrderId: A unique id for the order. Automatically
+            generated if not sent.
+        :type newClientOrderId: str
+        :valid for test orders
+
+        :param icebergQty: Used with LIMIT, STOP_LOSS_LIMIT, and TAKE_PROFIT_LIMIT
+            to create an iceberg order.
+        :type icebergQty: decimal
+        :valid for test orders
+
+        :param newOrderRespType: Set the response JSON. ACK, RESULT, or FULL;
+            default: RESULT.
+        :type newOrderRespType: str
+        :valid for test orders
+
+        :param recvWindow: the number of milliseconds the request is valid for
+        :type recvWindow: int
+        :valid for test orders
+
+        :param listClientOrderId: A unique id for the list order. Automatically
+            generated if not sent.
+        :type listClientOrderId: str
+
+        :param limitClientOrderId: A unique id for the limit order. Automatically
+            generated if not sent.
+        :type limitClientOrderId: str
+
+        :param limitIcebergQty: Used to make the LIMIT_MAKER leg an iceberg order.
+        :type limitIcebergQty: decimal
+
+        :param stopClientOrderId: A unique id for the stop order. Automatically
+            generated if not sent.
+        :type stopClientOrderId: str
+
+        :param stopPrice: required
+        :type stopPrice: str
+
+        :param stopLimitPrice: If provided, stopLimitTimeInForce is required.
+        :type stopLimitPrice: str
+
+        :param stopIcebergQty: Used with STOP_LOSS_LIMIT leg to make an iceberg
+            order.
+        :type stopIcebergQty: decimal
+
+        :param stopLimitTimeInForce: Valid values are GTC/FOK/IOC.
+        :type stopLimitTimeInForce: str
+
+        :param recvWindow: the number of milliseconds the request is valid for
+        :type recvWindow: int
+
+        [ RETURN ]: (), {
+            'symbol': ,
+            'side': ,
+            'type': ,
+            'timeInForce': ,
+            'quantity': ,
+            'quoteOrderQty': ,
+            'price': ,
+            'newClientOrderId': ,
+            'icebergQty': ,
+            'newOrderRespType': ,
+            'recvWindow': ,
+        }
+        '''
+        log.debug('TODO - Add support for FUTURES, MARGIN and OPTIONS trading.')
+        account_type = {
+            'SPOT': self.format_trading_order_spot_account_args_kwargs,
+#           'FUTURES': self.format_trading_order_futures_account_args_kwargs,
+#           'MARGIN': self.format_trading_order_margin_account_args_kwargs,
+#           'OPTIONS': self.format_trading_order_options_account_args_kwargs,
+        }
+        if kwargs.get('trading-account-type') not in account_type:
+            stdout_msg(
+                'Invalid trading account type specified! ({})'.format(
+                    kwargs.get('trading-account-type')
+                ), err=True
+            )
+            return (), {}
+        return account_type[kwargs['trading-account-type']](
+            label, trade_amount=trade_amount, take_profit=take_profit,
+            stop_loss=stop_loss, trailing_stop=trailing_stop, side=side,
+            **kwargs
+        )
 
 #   @pysnooper.snoop()
     def format_price_indicator_kwargs(self, **kwargs):
@@ -393,7 +687,9 @@ class TradingMarket(Client):
         log.debug('')
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('macd-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get('macd-interval', kwargs.get(
+                'interval', self.period_interval)
+            ),
             'backtrack': kwargs.get('macd-backtrack', kwargs.get('backtrack')),
             'backtracks': kwargs.get('macd-backtracks', kwargs.get('backtracks')),
             'chart': kwargs.get('macd-chart', kwargs.get('chart', self.chart)),
@@ -407,7 +703,9 @@ class TradingMarket(Client):
         log.debug('')
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('ma-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get('ma-interval', kwargs.get(
+                'interval', self.period_interval)
+            ),
             'period': kwargs.get('ma-period', kwargs.get('period', self.period)),
             'backtrack': kwargs.get('ma-backtrack', kwargs.get('backtrack')),
             'backtracks': kwargs.get('ma-backtracks', kwargs.get('backtracks')),
@@ -419,7 +717,9 @@ class TradingMarket(Client):
         log.debug('')
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('ema-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get('ema-interval', kwargs.get(
+                'interval', self.period_interval)
+            ),
             'period': kwargs.get('ema-period', kwargs.get('period', self.period)),
             'backtrack': kwargs.get('ema-backtrack', kwargs.get('backtrack')),
             'backtracks': kwargs.get('ema-backtracks', kwargs.get('backtracks')),
@@ -431,7 +731,9 @@ class TradingMarket(Client):
         log.debug('')
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('rsi-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get('rsi-interval', kwargs.get(
+                'interval', self.period_interval)
+            ),
             'period': kwargs.get('rsi-period', kwargs.get('period', self.period)),
             'backtrack': kwargs.get('rsi-backtrack', kwargs.get('backtrack')),
             'backtracks': kwargs.get('rsi-backtracks', kwargs.get('backtracks')),
@@ -443,7 +745,9 @@ class TradingMarket(Client):
         log.debug('')
         return_dict = self.format_general_indicator_kwargs()
         return_dict.update({
-            'interval': kwargs.get('vwap-interval', kwargs.get('interval', self.period_interval)),
+            'interval': kwargs.get('vwap-interval', kwargs.get(
+                'interval', self.period_interval)
+            ),
             'period': kwargs.get('vwap-period', kwargs.get('period', self.period)),
             'backtrack': kwargs.get('vwap-backtrack', kwargs.get('backtrack')),
             'backtracks': kwargs.get('vwap-backtracks', kwargs.get('backtracks')),
@@ -453,129 +757,117 @@ class TradingMarket(Client):
 
     # GENERAL
 
-    # TODO - add take profit and stop loss / trailing stop limits
-    # TODO - Check max trade target achieved for current day
+    @pysnooper.snoop()
+    def trade(self, trade_amount, *args, take_profit=None, stop_loss=None,
+              trailing_stop=None, side='buy', **kwargs):
+        '''
+        [ EXCEPTIONS ]:
+
+            binance.exceptions.BinanceAPIException: APIError(code=-1013): \
+                Filter failure: MIN_NOTIONAL
+
+            This error appears because you are trying to create an order with a
+            quantity lower than the minimun required.
+
+            You can access the minimun required of a specific pair with:
+
+            >>> info = client.get_symbol_info('ETHUSDT')
+            >>> print(info)
+
+            Output a dictionary with information about that pair. Now you can
+            access the minimun quantity required with:
+
+            >>> print(info['filters'][2]['minQty'])
+            # 0.00001
+
+        [ WARNING ]: Using the Binance API only futures trading supports
+                     take-profit and stop-loss targets. These include LEVERAGE!
+
+              [ i ]: Sooo.. you could change the trading account type from the
+                     config file, but for your safety (we love you!!) the
+                     default are SPOT orders which require a combination of puts
+                     and calls to ensure take-profit and stop-loss targets are
+                     honoured.
+
+              [ ! ]: In order to work around this limitation for SPOT orders,
+                     each time a order is placed the bot can write down a
+                     notification message to either a file that is constantly
+                     monitored, or a FIFO pipe which is constantly read from -
+                     that contains the order details including suggested
+                     stop-loss and take-profit targets. I duonno, just saying.
+        '''
+        log.debug('')
+        handlers, order = {'buy': self.buy, 'sell': self.sell}, None
+        if side not in handlers:
+            log.error('Invalid trade side! ({})'.format(side))
+        hlabel, handlers = 'TEST' if kwargs.get('test') else 'GODSPEED', {
+            'TEST': self.create_test_order,
+#           'GODSPEED': self.create_order,
+            'GODSPEED': self.create_oco_order,
+        }
+        stdout_msg(
+            '{} account {} order -'.format(
+                kwargs.get('trading-account-type'),
+                kwargs.get('trading-order-type')
+            ), symbol=side.upper(), bold=True
+        )
+        if hlabel == 'TEST':
+            stdout_msg('Creating test buy order...', info=True)
+        else:
+            stdout_msg('Creating buy order...', info=True)
+        try:
+            order_args, order_kwargs = self.format_trading_order_args_kwargs(
+                hlabel, trade_amount=trade_amount, take_profit=take_profit,
+                stop_loss=stop_loss, trailing_stop=trailing_stop, side=side,
+                **kwargs
+            )
+            log.debug(
+                '{} Trade order - Type {} - *args, **kwargs - ({}) ({})'.format(
+                    kwargs.get('trading-account-type'),
+                    kwargs.get('trading-order-type'),
+                    order_args, order_kwargs
+                )
+            )
+            check_qty = self.check_minimum_required_quantity_for_trade(
+                **order_kwargs
+            )
+            if not check_qty and not kwargs.get('test'):
+                return False
+            elif not check_qty:
+                stdout_msg(
+                    'Running in testing mode. Pushing through errors...',
+                    warn=True
+                )
+            stdout_msg(
+                pretty_dict_print(order_kwargs), symbol='ORDER', bold=True
+            )
+            order = handlers[hlabel](*order_args, **order_kwargs)
+        except Exception as e:
+            log.error(e)
+        finally:
+            return order
+
     @pysnooper.snoop()
     def buy(self, trade_amount, *args, take_profit=None, stop_loss=None,
             trailing_stop=None, **kwargs):
-        '''
-        [ EXCEPTIONS ]:
+        log.debug('')
+        details = kwargs.copy()
+        details['side'] = 'buy'
+        return self.trade(
+            trade_amount, *args, take_profit=take_profit, stop_loss=stop_loss,
+            trailing_stop=trailing_stop, **details
+        )
 
-            binance.exceptions.BinanceAPIException: APIError(code=-1013): \
-                Filter failure: MIN_NOTIONAL
-
-            This error appears because you are trying to create an order with a
-            quantity lower than the minimun required.
-
-            You can access the minimun required of a specific pair with:
-
-            >>> info = client.get_symbol_info('ETHUSDT')
-            >>> print(info)
-
-            Output a dictionary with information about that pair. Now you can
-            access the minimun quantity required with:
-
-            >>> print(info['filters'][2]['minQty'])
-            # 0.00001
-        '''
-        log.debug('TODO - Under construction, building...')
-        sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
-        try:
-            if kwargs.get('test'):
-                stdout_msg('Creating test buy order...', info=True)
-                order = self.create_test_order(
-                    symbol=sanitized_ticker,
-                    side=self.SIDE_BUY,
-                    type=self.ORDER_TYPE_MARKET,
-#                   price=0,
-                    quantity=trade_amount,
-                    quoteOrderQty=None if trade_amount \
-                        else kwargs.get('quote-trade-amount'),
-                    recvWindow=kwargs.get('recvWindow', 60000),
-                )
-            else:
-                stdout_msg('Creating buy order...', info=True)
-
-                # TODO - Uncomment
-    #           order = self.create_order(
-    #               symbol=sanitized_ticker,
-    #               side=self.SIDE_BUY,
-    #               type=self.ORDER_TYPE_MARKET,
-    #               quoteOrderQty=trade_amount,
-    #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-    #               recvWindow=kwargs.get('recvWindow', 60000),
-    #           )
-
-                # TODO - Remove
-                order = None
-                stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-
-        except Exception as e:
-            log.error(e)
-        finally:
-            return order
-
-    # TODO - add take profit and stop loss / trailing stop limits
-    # TODO - Check max trade target achieved for current day
     @pysnooper.snoop()
     def sell(self, trade_amount, *args, take_profit=None, stop_loss=None,
              trailing_stop=None,  **kwargs):
-        '''
-        [ EXCEPTIONS ]:
-
-            binance.exceptions.BinanceAPIException: APIError(code=-1013): \
-                Filter failure: MIN_NOTIONAL
-
-            This error appears because you are trying to create an order with a
-            quantity lower than the minimun required.
-
-            You can access the minimun required of a specific pair with:
-
-            >>> info = client.get_symbol_info('ETHUSDT')
-            >>> print(info)
-
-            Output a dictionary with information about that pair. Now you can
-            access the minimun quantity required with:
-
-            >>> print(info['filters'][2]['minQty'])
-            # 0.00001
-        '''
-        log.debug('TODO - Under construction, building...')
-        sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
-        try:
-            if kwargs.get('test'):
-                stdout_msg('Creating test sell order...', info=True)
-                order = self.create_test_order(
-                    symbol=sanitized_ticker,
-                    side=self.SIDE_SELL,
-                    type=self.ORDER_TYPE_MARKET,
-                    price=0,
-                    quantity=trade_amount,
-                    quoteOrderQty=None if trade_amount \
-                        else kwargs.get('quote-trade-amount'),
-                    recvWindow=kwargs.get('recvWindow', 60000),
-                )
-            else:
-                stdout_msg('Creating sell order...', info=True)
-
-                # TODO - Uncomment
-    #           order = self.create_order(
-    #               symbol=sanitized_ticker,
-    #               side=self.SIDE_SELL,
-    #               type=self.ORDER_TYPE_MARKET,
-    #               quoteOrderQty=trade_amount,
-    #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-    #               recvWindow=kwargs.get('recvWindow', 60000),
-    #           )
-
-                # TODO - Remove
-                order = None
-                stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-
-        except Exception as e:
-            log.error(e)
-        finally:
-            return order
+        log.debug('')
+        details = kwargs.copy()
+        details['side'] = 'sell'
+        return self.trade(
+            trade_amount, *args, take_profit=take_profit, stop_loss=stop_loss,
+            trailing_stop=trailing_stop, **details
+        )
 
 #   @pysnooper.snoop()
     def build_candle_info_data_frame(self, *args, **kwargs):
@@ -1184,6 +1476,221 @@ class TradingMarket(Client):
         return return_dict
 
 # CODE DUMP
+
+#       sanitized_ticker = self.ticker_symbol.replace('/', '')
+#       return_args, return_kwargs = (), {
+#           'symbol': sanitized_ticker,
+#           'side': side.upper(),
+#           'type': kwargs.get('trading-order-type'),
+#           'quantity': trade_amount,
+#           'quoteOrderQty': kwargs.get('quote-amount'),
+#           'timeInForce': kwargs.get('order-time-in-force'),
+#           'stopLimitTimeInForce': kwargs.get('order-time-in-force'),
+#           'price': kwargs.get('order-price'),
+#           'stopPrice': kwargs.get('stop-price'),
+#           'stopLimitPrice': kwargs.get('stop-limit-price'),
+#           'newClientOrderId': kwargs.get('order-id'),
+#           'icebergQty': kwargs.get('order-iceberg-quantity'),
+#           'newOrderRespType': kwargs.get('order-response-type'),
+#           'recvWindow': kwargs.get('recvWindow', 60000),
+#       }
+
+
+#           info = self.get_symbol_info(order_kwargs['symbol'])
+#           if order_kwargs.get('quantity'):
+#               if order_kwargs['quantity'] < info['filters'][2]['minQty']:
+#                   stdout_msg(
+#                       'Not enough funds to trade withing specified parameters! '
+#                       'Quantity {} is below the minimum required of {} {}.'
+#                       .format(
+#                           order_kwargs['quantity'],
+#                           info['filters'][2]['minQty'],
+#                           kwargs['base-currency']
+#                       ), warn=True
+#                   )
+#                   return False
+
+
+
+#   @pysnooper.snoop()
+#   def format_trading_order_futures_account_args_kwargs(self, label, trade_amount=None,
+#                                        take_profit=None, stop_loss=None,
+#                                        trailing_stop=None, side=None, **kwargs):
+#       log.debug('TODO - UNDER CONSTRUCTION')
+#       sanitized_ticker = self.ticker_symbol.replace('/', '')
+#       return_args, return_kwargs = (), {
+#           'symbol': sanitized_ticker,
+#           'side': side.upper(),
+#           'type': kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
+#           'price': 0,
+#           'quantity': trade_amount,
+#           'quoteOrderQty': None if trade_amount else kwargs.get('quote-trade-amount'),
+#           'recvWindow': kwargs.get('recvWindow', 60000),
+#       }
+
+#       if label == 'TEST' and 'quoteOrderQty' in return_kwargs:
+#           del return_kwargs['quoteOrderQty']
+
+#       kwargs_keys2rem = [
+#           item for item in return_kwargs if not return_kwargs[item]
+#       ]
+#       for rd_key in kwargs_keys2rem:
+#           del return_kwargs[rd_key]
+#       log.debug(
+#           'Futures Trade order *args, **kwargs - ({}) ({})'.format(
+#               return_args, return_kwargs
+#           )
+#       )
+#       return return_args, return_kwargs
+#   def format_trading_order_margin_account_args_kwargs(self, label, trade_amount=None,
+#                                        take_profit=None, stop_loss=None,
+#                                        trailing_stop=None, side=None, **kwargs):
+#       '''
+#       [ NOTE ]:
+#       '''
+#       log.debug('TODO - UNDER CONSTRUCTION')
+#   def format_trading_order_options_account_args_kwargs(self, label, trade_amount=None,
+#                                        take_profit=None, stop_loss=None,
+#                                        trailing_stop=None, side=None, **kwargs):
+#       '''
+#       [ NOTE ]:
+#       '''
+#       log.debug('TODO - UNDER CONSTRUCTION')
+#       return_args, return_kwargs = self.format_trading_order_general_args_kwargs(
+#           label, trade_amount=trade_amount, take_profit=take_profit,
+#           stop_loss=stop_loss, trailing_stop=trailing_stop, side=side,
+#           **kwargs
+#       )
+
+
+
+
+
+
+
+
+
+#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
+#               (
+#                   symbol=sanitized_ticker,
+#                   side=side.upper(),
+#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
+#                   price=0,
+#                   quantity=trade_amount,
+#                   quoteOrderQty=None if trade_amount \
+#                       else kwargs.get('quote-trade-amount'),
+#                   recvWindow=kwargs.get('recvWindow', 60000),
+#               )
+
+
+
+
+
+#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
+#       try:
+#           if kwargs.get('test'):
+#               stdout_msg('Creating test sell order...', info=True)
+#               order = self.create_test_order(
+#                   symbol=sanitized_ticker,
+#                   side=self.SIDE_SELL,
+#                   type=self.ORDER_TYPE_MARKET,
+#                   price=0,
+#                   quantity=trade_amount,
+#                   quoteOrderQty=None if trade_amount \
+#                       else kwargs.get('quote-trade-amount'),
+#                   recvWindow=kwargs.get('recvWindow', 60000),
+#               )
+#           else:
+#               stdout_msg('Creating sell order...', info=True)
+
+#               # TODO - Uncomment
+#   #           order = self.create_order(
+#   #               symbol=sanitized_ticker,
+#   #               side=self.SIDE_SELL,
+#   #               type=self.ORDER_TYPE_MARKET,
+#   #               quoteOrderQty=trade_amount,
+#   #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+#   #               recvWindow=kwargs.get('recvWindow', 60000),
+#   #           )
+
+#               # TODO - Remove
+#               order = None
+#               stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
+
+#       except Exception as e:
+#           log.error(e)
+#       finally:
+#           return order
+
+
+#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
+#       handlers = {
+#           'TEST': self.create_test_order,
+#           'GODSPEED': self.create_order,
+#       }
+#       try:
+
+
+#           hlabel = 'TEST' if kwargs.get('test') else 'GODSPEED'
+#           if hlabel == 'TEST':
+#               stdout_msg('Creating test buy order...', info=True)
+#           else:
+#               stdout_msg('Creating buy order...', info=True)
+
+#           # TODO - Remove
+#           if hlabel == 'GODSPEED':
+#               order = None
+#               stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
+#           else:
+#               order = handlers[hlabel](
+#                   symbol=sanitized_ticker,
+#                   side=self.SIDE_BUY,
+#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
+#                   price=0,
+#                   quantity=trade_amount,
+#                   quoteOrderQty=None if trade_amount \
+#                       else kwargs.get('quote-trade-amount'),
+#                   recvWindow=kwargs.get('recvWindow', 60000),
+#               )
+#       except Exception as e:
+#           log.error(e)
+#       finally:
+#           return order
+
+
+#       return handlers[side](
+#           trade_amount, *args, take_profit=take_profit, stop_loss=stop_loss,
+#           trailing_stop=trailing_stop, **kwargs
+#       )
+
+
+
+#           if kwargs.get('test'):
+#               stdout_msg('Creating test buy order...', info=True)
+#               order = self.create_test_order(
+#                   symbol=sanitized_ticker,
+#                   side=self.SIDE_BUY,
+#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
+#                   price=0,
+#                   quantity=trade_amount,
+#                   quoteOrderQty=None if trade_amount \
+#                       else kwargs.get('quote-trade-amount'),
+#                   recvWindow=kwargs.get('recvWindow', 60000),
+#               )
+#           else:
+#               stdout_msg('Creating buy order...', info=True)
+
+#               # TODO - Uncomment
+#   #           order = self.create_order(
+#   #               symbol=sanitized_ticker,
+#   #               side=self.SIDE_BUY,
+#   #               type=self.ORDER_TYPE_MARKET,
+#   #               quoteOrderQty=trade_amount,
+#   #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
+#   #               recvWindow=kwargs.get('recvWindow', 60000),
+#   #           )
+
+
 
 
     # TODO - DEPRECATED

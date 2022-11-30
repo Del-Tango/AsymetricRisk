@@ -377,14 +377,13 @@ class TradingStrategy():
             stdout_msg(
                 'ADX Bullish Crossover detected! Triggered when ADX is above '
                 '{} and +DI goes from bellow to above -DI.'
-                .format(self.adx_bottom),  ok=True
+                .format(self.adx_bottom), ok=True
             )
         elif return_dict['bearish-crossover']['flag']:
             stdout_msg(
                 'ADX Bearish Crossover detected! Triggered when ADX is above '
                 '{} and +DI goes from above to below -DI. '
-                .format(self.adx_bottom),
-                ok=True
+                .format(self.adx_bottom), ok=True
             )
         return_dict['risk'] = self.compute_adx_trade_risk(return_dict, **kwargs)
         return_dict['trade'] = True if check_majority_in_set(True, [
@@ -960,7 +959,7 @@ class TradingStrategy():
             'volume': check_volume,
         }
         if price_dict['flag'] and return_dict['volume']['flag'] \
-                and return_dict['volume']['side'] == 'up':
+                and return_dict['volume']['side'] == 'buy':
             log.debug(
                 'Large price movement confirmed by large volume movement!',
             )
@@ -1018,9 +1017,10 @@ class TradingStrategy():
             'moved-percentage': move_percent,
             'trigger-percentage': volume_movement,
         }
-        return_dict.update({
-            'side': 'up' if min_candle > max_candle else 'down',
-        })
+        if return_dict['flag']:
+            return_dict.update({
+                'side': 'buy' if return_dict['volume-direction'] == 'up' else 'sell',
+            })
         if move_percent >= volume_movement:
             log.debug('Large volume movement detected!')
         else:
@@ -2254,7 +2254,7 @@ class TradingStrategy():
         if not scan['flag'] or (len(evaluations_dict) != 1 \
                 and ('volume' in evaluations_dict \
                 and len(scan['confirmed']) == 1 \
-                and evaluations_dict['volume']['flag'])):
+                and evaluations_dict['volume']['trade'])):
             stdout_msg(
                 'No ({}) signals detected during strategy evaluation.'
                 .format(signal), info=True

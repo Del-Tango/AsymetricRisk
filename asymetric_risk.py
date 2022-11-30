@@ -639,7 +639,7 @@ def process_command_line_options(parser):
 def process_max_trades_argument(parser, options):
     global AR_DEFAULT
     log.debug('')
-    value = options.market_open
+    value = options.max_trades
     if value == None:
         log.warning(
             'No max trades/day provided. Defaulting to ({}).'\
@@ -1937,6 +1937,10 @@ def add_command_line_parser_options(parser):
              'Default is {}%'.format(AR_DEFAULT['risk-tolerance']),
     )
     parser.add_option(
+        '-x', '--max-trades', dest='max_trades', type='int', metavar='COUNT',
+        help='Maximum number of trades allowed per trading day.',
+    )
+    parser.add_option(
         '-a', '--action', dest='action_csv', type='string', metavar='CSV',
         help='Action to execute - valid values include one or more of the '
              'following labels given as a CSV string: (start-watchdog | '
@@ -1958,29 +1962,25 @@ def add_command_line_parser_options(parser):
              'for specific indicators if that indicator value is also given.',
     )
     parser.add_option(
-        '', '--stop-loss', dest='stop_loss', type='int', metavar='PERCENTAGE',
+        '', '--stop-loss', dest='stop_loss', type='float', metavar='PERCENTAGE',
         help='Price percentage of when to cut your losses in a trade.',
     )
     parser.add_option(
-        '', '--trailing-stop', dest='trailing_stop', type='int', metavar='PERCENTAGE',
+        '', '--trailing-stop', dest='trailing_stop', type='float', metavar='PERCENTAGE',
         help='Percentage to continuously take profit from a trade before '
              'hitting the --take-profit value.',
     )
     parser.add_option(
-        '', '--take-profit', dest='take_profit', type='int', metavar='PERCENTAGE',
+        '', '--take-profit', dest='take_profit', type='float', metavar='PERCENTAGE',
         help='Price percentage of when to cash in on a trade.',
     )
     parser.add_option(
-        '-x', '--max-trades', dest='max_trades', type='int', metavar='COUNT',
-        help='Maximum number of trades allowed per trading day.',
-    )
-    parser.add_option(
-        '', '--market-open', dest='market_open', type='int', metavar='HH:MM',
+        '', '--market-open', dest='market_open', type='string', metavar='HH:MM',
         help='Hour at which the market opens and the trading bot is allowed to start '
              'trading.',
     )
     parser.add_option(
-        '', '--market-close', dest='market_close', type='int', metavar='HH:MM',
+        '', '--market-close', dest='market_close', type='string', metavar='HH:MM',
         help='Hour at which the market closes and the trading bot has to stop '
              'trading.',
     )

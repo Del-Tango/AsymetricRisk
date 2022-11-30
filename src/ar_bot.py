@@ -15,7 +15,7 @@ from .ar_market import TradingMarket
 from .ar_strategy import TradingStrategy
 
 from src.backpack.bp_ensurance import ensure_files_exist
-from src.backpack.bp_computers import compute_percentage
+from src.backpack.bp_computers import compute_percentage, compute_percentage_of
 from src.backpack.bp_general import stdout_msg
 
 log = logging.getLogger('AsymetricRisk')
@@ -23,28 +23,59 @@ log = logging.getLogger('AsymetricRisk')
 
 class TradingBot():
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def __init__(self, *args, **kwargs):
+        '''
+        [ NOTE ]: order_price:      price of 1 unit of BASE currency at which you
+                                    place your order.
+
+        [ NOTE ]: stop_price:       price - N% (stop-loss)
+
+        [ NOTE ]: stop_limit_price: price + N% (take-profit)
+
+        [ NOTE ]: amount:           N% of account value (1-100)
+
+        [ NOTE ]: quote_amount:     N% of account value in quote currency (USD)
+
+            [ Ex ]: How much USD for 1% of account value in BTC??
+                    (with you, specifying the quote currency amount in percentages)
+
+                For a 1% quote_amount of an 100USD account, that would be how much
+                BTC you would be able to buy for 1USD, if you were somehow able to.
+                The point IS - it would come down to a quote_amount of 1 (USD)
+
+        [ NOTE ]: trade_amount:     N% of account value in base currency (BTC)
+
+            [ Ex ]: How much BTC for 1% of account value in USD??
+                    (with you, specifying the base currency amount in percentages)
+
+                For a 1% trade_amount of an 100USD account, that would be how
+                much BTC you would be able to buy for 1USD, which is 0.000000...
+        '''
         log.debug('')
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
-        self.max_trades = kwargs.get('max-trades', 3)
+        self.max_trades = int(kwargs.get('max-trades', 3))
         self.market = {}
+        self.amount = kwargs.get('order-amount', 1)
+        self.quote_amount = float(0)    # Amount value in quote currency
+        self.trade_amount = float(0)    # Amount value in base currency
+        self.order_price = float()
+        self.order_stop_price = float()
+        self.order_stop_limit_price = float()
+        self.profit_target = float()
         self.start_account_value = float()
         self.current_account_value = float()
+        self.current_account_value_free = float()
+        self.current_account_value_locked = float()
         self.profit_baby = float(10)
-        self.quote_amount = float(1) # Account value percentage of quote currency
-        self.trade_amount = float()  # Account value percentage of base currency
-        self.profit_target = float()
         self.trading_done_for = None    # DateTime object
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
-                self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
-                self.compute_profit_baby(
-                    kwargs.get('profit-baby', self.profit_baby), **kwargs
-                )
-                self.compute_trade_amount(
-                    kwargs.get('trade-amount', self.trade_amount), **kwargs
-                )
+                setup = self._bot_pre_setup(*args, **kwargs)
+                if not setup:
+                    stdout_msg(
+                        '{} pre-setup sequence failed!'.format(self), warn=True
+                    )
             except Exception as w:
                 stdout_msg(
                     'Could not setup trading bot market! '
@@ -59,8 +90,8 @@ class TradingBot():
 
     # FETCHERS
 
-#   @pysnooper.snoop()
-    def fetch_account_value(self, currency='base', **kwargs):
+    @pysnooper.snoop()
+    def fetch_symbol_current_price(self, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
         if not market:
@@ -68,6 +99,19 @@ class TradingBot():
                 'Could not fetch active market! Details: ({})'.format(market)
             )
             return False
+        info = market.get_symbol_ticker(symbol=kwargs.get('ticker-symbol').replace('/', ''))
+        log.debug('symbol info: {}'.format(info))
+        return float(info['price'])
+
+    @pysnooper.snoop()
+    def fetch_account_value(self, currency='base', **kwargs):
+        log.debug('')
+        market = self.fetch_active_market()
+        if not market:
+            log.error(
+                'Could not fetch active market! Details: ({})'.format(market)
+            )
+            return False, False, False
         base, quote = self.fetch_market_currency()
         response = market.get_asset_balance(
             base if currency == 'base' else quote,
@@ -79,7 +123,7 @@ class TradingBot():
                 else float(response['locked'])
         else:
             total_value = (float(response['free']) + float(response['locked']))
-        return total_value
+        return total_value, response['free'], response['locked']
 
     def fetch_market_currency(self):
         log.debug('')
@@ -131,6 +175,11 @@ class TradingBot():
     # CHECKERS
 
     def check_market_hours(self, opening=[8, 00], closing=[22, 00]):
+        '''
+        [ NOTE ]: When testing an order and you're at 4am somewhere in eastern
+                  europe maybe, try playing around with --market-open and
+                  --market-close values to avoid long hangups.
+        '''
         log.debug('')
         now = datetime.datetime.now()
         if (now.hour >= opening[0] or now.minute >= opening[1]) \
@@ -147,10 +196,11 @@ class TradingBot():
             return True
         return False
 
+    @pysnooper.snoop()
     def check_trade_count(self, *args, **kwargs):
         log.debug('')
         if len(kwargs.get('trades-today', self.trades_today)) \
-                >= kwargs.get('max-trades', self.max_trades):
+                >= int(kwargs.get('max-trades', self.max_trades)):
             if not self.trading_done_for:
                 self.trading_done_for = datetime.datetime.now()
             return True
@@ -173,11 +223,27 @@ class TradingBot():
     @pysnooper.snoop()
     def update_current_account_value(self, currency='quote', **kwargs):
         log.debug('')
-        value = self.fetch_account_value(currency=currency, **kwargs)
-        if not value:
+        value, free, locked = self.fetch_account_value(
+            currency=currency, **kwargs
+        )
+        if not isinstance(value, float) and value in (None, False):
+            stdout_msg('Could not check account value!', warn=True)
             return False
+        stdout_msg(
+            'Account value - Total: {} {} - Free: {} - Locked: {}'.format(
+                value, kwargs.get('quote-currency') if currency == 'quote' \
+                else kwargs.get('base-currency'), float(free), float(locked)
+            ), symbol='UPDATE',
+            green=True if value else False,
+            red=True if not value else False
+        )
+        if not value or not free:
+            stdout_msg('Account empty! Nothing to trade with.', red=True)
         self.current_account_value = value
-        return self.current_account_value
+        self.current_account_value_free = free
+        self.current_account_value_locked = locked
+        return self.current_account_value, self.current_account_value_free, \
+            self.current_account_value_locked
 
     # ENSURANCE
 
@@ -200,23 +266,29 @@ class TradingBot():
         cool_down_seconds = kwargs.get('watchdog-interval', 60)
         market_hours = {
             'opening': [
-                int(item) for item in
-                kwargs.get('market-open', '08:00').split(':')
+                int(item) for item in kwargs.get('market-open', '08:00').split(':')
             ],
             'closing': [
-                int(item) for item in
-                kwargs.get('market-close', '22:00').split(':')
+                int(item) for item in kwargs.get('market-close', '22:00').split(':')
             ]
         }
+        market_closed_flag = False
         while True:
             if anchor_file and not os.path.exists(anchor_file):
                 break
             check_time = self.check_market_hours(**market_hours)
             if not check_time:
-                # TODO - Deal with over night reporting here
-                self.bot_cooldown(cool_down_seconds)
+                if not market_closed_flag:
+                    stdout_msg(
+                        'Market closed until {} tomorrow - {}'.format(
+                            kwargs['market-open'], str(datetime.datetime.now())
+                        ), red=True
+                    )
+                    report = self.generate_nightly_reports(*args, **kwargs)
+                self.bot_cooldown(cool_down_seconds, silent=market_closed_flag)
+                market_closed_flag = True
                 continue
-            check_max_reached = self.check_trade_count()
+            check_max_reached, market_closed_flag = self.check_trade_count(), False
             if check_max_reached:
                 if self.check_new_day():
                     reset = self.reset_trading_day()
@@ -322,19 +394,18 @@ class TradingBot():
         market_update_args = trading_strategy.split(',')
         market_details = market.update_details(*market_update_args, **details)
         trade_flag, risk_index, trade = False, 0, None
-        trade_amount = self.compute_trade_amount(
-            details.get('trade-amount', 1), **details
-        )
-        quote_amount = self.compute_quote_amount(
-            details.get('quote-trade-amount', 1), **details
-        )
+        trade_values = self.compute_trade_values(details, **kwargs)
         if details.get('analyze-risk'):
             details.update({
                 'details': market_details,
                 'strategy': trading_strategy,
-                'amount': 0 if not trade_amount else trade_amount,
-                'quote-amount': 0 if not quote_amount else quote_amount,
+                'trade-amount': trade_values.get('trade-amount', 0),
+                'quote-amount': 0 if trade_values['trade-amount'] \
+                    else trade_values.get('quote-amount', 0),
                 'side': kwargs.get('side', 'auto'),
+                'order-price': trade_values.get('order-price', 0),
+                'stop-price': trade_values.get('order-stop-price', 0),
+                'stop-limit-price': trade_values.get('order-stop-limit-price', 0),
             })
             stdout_msg('Analyzing trading risk', info=True)
             trade_flag, risk_index, trade_side, failures = self.analyzer.analyze_risk(
@@ -347,7 +418,7 @@ class TradingBot():
             return False
         if trade_flag:
             trade_sides = {'buy': market.buy, 'sell': market.sell,}
-            trade = trade_sides[trade_side](trade_amount, **details)
+            trade = trade_sides[trade_side](details['trade-amount'], **details)
             if not trade:
                 stdout_msg(
                     'Something went wrong! Errors occured during trade! \n'
@@ -381,36 +452,168 @@ class TradingBot():
 
     # COMPUTERS
 
+    def compute_trade_values(self, details, **kwargs):
+        log.debug('')
+        values = {
+            'account-value': self.update_current_account_value(
+                    currency='quote', **kwargs
+                ),
+            'trade-amount': self.compute_trade_amount(
+                    details.get('order-amount'), **details
+                ) or self.trade_amount,
+            'quote-amount': self.compute_quote_amount(
+                    details.get('order-amount'), **details
+                ) or self.quote_amount,
+            'order-price': self.compute_order_price(
+                    details.get('order-price'), **kwargs
+                ) or self.order_price,
+            'order-stop-price': self.compute_order_stop_price(
+                    details.get('order-stop-price'), **kwargs
+                ) or self.order_stop_price,
+            'order-stop-limit-price': self.compute_order_stop_limit_price(
+                    details.get('order-stop-limit-price'), **kwargs
+                ) or self.order_stop_limit_price,
+        }
+        return values
+
+    @pysnooper.snoop()
+    def compute_order_price(self, order_price, **kwargs):
+        '''
+        [ NOTE ]: order_price:      price of 1 unit of BASE currency at which you
+                                    place your order.
+        '''
+        log.debug('')
+        log.debug(
+            'previous order_price, kwargs - {}, {}'.format(order_price, kwargs)
+        )
+        self.order_price = self.fetch_symbol_current_price(**kwargs)
+        log.debug('Computed order price: {}'.format(self.order_price))
+        return self.order_price
+
+    @pysnooper.snoop()
+    def compute_order_stop_price(self, stop_price, **kwargs):
+        '''
+        [ NOTE ]: stop_price:       price - N% (stop-loss)
+        '''
+        log.debug('')
+        log.debug(
+            'previous stop_price, kwargs - {}, {}'.format(stop_price, kwargs)
+        )
+        account_value = self.fetch_account_value(currency='quote', **kwargs)
+        current_price = self.fetch_symbol_current_price(**kwargs)
+        to_subtract = compute_percentage_of(kwargs['stop-loss'], current_price)
+        self.order_stop_price = current_price - to_subtract
+        log.debug('Computed order stop price: {}'.format(self.order_stop_price))
+        return self.order_stop_price
+
+    @pysnooper.snoop()
+    def compute_order_stop_limit_price(self, stop_limit_price, **kwargs):
+        '''
+        [ NOTE ]: stop_limit_price: price + N% (take-profit)
+        '''
+        log.debug('')
+        log.debug(
+            'previous stop_limit_price, kwargs - {}, {}'.format(
+                stop_limit_price, kwargs
+            )
+        )
+        account_value = self.fetch_account_value(currency='quote', **kwargs)
+        current_price = self.fetch_symbol_current_price(**kwargs)
+        to_add_on_top = compute_percentage_of(
+            kwargs['take-profit'], current_price
+        )
+        self.order_stop_limit_price = current_price + to_add_on_top
+        log.debug(
+            'Computed order stop limit price: {}'.format(
+                self.order_stop_limit_price
+            )
+        )
+        return self.order_stop_limit_price
+
     @pysnooper.snoop()
     def compute_quote_amount(self, percentage, **kwargs):
+        '''
+        [ DESCRIPTION ]: The amount (quantity) for a trade is specified by the
+            user in the form of a percentage (number 1-100) - this represents a
+            percentage of the total account value.
+
+            This method turns that percentage into a Quote currency value.
+
+        [ NOTE ]: amount:           N% of account value (1-100)
+
+        [ NOTE ]: quote_amount:     N% of account value in quote currency (USD)
+
+            [ Ex ]: How much USD for 1% of account value in BTC??
+                    (with you, specifying the quote currency amount in percentages)
+
+                For a 1% quote_amount of an 100USD account, that would be how much
+                BTC you would be able to buy for 1USD, if you were somehow able to.
+                The point IS - it would come down to a quote_amount of 1 (USD)
+        '''
         log.debug('')
-        value = self.fetch_account_value(currency='quote', **kwargs)
+        if not percentage:
+            log.error(
+                'No account value percentage given! Details: {} {}'.format(
+                    percentage, kwargs
+                )
+            )
+            return False
+        value, free, locked = self.fetch_account_value(currency='quote', **kwargs)
         if not value:
             return False
         self.quote_amount = 0 if not value or not percentage\
             else compute_percentage(percentage, value)
-        if kwargs.get('test') and not self.quote_amount:
-            stdout_msg(
-                'Running in TEST mode! Quote currency trade amount set to (100)',
-                warn=True
-            )
-            self.quote_amount = 100
+#       if kwargs.get('test') and not self.quote_amount:
+#           stdout_msg(
+#               'Running in TEST mode! Quote currency trade amount set to (100)',
+#               warn=True
+#           )
+#           self.quote_amount = 100
         return self.quote_amount
 
     @pysnooper.snoop()
     def compute_trade_amount(self, percentage, **kwargs):
+        '''
+        [ DESCRIPTION ]: The amount (quantity) for a trade is specified by the
+            user in the form of a percentage (number 1-100) - this represents a
+            percentage of the total account value.
+
+            This method turns that percentage into a Base currency value.
+
+        [ NOTE ]: amount:           N% of account value (1-100)
+
+        [ NOTE ]: trade_amount:     N% of account value in base currency (BTC)
+
+            [ Ex ]: How much BTC for 1% of account value in USD??
+                    (with you, specifying the base currency amount in percentages)
+
+                For a 1% trade_amount of an 100USD account, that would be how
+                much BTC you would be able to buy for 1USD, which is 0.000000...
+        '''
         log.debug('')
-        value = self.fetch_account_value(currency='base', **kwargs)
+        if not percentage:
+            return False
+        value, free, locked = self.fetch_account_value(currency='base', **kwargs)
         if not value:
             return False
         self.trade_amount = 0 if not value or not percentage\
             else compute_percentage(percentage, value)
-        if kwargs.get('test') and not self.trade_amount:
+#       if kwargs.get('test') and not self.trade_amount:
+#           stdout_msg(
+#               'Running in TEST mode! Base currency trade amount set to (100)',
+#               warn=True
+#           )
+#           self.trade_amount = 100
+        # WARNING: Cannot use both order-amount and order-quote-amount at the
+        #          same time!
+        # NOTE: order-amount specifies the amount value in base currency
+        # NOTE: order-quote-amount specifies the amount value in quote currency
+        quote_quantity = self.compute_quote_amount(percentage, **kwargs)
+        if not quote_quantity:
             stdout_msg(
-                'Running in TEST mode! Base currency trade amount set to (100)',
-                warn=True
+                'Could not compute quote trade quantity from given ({}%) '
+                'of account value!'.format(percentage), err=True
             )
-            self.trade_amount = 100
         return self.trade_amount
 
     def compute_profit_baby(self, percentage, **kwargs):
@@ -427,11 +630,12 @@ class TradingBot():
 
     # GENERAL
 
-    def bot_cooldown(self, cool_down_seconds):
+    def bot_cooldown(self, cool_down_seconds, silent=False):
         log.debug('')
-        stdout_msg(
-            'Bot cool down: {} seconds'.format(cool_down_seconds), red=True
-        )
+        if not silent:
+            stdout_msg(
+                'Bot cool down: {} seconds'.format(cool_down_seconds), red=True
+            )
         time.sleep(cool_down_seconds)
         return True
 
@@ -536,6 +740,21 @@ class TradingBot():
 
     # REPORT MANAGEMENT
 
+    # TODO
+    def generate_nightly_reports(self, *args, **kwargs):
+        log.debug('TODO - Under construction')
+#       report =
+#       if not report:
+#           stdout_msg(
+#               'Failures detected during daily report generation!',
+#               nok=True
+#           )
+#       else:
+#           stdout_msg(
+#               'Daily reports generated successfully!', ok=True
+#           )
+        return False
+
     def generate_report(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
@@ -618,7 +837,95 @@ class TradingBot():
         )
         return {kwargs['ticker-symbol']: market}
 
+    # DERRRP
+
+    def __str__(self, *args, **kwargs):
+        return 'TradingBot'
+
+    # PERSONAL
+
+    def _bot_pre_setup(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Called uppon on TradingBot.__init__()
+        '''
+        log.debug('')
+        failures = 0
+        self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
+        if not self.market:
+            failures += 1
+        profit_bby = self.compute_profit_baby(
+            kwargs.get('profit-baby', self.profit_baby), **kwargs
+        )
+        if not profit_bby:
+            failures += 1
+        trade_amount = self.compute_trade_amount(
+            kwargs.get('order-amount', self.amount), **kwargs
+        )
+        if not trade_amount:
+            failures += 1
+        order_price = self.compute_order_price(
+            kwargs.get('order-price', self.order_price), **kwargs
+        )
+        if not order_price:
+            failures += 1
+        stop_price = self.compute_order_stop_price(
+            kwargs.get('stop-price', self.order_stop_price), **kwargs
+        )
+        if not stop_price:
+            failures += 1
+        stop_limit_price = self.compute_order_stop_limit_price(
+            kwargs.get('stop-limit-price', self.order_stop_limit_price), **kwargs
+        )
+        if not stop_limit_price:
+            failures += 1
+        if failures:
+            log.debug(
+                '{} failures detected during {} pre-setup sequence!'
+                .format(failures, self)
+            )
+        return False if failures else True
+
+
 
 # CODE DUMP
+
+#       self.reporter = self.setup_reporter(**kwargs)
+#       self.analyzer = self.setup_analyzer(**kwargs)
+
+
+#       self.order_quantity = float()
+#       self.order_quote_quantity = float()
+
+
+#   def compute_order_quantity(self, percentage, **kwargs):
+
+#       '''
+#       [ NOTE ]: amount:           N% of account value (1-100)
+
+#       [ NOTE ]: trade_amount:     N% of account value in base currency (BTC)
+
+#           [ Ex ]: How much BTC for 1% of account value in USD??
+#                   (with you, specifying the base currency amount in percentages)
+
+#               For a 1% trade_amount of an 100USD account, that would be how
+#               much BTC you would be able to buy for 1USD, which is 0.000000...
+#       '''
+#       log.debug('TODO - Under construction, building...')
+#   def compute_order_quote_quantity(self, percentage, **kwargs):
+#       '''
+#       [ NOTE ]: amount:           N% of account value (1-100)
+
+#       [ NOTE ]: quote_amount:     N% of account value in quote currency (USD)
+
+#           [ Ex ]: How much USD for 1% of account value in BTC??
+#                   (with you, specifying the quote currency amount in percentages)
+
+#               For a 1% quote_amount of an 100USD account, that would be how much
+#               BTC you would be able to buy for 1USD, if you were somehow able to.
+#               The point IS - it would come down to a quote_amount of 1 (USD)
+#       '''
+#       log.debug('TODO - Under construction, building...')
+
+
 
 
