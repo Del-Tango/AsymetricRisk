@@ -34,7 +34,7 @@ from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exi
 from src.backpack.bp_shell import shell_cmd
 from src.backpack.bp_checkers import check_file_exists, check_pid_running
 from src.backpack.bp_general import stdout_msg, clear_screen, pretty_dict_print
-from src.backpack.bp_convertors import dict2json
+from src.backpack.bp_convertors import dict2json, json2dict
 from src.backpack.bp_filters import filter_file_name_from_path, filter_directory_from_path
 from src.ar_bot import TradingBot
 
@@ -188,6 +188,7 @@ def fetch_action_handlers():
         'market-details': action_market_details,
         'supported-coins': action_supported_coins,
         'supported-tickers': action_supported_tickers,
+        'get-config': action_get_config,
     }
 
 # SETTERS
@@ -273,6 +274,16 @@ def action_withdrawal_report(*args, **kwargs):
 def action_deposit_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
+
+@pysnooper.snoop()
+def action_get_config(*args, **kwargs):
+    log.debug('')
+    log_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
+    stdout_msg(
+        '[ ACTION ]: Get Config - {}'.format(log_file_path), bold=True
+    )
+    stdout_msg(pretty_dict_print(json2dict(log_file_path)))
+    return 0
 
 @pysnooper.snoop()
 def action_market_details(*args, **kwargs):
