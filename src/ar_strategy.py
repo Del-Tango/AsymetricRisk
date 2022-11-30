@@ -33,6 +33,7 @@ class TradingStrategy():
             'adx': self.strategy_adx,
             'volume': self.strategy_volume,
             'price': self.strategy_price,
+            'intuition-reversal': self.strategy_intuition_reversal,
         }
         self.risk_evaluators = {
             1: self.evaluate_low_risk_tolerance,
@@ -48,6 +49,46 @@ class TradingStrategy():
         }
 
     # STRATEGIES
+
+    @pysnooper.snoop()
+    def strategy_intuition_reversal(self, *args, **kwargs):
+        '''
+        [ NOTE ]: Converts all generated signals by the other strategies into
+                  their opposites.
+        '''
+        log.debug('')
+        return_dict = {
+            item: self.strategies[item](**kwargs) for item in args \
+            if item in self.strategies and item != 'intuition-reversal'
+        }
+        log.debug('return_dict: {}'.format(return_dict))
+        buy_scan = self.scan_strategy_evaluation_for_buy_signals(
+            return_dict, **kwargs
+        )
+        sell_scan = self.scan_strategy_evaluation_for_sell_signals(
+            return_dict, **kwargs
+        )
+        return_dict.update({
+            'interval': kwargs.get('interval'),
+            'period': kwargs.get('period'),
+            'risk': 0,
+            'side': '',
+            'trade': False,
+            'description': 'Intuition Reversal'
+        })
+        return_dict['risk'] = self.compute_intuition_reversal_trade_risk(
+            return_dict, **kwargs
+        )
+        return_dict['trade'] = True if check_majority_in_set(True, [
+            return_dict[label]['trade'] for label in (
+                item for item in args if item != 'intuition-reversal'
+            )
+        ]) else False
+        if return_dict['trade']:
+            return_dict['side'] = 'sell' \
+                if len(buy_scan['confirmed']) > len(sell_scan['confirmed']) \
+                else 'buy'
+        return return_dict
 
     @pysnooper.snoop()
     def strategy_ma(self, *args, **kwargs):
@@ -1110,13 +1151,16 @@ class TradingStrategy():
     # FILTERS
 
     @pysnooper.snoop()
-    def filter_signals_from_strategy_evaluation(self, evaluations_dict, **kwargs):
+    def filter_signals_from_strategy_evaluation(self, evaluations_dict, *args, **kwargs):
         log.debug('')
         if not evaluations_dict or not isinstance(evaluations_dict, dict):
             stdout_msg(
                 'No strategy evaluation found to fetch signals from!', err=True
             )
             return False
+        log.debug(
+            'kwargs: {} \n\nevaluations_dict: {}\n'.format(kwargs, evaluations_dict)
+        )
         signals = []
         for strategy_label in evaluations_dict:
             if not evaluations_dict[strategy_label]['trade']:
@@ -1221,7 +1265,9 @@ class TradingStrategy():
                 stdout_msg('Strategy {}'.format(strategy_label), nok=True)
                 continue
             # Compute trading strategy
-            evaluations[strategy_label] = self.strategies[strategy_label](**kwargs)
+            evaluations[strategy_label] = self.strategies[strategy_label](
+                *strategy.split(','), **kwargs
+            )
             stdout_msg(
                 'Strategy {} - \n{}'.format(
                     strategy_label,
@@ -1251,6 +1297,30 @@ class TradingStrategy():
     #     [ EX ]: Risk computers calculate the possibility of success of a given
     #             strategy based on the given data set containing market info -
     #             created as a result of the previous strategy evaluation.
+
+    def compute_intuition_reversal_trade_risk(self, return_dict, *args, **kwargs):
+        log.debug('')
+        safer_intervals = ('30m', '1h', '2h', '4h', '12h', '1d', '1w')
+        safety_period, risk_index, trade_flag, period_flag = 14, 0, False, False
+        for strategy_label in args:
+            if strategy_label == 'intuition-reversal':
+                continue
+            elif return_dict[strategy_label]['flag']:
+                trade_flag = True
+        if trade_flag:
+            risk_index = 5
+            for strategy_label in args:
+                if strategy_label == 'intuition-reversal':
+                    continue
+                # NOTE: If period and period interval decently sized
+                if return_dict[label]['flag'] \
+                        and (return_dict['interval'] in safer_intervals \
+                        and return_dict[label]['start-candle'] >= safety_period):
+                    period_flag = True
+            if safety_flag:
+                risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
+        return risk_index
 
     @pysnooper.snoop()
     def compute_ma_trade_risk(self, return_dict, **kwargs):
@@ -2291,6 +2361,8 @@ class TradingStrategy():
                 trade_flag, trade_side, risk_index = buy_flag, 'buy', buy_risk
             elif sell_flag:
                 trade_flag, trade_side, risk_index = sell_flag, 'sell', sell_risk
+            if 'intuition-reversal' in evaluations_dict:
+                trade_side = evaluations_dict['intuition-reversal']['side']
         else:
             trade_flag, risk_index = self.base_evaluators[trade_side](
                 evaluations_dict, **kwargs
