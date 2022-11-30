@@ -94,7 +94,6 @@ AR_DEFAULT = {
     "debug":                    True,
     "silence":                  False,
     "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report)
-    "report-id":                '0',
     "analyze-risk":             True,
     "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
     "side":                     "auto",
@@ -156,8 +155,6 @@ AR_DEFAULT = {
     "price-interval":           "5m",
     "report-prefix":            "ar-",
     "report-id":                "",
-    "report-suffix":            "",
-    "report-extension":         "report",
     "report-id-length":         8,
     "report-id-characters":     "abcdefghijklmnopqrstuvwxyz0123456789",
     "report-location":          "./data/reports",
@@ -179,11 +176,14 @@ def fetch_action_handlers():
     return {
         'start-watchdog': action_start_watchdog,
         'stop-watchdog': action_stop_watchdog,
+        'report': action_report,
         'trade-report': action_trade_report,
         'withdrawal-report': action_withdrawal_report,
         'deposit-report': action_deposit_report,
         'single-trade': action_single_trade,
         'view-report': action_view_report,
+        'list-reports': action_list_reports,
+        'remove-report': action_remove_report,
         'account-details': action_account_details,
         'market-details': action_market_details,
         'supported-coins': action_supported_coins,
@@ -260,20 +260,78 @@ def check_log_file(**kwargs):
 
 # ACTIONS
 
-# TODO - DEPENDENCY - TradeReporter
+
+# TODO
+#   "08u342fp": "./data/reports/08u342fp.ths",
+#   "1vnth1d1": "./data/reports/1vnth1d1.ctd",
+#   "2ifk4vgi": "./data/reports/2ifk4vgi.dep",
+#   "2mq95n6t": "./data/reports/2mq95n6t.ths",
+#   "2pjjh8ub": "./data/reports/2pjjh8ub.ths",
+#   "5glntrfo": "./data/reports/5glntrfo.wdr",
+#   "6zoou0cp": "./data/reports/6zoou0cp.ths",
+#   "9qvezz7u": "./data/reports/9qvezz7u.srt",
+#   "cg8ysiha": "./data/reports/cg8ysiha.ths",
+#   "izjejam1": "./data/reports/izjejam1.ths",
+#   "zcimvosw": "./data/reports/zcimvosw.ths"
+def action_report(*args, **kwargs):
+    '''
+    [ NOTE ]: Generates all reports.
+    '''
+    log.debug('')
+    stdout_msg('[ ACTION ]: Generate Reports', bold=True)
+    generate = trading_bot.generate_report(**kwargs)
+    # TODO - View reports here
+    if not generate:
+        return 1
+    return 0
 def action_view_report(*args, **kwargs):
     log.debug('')
-    # TODO - No mods in trading bot
     stdout_msg('[ ACTION ]: View Report', bold=True)
+    generate = trading_bot.view_report(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    if not generate:
+        return 1
+    return 0
 def action_trade_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Trade Report', bold=True)
+    generate = trading_bot.generate_report('trade-history', **kwargs)
+    # TODO - View report here
+    if not generate:
+        return 1
+    return 0
 def action_withdrawal_report(*args, **kwargs):
     log.debug('TODO - Under construction, building...')
     stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
+    generate = trading_bot.generate_report('withdrawal-history', **kwargs)
+    # TODO - View report here
+    if not generate:
+        return 1
+    return 0
 def action_deposit_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
+    log.debug('')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
+    # TODO - Might need to refactor args
+    generate = trading_bot.generate_report('deposit-history', **kwargs)
+    # TODO - View report here
+    if not generate:
+        return 1
+    return 0
+def action_remove_report(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: Remove Reports', bold=True)
+    # TODO - Might need to refactor args
+    remove = trading_bot.remove_report(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    if not remove:
+        return 1
+    return 0
+def action_list_reports(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: List Reports', bold=True)
+    # TODO - Might need to refactor args
+    reports = trading_bot.list_reports(*AR_DEFAULT['report-id'].split(','), **kwargs)
+    if not reports:
+        return 1
+    return 0
 
 @pysnooper.snoop()
 def action_get_config(*args, **kwargs):
@@ -415,6 +473,7 @@ def action_start_watchdog(*args, **kwargs):
         return watchdog
     except KeyboardInterrupt as e:
         log.debug(e)
+        return 0
     except Exception as e:
         log.error(e)
     return 1
@@ -440,7 +499,7 @@ def handle_actions(actions=[], *args, **kwargs):
                     or (isinstance(handle, int) and handle != 0):
                 stdout_msg(
                     'Action ({}) failures detected! ({})'
-                    .format(action_label, handle), nok=True
+                    .format(action_label, handle), warn=True
                 )
                 failure_count += 1
                 continue
@@ -1958,7 +2017,8 @@ def add_command_line_parser_options(parser):
              'stop-watchdog | trade-report | withdrawal-report | deposit-report | '
              'single-trade | view-trade-report | view-withdrawal-report | '
              'view-deposit-report | account-details | market-details | '
-             'supported-coins | supported-tickers)',
+             'supported-coins | supported-tickers | list-reports | remove-report | '
+             'report)',
     )
     parser.add_option(
         '', '--history-backtrack', dest='backtrack', type='int', metavar='PERIOD',

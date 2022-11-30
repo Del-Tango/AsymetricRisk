@@ -69,6 +69,7 @@ class TradingBot():
         self.current_account_value_locked = float()
         self.profit_baby = float(10)
         self.trading_done_for = None    # DateTime object
+        self.nightly_reports = ('current-trades', 'success-rate')
         if kwargs.get('api-key') and kwargs.get('api-secret'):
             try:
                 setup = self._bot_pre_setup(*args, **kwargs)
@@ -499,7 +500,9 @@ class TradingBot():
         log.debug(
             'previous stop_price, kwargs - {}, {}'.format(stop_price, kwargs)
         )
-        account_value = self.fetch_account_value(currency='quote', **kwargs)
+        account_value, free, locked = self.fetch_account_value(
+            currency='quote', **kwargs
+        )
         current_price = self.fetch_symbol_current_price(**kwargs)
         to_subtract = compute_percentage_of(kwargs['stop-loss'], current_price)
         self.order_stop_price = current_price - to_subtract
@@ -517,7 +520,9 @@ class TradingBot():
                 stop_limit_price, kwargs
             )
         )
-        account_value = self.fetch_account_value(currency='quote', **kwargs)
+        account_value, free, locked = self.fetch_account_value(
+            currency='quote', **kwargs
+        )
         current_price = self.fetch_symbol_current_price(**kwargs)
         to_add_on_top = compute_percentage_of(
             kwargs['take-profit'], current_price
@@ -558,7 +563,9 @@ class TradingBot():
                 )
             )
             return False
-        value, free, locked = self.fetch_account_value(currency='quote', **kwargs)
+        value, free, locked = self.fetch_account_value(
+            currency='quote', **kwargs
+        )
         if not value:
             return False
         self.quote_amount = 0 if not value or not percentage\
@@ -592,10 +599,10 @@ class TradingBot():
         '''
         log.debug('')
         if not percentage:
-            return False
+            return 0
         value, free, locked = self.fetch_account_value(currency='base', **kwargs)
         if not value:
-            return False
+            return 0
         self.trade_amount = 0 if not value or not percentage\
             else compute_percentage(percentage, value)
 #       if kwargs.get('test') and not self.trade_amount:
@@ -618,7 +625,9 @@ class TradingBot():
 
     def compute_profit_baby(self, percentage, **kwargs):
         log.debug('')
-        account_value = self.fetch_account_value(currency='quote', **kwargs)
+        account_value, free, locked = self.fetch_account_value(
+            currency='quote', **kwargs
+        )
         self.start_account_value = account_value
         self.current_account_value = account_value
         self.profit_baby = 0 if not self.start_account_value \
@@ -740,9 +749,19 @@ class TradingBot():
 
     # REPORT MANAGEMENT
 
+    def remove_report(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.remove(*args, **kwargs)
+
+    def list_reports(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.view(*args, **kwargs)
+
     # TODO
     def generate_nightly_reports(self, *args, **kwargs):
         log.debug('TODO - Under construction')
+#       for report_type in self.nightly_reports:
+
 #       report =
 #       if not report:
 #           stdout_msg(
@@ -756,6 +775,31 @@ class TradingBot():
         return False
 
     def generate_report(self, *args, **kwargs):
+        '''
+        [ INPUT ]: *(
+                        trade-history, deposit-history, withdrawal-history,
+                        current-trades, success-rate
+                    )
+                   **{}
+
+        [ RETURN ]: {
+            'flag': False,
+            'reports': {
+                'trade-history': {
+                    'timestamp': '',
+                    'report-id': '',
+                    'report-type': '',
+                    'report-location': '',
+                    ...
+                },
+                'deposit-history': {},
+                'withdrawal-history': {},
+                'current-trades': {},
+                'success-rate': {},
+            }
+            'errors': [{msg: '', type: '', code: ,}],
+        }
+        '''
         log.debug('')
         if not self.reporter:
             log.error('No trading reporter set up!')
@@ -844,6 +888,7 @@ class TradingBot():
 
     # PERSONAL
 
+    @pysnooper.snoop()
     def _bot_pre_setup(self, *args, **kwargs):
         '''
         [ NOTE ]: Called uppon on TradingBot.__init__()
@@ -852,35 +897,45 @@ class TradingBot():
         failures = 0
         self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
         if not self.market:
+            stdout_msg('Could not set up trading market!', nok=True)
             failures += 1
         profit_bby = self.compute_profit_baby(
             kwargs.get('profit-baby', self.profit_baby), **kwargs
         )
-        if not profit_bby:
+        if not profit_bby and not isinstance(profit_bby, int) \
+                and not isinstance(profit_bby, float):
+            stdout_msg('Invalid profit target! ({})'.format(profit_bby), nok=True)
             failures += 1
         trade_amount = self.compute_trade_amount(
             kwargs.get('order-amount', self.amount), **kwargs
         )
-        if not trade_amount:
+        if not trade_amount and not isinstance(profit_bby, int) \
+                and not isinstance(profit_bby, float):
+            stdout_msg('Invalid trade amount! ({})'.format(trade_amount), nok=True)
             failures += 1
         order_price = self.compute_order_price(
             kwargs.get('order-price', self.order_price), **kwargs
         )
         if not order_price:
+            stdout_msg('Invalid order price! ({})'.format(order_price), nok=True)
             failures += 1
         stop_price = self.compute_order_stop_price(
             kwargs.get('stop-price', self.order_stop_price), **kwargs
         )
         if not stop_price:
+            stdout_msg('Invalid stop price! ({})'.format(stop_price), nok=True)
             failures += 1
         stop_limit_price = self.compute_order_stop_limit_price(
             kwargs.get('stop-limit-price', self.order_stop_limit_price), **kwargs
         )
         if not stop_limit_price:
+            stdout_msg(
+                'Invalid stop limit price! ({})'.format(stop_limit_price), nok=True
+            )
             failures += 1
         if failures:
             log.debug(
-                '{} failures detected during {} pre-setup sequence!'
+                '({}) failures detected during ({}) pre-setup sequence!'
                 .format(failures, self)
             )
         return False if failures else True
