@@ -15,8 +15,9 @@ from .ar_market import TradingMarket
 from .ar_strategy import TradingStrategy
 
 from src.backpack.bp_ensurance import ensure_files_exist
+from src.backpack.bp_convertors import json2dict, dict2json
 from src.backpack.bp_computers import compute_percentage, compute_percentage_of
-from src.backpack.bp_general import stdout_msg
+from src.backpack.bp_general import stdout_msg, pretty_dict_print
 
 log = logging.getLogger('AsymetricRisk')
 
@@ -804,7 +805,16 @@ class TradingBot():
         if not self.reporter:
             log.error('No trading reporter set up!')
             return False
-        return self.reporter.generate(*args, **kwargs)
+        generate = self.reporter.generate(*args, **kwargs)
+        for report_type in generate['reports']:
+            report_id = generate['reports'][report_type]['report-id']
+            file_path = generate['reports'][report_type]['report-file']
+            stdout_msg(
+                '{} - {}\n{}\n'.format(
+                    report_id, file_path, pretty_dict_print(json2dict(file_path))
+                ), symbol='NEW REPORT', bold=True
+            )
+        return generate
 
     # MARKET MANAGEMENT
 

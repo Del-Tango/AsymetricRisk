@@ -63,14 +63,18 @@ class TradingReporter():
             info=True
         )
         out, err, exit  = shell_cmd('ls -1 ' + self.location)
-        report_files = out.replace('b\'', '').split('\\n')
-        report_files.remove('\'')
+        report_files = out.replace('b\'', '').replace('\'', '').split('\\n')
+        if "'" in report_files:
+            report_files.remove('\'')
+        if '' in report_files:
+            report_files.remove('')
         existing_report_ids = {
             file_path.split('.')[0]: self.location + '/' + file_path \
-            for file_path in report_files
+            for file_path in report_files if file_path
         }
         specified_report_ids = {
-            report_id: existing_report_ids[report_id] for report_id in args
+            report_id: existing_report_ids[report_id] \
+            for report_id in args if report_id
         }
         target_report_ids = existing_report_ids if not specified_report_ids \
             else specified_report_ids
@@ -95,7 +99,7 @@ class TradingReporter():
         report_ids = list(all_reports.keys()) \
             if not args or len(args) == 1 and args[0] == '' else args
         for report_id in report_ids:
-            if report_id not in all_reports:
+            if not report_id or report_id not in all_reports:
                 failures += 1
                 continue
             file_path = all_reports[report_id]
@@ -131,13 +135,14 @@ class TradingReporter():
                     'Invalid report ID! ({})'.format(report_id), nok=True
                 )
                 continue
-            file_path = all_reports[report_id]
+            self.display_report_content(report_id, all_reports[report_id])
+#           file_path = all_reports[report_id]
 #           out, err, exit = shell_cmd('cat ' + file_path + ' 2> /dev/null')
-            stdout_msg(
-                '{} - {}\n{}\n'.format(
-                    report_id, file_path, pretty_dict_print(json2dict(file_path))
-                ), symbol='REPORT', bold=True
-            )
+#           stdout_msg(
+#               '{} - {}\n{}\n'.format(
+#                   report_id, file_path, pretty_dict_print(json2dict(file_path))
+#               ), symbol='REPORT', bold=True
+#           )
         return False if failures else True
 
     @pysnooper.snoop()
@@ -226,6 +231,15 @@ class TradingReporter():
         return return_dict
 
     # GENERAL
+
+    def display_report_content(self, report_id, file_path, **kwargs):
+        log.debug('')
+        stdout_msg(
+            '{} - {}\n{}\n'.format(
+                report_id, file_path, pretty_dict_print(json2dict(file_path))
+            ), symbol='REPORT', bold=True
+        )
+        return True
 
     def write_report_to_file(self, return_dict, *args, **kwargs):
         log.debug('')

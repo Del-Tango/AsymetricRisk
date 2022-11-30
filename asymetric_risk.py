@@ -260,19 +260,6 @@ def check_log_file(**kwargs):
 
 # ACTIONS
 
-
-# TODO
-#   "08u342fp": "./data/reports/08u342fp.ths",
-#   "1vnth1d1": "./data/reports/1vnth1d1.ctd",
-#   "2ifk4vgi": "./data/reports/2ifk4vgi.dep",
-#   "2mq95n6t": "./data/reports/2mq95n6t.ths",
-#   "2pjjh8ub": "./data/reports/2pjjh8ub.ths",
-#   "5glntrfo": "./data/reports/5glntrfo.wdr",
-#   "6zoou0cp": "./data/reports/6zoou0cp.ths",
-#   "9qvezz7u": "./data/reports/9qvezz7u.srt",
-#   "cg8ysiha": "./data/reports/cg8ysiha.ths",
-#   "izjejam1": "./data/reports/izjejam1.ths",
-#   "zcimvosw": "./data/reports/zcimvosw.ths"
 def action_report(*args, **kwargs):
     '''
     [ NOTE ]: Generates all reports.
@@ -284,6 +271,34 @@ def action_report(*args, **kwargs):
     if not generate:
         return 1
     return 0
+
+def action_trade_report(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: Trade Report', bold=True)
+    generate = trading_bot.generate_report('trade-history', **kwargs)
+    # TODO - View report here
+    if not generate:
+        return 1
+    return 0
+
+def action_withdrawal_report(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
+    generate = trading_bot.generate_report('withdrawal-history', **kwargs)
+    # TODO - View report here
+    if not generate:
+        return 1
+    return 0
+
+def action_deposit_report(*args, **kwargs):
+    log.debug('')
+    stdout_msg('[ ACTION ]: Deposit Report', bold=True)
+    generate = trading_bot.generate_report('deposit-history', **kwargs)
+    if not generate:
+        return 1
+    return 0
+
+
 def action_view_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Report', bold=True)
@@ -291,43 +306,18 @@ def action_view_report(*args, **kwargs):
     if not generate:
         return 1
     return 0
-def action_trade_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    stdout_msg('[ ACTION ]: Trade Report', bold=True)
-    generate = trading_bot.generate_report('trade-history', **kwargs)
-    # TODO - View report here
-    if not generate:
-        return 1
-    return 0
-def action_withdrawal_report(*args, **kwargs):
-    log.debug('TODO - Under construction, building...')
-    stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
-    generate = trading_bot.generate_report('withdrawal-history', **kwargs)
-    # TODO - View report here
-    if not generate:
-        return 1
-    return 0
-def action_deposit_report(*args, **kwargs):
-    log.debug('')
-    stdout_msg('[ ACTION ]: Deposit Report', bold=True)
-    # TODO - Might need to refactor args
-    generate = trading_bot.generate_report('deposit-history', **kwargs)
-    # TODO - View report here
-    if not generate:
-        return 1
-    return 0
+
 def action_remove_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Remove Reports', bold=True)
-    # TODO - Might need to refactor args
     remove = trading_bot.remove_report(*AR_DEFAULT['report-id'].split(','), **kwargs)
     if not remove:
         return 1
     return 0
+
 def action_list_reports(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: List Reports', bold=True)
-    # TODO - Might need to refactor args
     reports = trading_bot.list_reports(*AR_DEFAULT['report-id'].split(','), **kwargs)
     if not reports:
         return 1
