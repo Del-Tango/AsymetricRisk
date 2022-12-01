@@ -12,4 +12,21 @@ cat <<EOF
                 Excellent Regards, the Alveare Solutions #!/Society -x
 
 
+    [ MANUAL ]: Testing
+
+        [ MT ]: Test trading bot using Binance simulator
+            * Create binance.com account
+            * Create binance API keys
+            * Create taapi.io account
+            * Create taapi API keys
+            * Point config file to account simulator
+            * Select strategy and start trading bot
+
+    [ AUTO ]: Testing
+
+        [ AT ]: AsymetricRisk init script interface
+            $ ./tst/test_asymetric_risk.sh
+
+        [ AT ]: Functional/unit tests
+            $ python3 -m unittest
 EOF
