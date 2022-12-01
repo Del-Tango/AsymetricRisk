@@ -11,8 +11,6 @@ import optparse
 import json
 import time
 
-#from subprocess import Popen, PIPE
-
 from src.backpack.bp_log import log_init
 from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exist
 from src.backpack.bp_shell import shell_cmd

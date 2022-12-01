@@ -360,6 +360,7 @@ class TradingMarket(Client):
     def fetch_details(self, *args, **kwargs):
         '''
         [ NOTE ]: Fetch market details
+
         [ RETURN ]: {
             "ticker-symbol": "BTC/USDT",
             "interval": "5m",

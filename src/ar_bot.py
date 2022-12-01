@@ -540,7 +540,8 @@ class TradingBot():
     @pysnooper.snoop()
     def trade(self, *args, **kwargs):
         '''
-        [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
+        [ INPUT ]: args - *(vwap, rsi, macd, ma, ema, adx, price, volume)
+
             **kwargs - Context + {
                 'analyze-risk': True,                     (type bool) - default True
                 'strategy': vwap,rsi,macd,price,volume,   (type str) - default vwap

@@ -443,9 +443,12 @@ class TradingStrategy():
     def strategy_volume(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Trading Volume
+
         [ NOTE ]: A large volume movement upwards can validate a large price
                   movement either side.
+
         [ INPUT ]:
+
         [ RETURN ]: {
             'volume-movement': {flag: True, ...},
             'interval': '1h',
