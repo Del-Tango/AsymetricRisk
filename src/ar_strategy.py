@@ -580,8 +580,6 @@ class TradingStrategy():
             else return_dict['price-movement']['side']
         return return_dict
 
-    # FETCHERS
-
     # SETTERS
 
     def set_risk_tolerance(self, risk_index):
@@ -1229,11 +1227,6 @@ class TradingStrategy():
             evaluations_dict, signal='buy', **kwargs
         )
         log.info('[ BUY ]: ' + pretty_dict_print(scan))
-#       stdout_msg(
-#           pretty_dict_print(scan), symbol='BUY',
-#           red=False if scan['flag'] else True,
-#           green=False if not scan['flag'] else True,
-#       )
         return scan
 
     def scan_strategy_evaluation_for_sell_signals(self, evaluations_dict,
@@ -1243,11 +1236,6 @@ class TradingStrategy():
             evaluations_dict, signal='sell', **kwargs
         )
         log.info('[ SELL ]: ' + pretty_dict_print(scan))
-#       stdout_msg(
-#           pretty_dict_print(scan), symbol='SELL',
-#           red=False if scan['flag'] else True,
-#           green=False if not scan['flag'] else True,
-#       )
         return scan
 
     # ACTIONS
@@ -2321,10 +2309,7 @@ class TradingStrategy():
         # only volume (unless it's the only specified strategy), dummy.
         # You need at least price, right?
         # [ NOTE ]: Don't quote me on it tho, I'm not 100% on that.
-        if not scan['flag']: # or (len(evaluations_dict) != 1 \
-#               and ('volume' in evaluations_dict \
-#               and len(scan['confirmed']) == 1 \
-#               and evaluations_dict['volume']['trade'])):
+        if not scan['flag']:
             stdout_msg(
                 'No ({}) signals detected during strategy evaluation.'
                 .format(signal), info=True
@@ -2402,6 +2387,23 @@ class TradingStrategy():
         return self.base_evaluators['trade'](evaluations_dict, **kwargs)
 
 # CODE DUMP
+
+#       stdout_msg(
+#           pretty_dict_print(scan), symbol='BUY',
+#           red=False if scan['flag'] else True,
+#           green=False if not scan['flag'] else True,
+#       )
+#       stdout_msg(
+#           pretty_dict_print(scan), symbol='SELL',
+#           red=False if scan['flag'] else True,
+#           green=False if not scan['flag'] else True,
+#       )
+
+# or (len(evaluations_dict) != 1 \
+#               and ('volume' in evaluations_dict \
+#               and len(scan['confirmed']) == 1 \
+#               and evaluations_dict['volume']['trade'])):
+
 
 #   def compute_risk_index(self, evaluations_dict, **kwargs):
 #       log.debug('TODO - Under construction, building...')

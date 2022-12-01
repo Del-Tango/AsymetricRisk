@@ -93,7 +93,8 @@ class TradingMarket(Client):
 
     # FETCHERS
 
-    def fetch_deposit_details(*args, **kwargs):
+    @pysnooper.snoop()
+    def fetch_deposit_details(self, *args, **kwargs):
         '''
         [ INPUT ] : *args - (), **kwargs - Context + {
             :param coin: optional
@@ -148,12 +149,12 @@ class TradingMarket(Client):
         log.debug('')
         timestamp = str(time.time())
         return_dict = self.get_deposit_history(
-            recvWindow=kwargs.get('order-recv-window', 60000), **kwargs
+            recvWindow=kwargs.get('order-recv-window', 60000)
         )
         self.update_cache(return_dict, self.history_cache, label=timestamp,)
-        return self.account_cache[timestamp]
+        return self.history_cache[timestamp]
 
-    def fetch_withdrawal_details(*args, **kwargs):
+    def fetch_withdrawal_details(self, *args, **kwargs):
         '''
         [ INPUT ]: *args(), **kwargs - Context + {
             param coin: optional
@@ -206,10 +207,10 @@ class TradingMarket(Client):
         log.debug('')
         timestamp = str(time.time())
         return_dict = self.get_withdraw_history(
-            recvWindow=kwargs.get('order-recv-window', 60000), **kwargs
+            recvWindow=kwargs.get('order-recv-window', 60000),
         )
-        self.update_cache(return_dict, self.history_cache, label=timestamp,)
-        return self.account_cache[timestamp]
+        self.update_cache(return_dict, self.history_cache, label=timestamp)
+        return self.history_cache[timestamp]
 
     def fetch_api_permissions_details(self, *args, **kwargs):
         '''
@@ -298,7 +299,7 @@ class TradingMarket(Client):
         return_dict.update(self.get_account_api_trading_status(
             recvWindow=kwargs.get('order-recv-window', 60000)
         ))
-        self.update_cache(return_dict, self.account_cache, label=timestamp,)
+        self.update_cache(return_dict, self.account_cache, label=timestamp)
         return self.account_cache[timestamp]
 
     def fetch_server_time(self, *args, **kwargs):
@@ -422,7 +423,7 @@ class TradingMarket(Client):
             merged.update({coin.get('coin'): coin,})
         timestamp = str(time.time())
         self.update_cache(
-            merged, self.supported_coins_cache, label=timestamp,
+            merged, self.supported_coins_cache, label=timestamp
         )
         return merged
 
@@ -435,7 +436,7 @@ class TradingMarket(Client):
             merged.update({ticker_dict.get('symbol'): ticker_dict,})
         timestamp = str(time.time())
         self.update_cache(
-            merged, self.supported_tickers_cache, label=timestamp,
+            merged, self.supported_tickers_cache, label=timestamp
         )
         return merged
 
@@ -450,6 +451,7 @@ class TradingMarket(Client):
         log.debug('Active trades: {}'.format(active_trades))
         return active_trades
 
+    @pysnooper.snoop()
     def fetch_all_trades(self, *args, **kwargs):
         '''
         [ INPUT ]: *args - ticker symbols to get trades for
@@ -460,14 +462,14 @@ class TradingMarket(Client):
         [ RETURN ]: Dict with all trades grouped by ticker symbol
         '''
         log.debug('')
-        records = {}
+        timestamp, records = str(time.time()), {}
         for ticker_symbol in args:
-            timestamp = str(time.time())
             self.update_cache(
                 self.get_all_orders(
-                    symbol=ticker_symbol, recvWindow=60000, **kwargs
+                    symbol=ticker_symbol,
+                    recvWindow=kwargs.get('order-recv-window', 60000),
                 ),
-                self.recent_trades_cache, label=timestamp,
+                self.recent_trades_cache, label=timestamp
             )
             records.update(
                 {ticker_symbol: self.recent_trades_cache[timestamp]}
@@ -1371,6 +1373,7 @@ class TradingMarket(Client):
         )
         return self.last_indicator_update_timestamp
 
+    @pysnooper.snoop()
     def update_cache(self, element, cache_dict, **kwargs):
         log.debug('')
         size_limit = kwargs.get('size_limit', self.cache_size_limit)
@@ -1387,7 +1390,7 @@ class TradingMarket(Client):
         log.debug('')
         self.update_cache(
             self.get_all_coins_info(recvWindow=60000),
-            self.coin_info_cache, label=timestamp,
+            self.coin_info_cache, label=timestamp
         )
         return {'coin-info-cache': self.coin_info_cache}
 
@@ -1395,7 +1398,7 @@ class TradingMarket(Client):
         log.debug('')
         self.update_cache(
             self.get_trade_fee(symbol=self.ticker_symbol, recvWindow=60000),
-            self.trade_fee_cache, label=timestamp,
+            self.trade_fee_cache, label=timestamp
         )
         return {'trade-fee-cache': self.trade_fee_cache}
 
@@ -1408,7 +1411,7 @@ class TradingMarket(Client):
         self.update_cache(
             self.get_ticker(
                 symbol=kwargs.get('ticker-symbol', self.ticker_symbol).replace('/', '')
-            ), self.ticker_info_cache, label=timestamp,
+            ), self.ticker_info_cache, label=timestamp
         )
         if 'all' in update_targets or 'price' in update_targets:
             self.buy_price = float(

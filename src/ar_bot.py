@@ -350,7 +350,9 @@ class TradingBot():
                   report engine in order to generate a trade-history report.
         '''
         log.debug('')
-        return self.view_trade_history(kwargs.get('ticker-symbol'), **kwargs)
+        return self.view_trade_history(
+            kwargs.get('ticker-symbol', '').replace('/', ''), **kwargs
+        )
 
     def scrape_current_trades_report_data(self, *args, **kwargs):
         '''
@@ -358,7 +360,9 @@ class TradingBot():
                   report engine in order to generate a current-trades report.
         '''
         log.debug('')
-        return self.view_trades(kwargs.get('ticker-symbol'), **kwargs)
+        return self.view_trades(
+            kwargs.get('ticker-symbol', '').replace('/', ''), **kwargs
+        )
 
     def scrape_success_rate_report_data(self, *args, **kwargs):
         '''
@@ -366,10 +370,13 @@ class TradingBot():
                   report engine in order to generate a success-rate report.
         '''
         log.debug('')
-        return self.view_trade_history(kwargs.get('ticker-symbol'), **kwargs)
+        return self.view_trade_history(
+            kwargs.get('ticker-symbol', '').replace('/', ''), **kwargs
+        )
 
     # ACTIONS
 
+    @pysnooper.snoop()
     def generate_nightly_reports(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
@@ -534,7 +541,7 @@ class TradingBot():
     def trade(self, *args, **kwargs):
         '''
         [ INPUT ]: *(vwap, rsi, macd, ma, ema, adx, price, volume)
-            **{
+            **kwargs - Context + {
                 'analyze-risk': True,                     (type bool) - default True
                 'strategy': vwap,rsi,macd,price,volume,   (type str) - default vwap
                 'side': buy,                              (type str) - <buy, sell, auto> default auto
@@ -585,6 +592,7 @@ class TradingBot():
                 'price-backtracks': 12,
                 'price-chart': candles,
                 'price-interval': 5m,
+                ...
             }
 
         [ RETURN ]: {
@@ -875,20 +883,23 @@ class TradingBot():
 
     # VIEWERS
 
-    def view_coin_details(*args, **kwargs):
+    @pysnooper.snoop()
+    def view_coin_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
         if not market:
             return False
         return market.fetch_supported_coins(*args, **kwargs)
 
-    def view_api_details(*args, **kwargs):
+    @pysnooper.snoop()
+    def view_api_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
         if not market:
             return False
-        return market.fetch_api_permission_details(*args, **kwargs)
+        return market.fetch_api_permissions_details(*args, **kwargs)
 
+    @pysnooper.snoop()
     def view_deposit_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -896,6 +907,7 @@ class TradingBot():
             return False
         return market.fetch_deposit_details(*args, **kwargs)
 
+    @pysnooper.snoop()
     def view_withdrawal_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -903,6 +915,7 @@ class TradingBot():
             return False
         return market.fetch_withdrawal_details(*args, **kwargs)
 
+    @pysnooper.snoop()
     def view_report(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
@@ -910,6 +923,7 @@ class TradingBot():
             return False
         return self.reporter.read(*args, **kwargs)
 
+    @pysnooper.snoop()
     def view_market_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -919,6 +933,7 @@ class TradingBot():
             args = ('all', )
         return market.fetch_details(*args, **kwargs)
 
+    @pysnooper.snoop()
     def view_account_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
