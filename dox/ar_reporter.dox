@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+# Excellent Regards, the Alveare Solutions #!/Society -x
+#
+# REPORTER
+
+cat <<EOF
+    ___________________________________________________________________________
+
+     *                          *  Asymetric Risk  *                         *
+    ________________________________________________________v1.0AR15___________
+                Excellent Regards, the Alveare Solutions #!/Society -x
+
+
+[ FUNCTIONS ]: src/ar_reporter.py:TradingReporter
+
+    # ACTIONS
+    src/ar_reporter.py:60:    def view(self, *args, **kwargs):
+    src/ar_reporter.py:95:    def remove(self, *args, **kwargs):
+    src/ar_reporter.py:125:    def read(self, *args, **kwargs):
+    src/ar_reporter.py:146:    def generate(self, *args, **kwargs):
+
+    # GENERAL
+    src/ar_reporter.py:247:    def display_report_content(self, report_id, file_path, **kwargs):
+    src/ar_reporter.py:256:    def write_report_to_file(self, return_dict, *args, **kwargs):
+
+    # GENERATORS
+    src/ar_reporter.py:275:    def generate_coin_details_report(self, *args, **kwargs):
+    src/ar_reporter.py:288:    def generate_api_permissions_report(self, *args, **kwargs):
+    src/ar_reporter.py:301:    def generate_market_snapshot_report(self, *args, **kwargs):
+    src/ar_reporter.py:314:    def generate_account_snapshot_report(self, *args, **kwargs):
+    src/ar_reporter.py:327:    def generate_withdrawal_history_report(self, *args, **kwargs):
+    src/ar_reporter.py:340:    def generate_deposit_history_report(self, *args, **kwargs):
+    src/ar_reporter.py:353:    def generate_current_trades_report(self, *args, **kwargs):
+    src/ar_reporter.py:366:    def generate_success_rate_report(self, *args, **kwargs):
+    src/ar_reporter.py:379:    def generate_trade_history_report(self, *args, **kwargs):
+    src/ar_reporter.py:392:    def generate_default_report_details(self, *args, **kwargs):
+
+    # FORMATTERS
+    src/ar_reporter.py:405:    def format_api_permissions_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:414:    def format_coin_details_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:423:    def format_market_snapshot_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:432:    def format_account_snapshot_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:441:    def format_withdrawal_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:450:    def format_deposit_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:459:    def format_current_trades_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:468:    def format_success_rate_report_details(self, *args, **kwargs):
+    src/ar_reporter.py:477:    def format_trade_history_report_details(self, *args, **kwargs):
+
+EOF

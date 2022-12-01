@@ -407,7 +407,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['api-permissions'],
+#           'raw-data': kwargs['raw-report-data']['api-permissions'],
             'report': kwargs['raw-report-data']['api-permissions'],
         }
 
@@ -416,7 +416,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['coin-details'],
+#           'raw-data': kwargs['raw-report-data']['coin-details'],
             'report': kwargs['raw-report-data']['coin-details'],
         }
 
@@ -425,7 +425,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['market-snapshot'],
+#           'raw-data': kwargs['raw-report-data']['market-snapshot'],
             'report': kwargs['raw-report-data']['market-snapshot'],
         }
 
@@ -434,7 +434,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['account-snapshot'],
+#           'raw-data': kwargs['raw-report-data']['account-snapshot'],
             'report': kwargs['raw-report-data']['account-snapshot'],
         }
 
@@ -443,7 +443,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['withdrawal-history'],
+#           'raw-data': kwargs['raw-report-data']['withdrawal-history'],
             'report': kwargs['raw-report-data']['withdrawal-history'],
         }
 
@@ -452,7 +452,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['deposit-history'],
+#           'raw-data': kwargs['raw-report-data']['deposit-history'],
             'report': kwargs['raw-report-data']['deposit-history'],
         }
 
@@ -461,7 +461,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['current-trades'],
+#           'raw-data': kwargs['raw-report-data']['current-trades'],
             'report': kwargs['raw-report-data']['current-trades'],
         }
 
@@ -470,7 +470,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['success-rate'],
+#           'raw-data': kwargs['raw-report-data']['success-rate'],
             'report': kwargs['raw-report-data']['success-rate'],
         }
 
@@ -479,7 +479,7 @@ class TradingReporter():
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
         # TODO - Formatt report data
         return {
-            'raw-data': kwargs['raw-report-data']['trade-history'],
+#           'raw-data': kwargs['raw-report-data']['trade-history'],
             'report': kwargs['raw-report-data']['trade-history'],
         }
 
