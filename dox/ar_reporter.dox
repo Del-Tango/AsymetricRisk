@@ -12,7 +12,7 @@ cat <<EOF
                 Excellent Regards, the Alveare Solutions #!/Society -x
 
 
-    [ FUNCTIONS ]: src/ar_reporter.py:TradingReporter
+[ FUNCTIONS ]: src/ar_reporter.py:TradingReporter
 
     # ACTIONS
     src/ar_reporter.py:60:    def view(self, *args, **kwargs):
@@ -47,7 +47,7 @@ cat <<EOF
     src/ar_reporter.py:468:    def format_success_rate_report_details(self, *args, **kwargs):
     src/ar_reporter.py:477:    def format_trade_history_report_details(self, *args, **kwargs):
 
-    [ FORMAT ]: Deposit History Report
+[ FORMAT ]: Deposit History Report
 
     {
         "timestamp": "01/12/2022-01:57:02",
@@ -58,7 +58,7 @@ cat <<EOF
         "report": [{}, ...]
     }
 
-    [ FORMAT ]: Withdrawal History Report
+[ FORMAT ]: Withdrawal History Report
 
     {
         "timestamp": "01/12/2022-01:57:02",
@@ -69,7 +69,7 @@ cat <<EOF
         "report": [{}, ...]
     }
 
-    [ FORMAT ]: Trade History Report
+[ FORMAT ]: Trade History Report
 
     {
         "timestamp": "01/12/2022-01:57:02",
@@ -82,7 +82,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: Current Trades Report
+[ FORMAT ]: Current Trades Report
 
     {
         "timestamp": "01/12/2022-01:57:02",
@@ -95,7 +95,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: Success Rate Report
+[ FORMAT ]: Success Rate Report
 
     {
         "timestamp": "01/12/2022-01:57:03",
@@ -108,7 +108,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: Account Snapshot Report
+[ FORMAT ]: Account Snapshot Report
 
     {
         "timestamp": "01/12/2022-01:57:03",
@@ -142,7 +142,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: Market Snapshot Report
+[ FORMAT ]: Market Snapshot Report
 
     {
         "timestamp": "01/12/2022-01:57:03",
@@ -181,7 +181,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: API Permissions Report
+[ FORMAT ]: API Permissions Report
 
     {
         "timestamp": "01/12/2022-01:57:04",
@@ -213,7 +213,7 @@ cat <<EOF
         }
     }
 
-    [ FORMAT ]: Coin Details Report
+[ FORMAT ]: Coin Details Report
 
     {
         "timestamp": "01/12/2022-01:57:04",

@@ -152,90 +152,91 @@ cat <<EOF
 
     [ EXAMPLE ]: View reports -
 
-        ~$ asymetric_risk.py \\
-            -a  | --action "view-trade-report" \\
+        ~$ asymetric_risk.py \
+            -a  | --action "view-trade-report" \
             -r  | --report-id '0,1,2,3,4,5'
 
     [ EXAMPLE ]: Stop (A)Risk trading bot -
 
-        ~$ asymetric_risk.py \\
+        ~$ asymetric_risk.py \
             -a  | --action "stop-watchdog"
 
     [ EXAMPLE ]: Start (A)Risk trading bot -
 
-        ~$ asymetric_risk.py \\
-            -a  | --action "start-watchdog,trade-report,account-details" \\
-            -c  | --config-file /etc/conf/asymetric_risk.conf.json \\
-            -l  | --log-file /etc/log/asymetric_risk.log \\
-            -U  | --api-url "https://testnet.binance.vision/api" \\
-            -u  | --taapi-url "https://api.taapi.io" \\
-            -K  | --api-key "*************************************************" \\
-            -S  | --api-secret "**********************************************" \\
-            -k  | --taapi-key "***********************************************" \\
-            -T  | --strategy "vwap,rsi,macd,adx,ma,ema,price,volume" \\
-            -D  | --debug \\
-            -s  | --silence \\
-            -A  | --analyze-risk \\             # Do risk analysis before trading
-            -t  | --side "auto" \\              # Trade side (buy | sell | auto)
-            -i  | --interval "5m" \\            # Time interval represented by a single candle
-            -p  | --period 14 \\                # Number of candles
-            -R  | --risk-tolerance High \\      # Implies (-A | --analyze-risk)
-            -b  | --base-currency BTC \\        # Measure value of -
-            -q  | --quote-currency USDT \\      # Measure base currency value in -
-            -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
-            -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
-            -x  | --max-trades 3 \\             # Maximum number of trades allowed per trading day
-                | --history-backtrack 14 \\     # General period backtrack value for indicator history
-                | --history-backtracks 14 \\    # General period backtracks value for indicator history
-                | --stop-loss 10 \\             # Set trading stop loss at X% of amount
-                | --take-profit 30 \\           # Set trading take profit at X% of amount
-                | --trailing-stop 10 \\         # Set trailing stop at X% of amount
-                | --market-open "08:00" \\      # HH:MM time when the bot can start trading
-                | --market-close "22:00" \\     # HH:MM time when the bot should stop trading
-                | --price-movement 5 \\         # Set price movement trigger at X% per interval
-                | --rsi-top 70 \\               # Specify strong RSI value (1-100)
-                | --rsi-bottom 30 \\            # Specify low RSI value (1-100)
-                | --rsi-period 14 \\
-                | --rsi-backtrack 5 \\
-                | --rsi-backtracks 12 \\
-                | --rsi-chart "candles" \\
-                | --rsi-interval "5m" \\
-                | --volume-movement 5 \\
-                | --volume-interval "5m" \\
-                | --ma-period 30 \\
-                | --ma-backtrack 5 \\
-                | --ma-backtracks 12 \\
-                | --ma-chart "candles" \\
-                | --ma-interval "5m" \\
-                | --ema-period 30 \\
-                | --ema-backtrack 5 \\
-                | --ema-backtracks 12 \\
-                | --ema-chart "candles" \\
-                | --ema-interval "5m" \\
-                | --macd-backtrack 5 \\
-                | --macd-backtracks 12 \\
-                | --macd-chart "candles" \\
-                | --macd-fast-period 12 \\
-                | --macd-slow-period 26 \\
-                | --macd-signal-period 9 \\
-                | --macd-interval "5m" \\
-                | --adx-period 14 \\
-                | --adx-backtrack 5 \\
-                | --adx-backtracks 12 \\
-                | --adx-chart "candles" \\
-                | --adx-interval "5m" \\
-                | --vwap-period 14 \\
-                | --vwap-backtrack 5 \\
-                | --vwap-backtracks 12 \\
-                | --vwap-chart "candles" \\
-                | --vwap-interval "5m" \\
-                | --price-period 14 \\
-                | --price-backtrack 5 \\
-                | --price-backtracks 12 \\
-                | --price-chart "candles" \\
+        ~$ asymetric_risk.py \
+            -a  | --action "start-watchdog,trade-report,account-details" \
+            -c  | --config-file /etc/conf/asymetric_risk.conf.json \
+            -l  | --log-file /etc/log/asymetric_risk.log \
+            -U  | --api-url "https://testnet.binance.vision/api" \
+            -u  | --taapi-url "https://api.taapi.io" \
+            -K  | --api-key "*************************************************" \
+            -S  | --api-secret "**********************************************" \
+            -k  | --taapi-key "***********************************************" \
+            -T  | --strategy "vwap,rsi,macd,adx,ma,ema,price,volume" \
+            -D  | --debug \
+            -s  | --silence \
+            -A  | --analyze-risk \             # Do risk analysis before trading
+            -t  | --side "auto" \              # Trade side (buy | sell | auto)
+            -i  | --interval "5m" \            # Time interval represented by a single candle
+            -p  | --period 14 \                # Number of candles
+            -R  | --risk-tolerance High \      # Implies (-A | --analyze-risk)
+            -b  | --base-currency BTC \        # Measure value of -
+            -q  | --quote-currency USDT \      # Measure base currency value in -
+            -Z  | --ticker-symbol BTC/USDT \   # Market identifier
+            -P  | --profit-baby 10 \           # Stop trading bot at X% gains of start account value
+            -x  | --max-trades 3 \             # Maximum number of trades allowed per trading day
+                | --history-backtrack 14 \     # General period backtrack value for indicator history
+                | --history-backtracks 14 \    # General period backtracks value for indicator history
+                | --stop-loss 10 \             # Set trading stop loss at X% of amount
+                | --take-profit 30 \           # Set trading take profit at X% of amount
+                | --trailing-stop 10 \         # Set trailing stop at X% of amount
+                | --market-open "08:00" \      # HH:MM time when the bot can start trading
+                | --market-close "22:00" \     # HH:MM time when the bot should stop trading
+                | --price-movement 5 \         # Set price movement trigger at X% per interval
+                | --rsi-top 70 \               # Specify strong RSI value (1-100)
+                | --rsi-bottom 30 \            # Specify low RSI value (1-100)
+                | --rsi-period 14 \
+                | --rsi-backtrack 5 \
+                | --rsi-backtracks 12 \
+                | --rsi-chart "candles" \
+                | --rsi-interval "5m" \
+                | --volume-movement 5 \
+                | --volume-interval "5m" \
+                | --ma-period 30 \
+                | --ma-backtrack 5 \
+                | --ma-backtracks 12 \
+                | --ma-chart "candles" \
+                | --ma-interval "5m" \
+                | --ema-period 30 \
+                | --ema-backtrack 5 \
+                | --ema-backtracks 12 \
+                | --ema-chart "candles" \
+                | --ema-interval "5m" \
+                | --macd-backtrack 5 \
+                | --macd-backtracks 12 \
+                | --macd-chart "candles" \
+                | --macd-fast-period 12 \
+                | --macd-slow-period 26 \
+                | --macd-signal-period 9 \
+                | --macd-interval "5m" \
+                | --adx-period 14 \
+                | --adx-backtrack 5 \
+                | --adx-backtracks 12 \
+                | --adx-chart "candles" \
+                | --adx-interval "5m" \
+                | --vwap-period 14 \
+                | --vwap-backtrack 5 \
+                | --vwap-backtracks 12 \
+                | --vwap-chart "candles" \
+                | --vwap-interval "5m" \
+                | --price-period 14 \
+                | --price-backtrack 5 \
+                | --price-backtracks 12 \
+                | --price-chart "candles" \
                 | --price-interval "5m"
 
 Options:
+
   -h, --help            show this help message and exit
 
   -c FILE_PATH, --config-file=FILE_PATH
@@ -324,10 +325,10 @@ Options:
   -a CSV, --action=CSV  Action to execute - valid values include one or more
                         of the following labels given as a CSV string: (start-
                         watchdog | stop-watchdog | trade-report | withdrawal-
-                        report | deposit-report | single-trade | view-report
-                        | account-details | market-details | supported-coins |
+                        report | deposit-report | single-trade | view-report |
+                        account-details | market-details | supported-coins |
                         supported-tickers | list-reports | remove-report |
-                        report)
+                        report | get-config)
 
   --history-backtrack=PERIOD
                         General backtrack value for indicator history.

@@ -11,6 +11,7 @@ cat <<EOF
     ________________________________________________________v1.0AR15___________
                 Excellent Regards, the Alveare Solutions #!/Society -x
 
+[ IDontHaveAnswersIHaveQuestionsButAlsoAnswers ]:
 
     [ Q/A ]: What is an OCO order?
 
@@ -54,24 +55,24 @@ cat <<EOF
         price of $39,000. A limit order at $39,000 will be placed when the
         price drops from $40,000 to $39,500.
 
-    [ NOTE ]: Implications of order types -
+[ NOTE ]: Implications of order types -
 
-        [ Market Order ]:
-            * Purchases an asset at the market price
-            * Fills immediately
-            * Manual
+    [ Market Order ]:
+        * Purchases an asset at the market price
+        * Fills immediately
+        * Manual
 
-        [ Limit Order ]:
-            * Purchases an asset at a set price or better
-            * Fills only at the limit order’s price or better
-            * Can be set in advance
+    [ Limit Order ]:
+        * Purchases an asset at a set price or better
+        * Fills only at the limit order’s price or better
+        * Can be set in advance
 
-    [ STRATEGY ]: Intuition Reversal
+[ STRATEGY ]: Intuition Reversal
 
-        [ NOTE ]: Converts all generated signals by the other strategies into
-                  their opposites.
+    [ NOTE ]: Converts all generated signals by the other strategies into
+                their opposites.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "volume": {
                 "value": 267248.64735,
                 "volume-movement": {
@@ -133,27 +134,27 @@ cat <<EOF
             "description": "Intuition Reversal"
         }
 
-    [ STRATEGY ]: Moving Average
+[ STRATEGY ]: Moving Average
 
-        [ NOTE ]: Technical indicator that sums up the data points of a financial
-                  security over a specific time period and divides the total by
-                  the number of data points to arrive at an average.
+    [ NOTE ]: Technical indicator that sums up the data points of a financial
+                security over a specific time period and divides the total by
+                the number of data points to arrive at an average.
 
-                  It's called a "Moving" Average because it is continually
-                  recalculated based on the latest price data.
+                It's called a "Moving" Average because it is continually
+                recalculated based on the latest price data.
 
-        [ NOTE ]: Used to examine support and resistance by evaluating the
-                  movements of an assets price.
+    [ NOTE ]: Used to examine support and resistance by evaluating the
+                movements of an assets price.
 
-        [ NOTE ]: The general rule is that if the price trades above the moving
-                  average, we’re in an uptrend. As long as we stay above the
-                  exponential moving average, we should expect higher prices.
+    [ NOTE ]: The general rule is that if the price trades above the moving
+                average, we’re in an uptrend. As long as we stay above the
+                exponential moving average, we should expect higher prices.
 
-                  Conversely, if we’re trading below, we’re in a downtrend.
-                  As long as we trade below the moving average, we should expect
-                  lower prices.
+                Conversely, if we’re trading below, we’re in a downtrend.
+                As long as we trade below the moving average, we should expect
+                lower prices.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 17146.045859373233,
             "bullish-trend": {
                 "flag": false,
@@ -233,12 +234,12 @@ cat <<EOF
             "description": "Moving Average Strategy"
         }
 
-    [ STRATEGY ]: Exponential Moving Average
+[ STRATEGY ]: Exponential Moving Average
 
-        [ NOTE ]: A Moving Average which gives more weight to the most recent
-                  price points to make it more responsive to recent data points.
+    [ NOTE ]: A Moving Average which gives more weight to the most recent
+                price points to make it more responsive to recent data points.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 17146.045859373233,
             "bullish-trend": {
                 "flag": false,
@@ -316,15 +317,15 @@ cat <<EOF
             "description": "Exponential Moving Average Strategy"
         }
 
-    [ STRATEGY ]: Volume Weighted Average Price
+[ STRATEGY ]: Volume Weighted Average Price
 
-        [ NOTE ]: Buy when price is trading below VWAP and then breaks to begin
-                  to trade above it - Bullish Trend Confirmation
+    [ NOTE ]: Buy when price is trading below VWAP and then breaks to begin
+                to trade above it - Bullish Trend Confirmation
 
-        [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
-                  to trade below it - Bearish Trend Confirmation
+    [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
+                to trade below it - Bearish Trend Confirmation
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 16962.345951788855,
             "bullish-crossover": {
                 "flag": false,
@@ -392,27 +393,27 @@ cat <<EOF
             "description": "Volume Weighted Average Price Strategy"
         }
 
-    [ STRATEGY ]: Relative Strength Index
+[ STRATEGY ]: Relative Strength Index
 
-        [ NOTE ]: When to buy? When a Bullish Divergence occurs (when price
-                  makes lower lows but RSI makes higher lows).
+    [ NOTE ]: When to buy? When a Bullish Divergence occurs (when price
+                makes lower lows but RSI makes higher lows).
 
-                  This could be a sign that downward momentum is waining and a
-                  bullish reversal may follow.
+                This could be a sign that downward momentum is waining and a
+                bullish reversal may follow.
 
-                  After spotting a Bullish Divergence an investor might use a
-                  crossback above 30 as an entry signal.
+                After spotting a Bullish Divergence an investor might use a
+                crossback above 30 as an entry signal.
 
-        [ NOTE ]: When to sell? When a Bearish Divergence occurs (when price
-                  makes higher highs, but RSI makes lower highs).
+    [ NOTE ]: When to sell? When a Bearish Divergence occurs (when price
+                makes higher highs, but RSI makes lower highs).
 
-                  This could be a sign that upward momentum is slowing, and a
-                  Bearish Reversal may occur.
+                This could be a sign that upward momentum is slowing, and a
+                Bearish Reversal may occur.
 
-                  After spotting a Bearish Divergence an investor might use a
-                  crossback below 70 as an exit signal.
+                After spotting a Bearish Divergence an investor might use a
+                crossback below 70 as an exit signal.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 49.33564764353903,
             "bullish-divergence": {
                 "flag": false,
@@ -474,30 +475,30 @@ cat <<EOF
             "description": "Relative Strength Index Strategy"
         }
 
-    [ STRATEGY ]: Moving Average Convergence Divergence
+[ STRATEGY ]: Moving Average Convergence Divergence
 
-        [ NOTE ]: When to buy? Glad you asked!
-                  When a Bullish Crossover occurs (when MACD crosses above its
-                  signal line following a brief downside correction within a
-                  long-term uptrend)
+    [ NOTE ]: When to buy? Glad you asked!
+                When a Bullish Crossover occurs (when MACD crosses above its
+                signal line following a brief downside correction within a
+                long-term uptrend)
 
-                  or when a Bullish Divergence occurs (when MACD makes two rising
-                  lows corresponding with two falling lows in the price).
+                or when a Bullish Divergence occurs (when MACD makes two rising
+                lows corresponding with two falling lows in the price).
 
-        [ NOTE ]: When to sell?... well ok, guess we're doing this now -
-                  When a Bearish Crossover occurs (when MACD crosses below it's
-                  signal line following a brief move higher withing a long-term
-                  downtrend)
+    [ NOTE ]: When to sell?... well ok, guess we're doing this now -
+                When a Bearish Crossover occurs (when MACD crosses below it's
+                signal line following a brief move higher withing a long-term
+                downtrend)
 
-                  or when a Bearish Divergence occurs (when MACD forms a series
-                  of two falling highs that correspond with two rising highs in
-                  the price).
+                or when a Bearish Divergence occurs (when MACD forms a series
+                of two falling highs that correspond with two rising highs in
+                the price).
 
-        [ NOTE ]: A Bearish Divergence that appears during a long-term bearish
-                  trend is considered confirmation that the trend is likely to
-                  continue.
+    [ NOTE ]: A Bearish Divergence that appears during a long-term bearish
+                trend is considered confirmation that the trend is likely to
+                continue.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 3.144200577709853,
             "signal": 4.928255612084131,
             "history": -1.784055034374278,
@@ -651,19 +652,19 @@ cat <<EOF
             "description": "Moving Average Convergence Divergence Strategy"
         }
 
-    [ STRATEGY ]: Average Directional Index
+[ STRATEGY ]: Average Directional Index
 
-        [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
-                  25 and the +DI line moves upward, which is from below to above
-                  the -DI line), we must buy at the next candle after the
-                  Crossover and place the stop-loss lower than the previous candle.
+    [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
+                25 and the +DI line moves upward, which is from below to above
+                the -DI line), we must buy at the next candle after the
+                Crossover and place the stop-loss lower than the previous candle.
 
-        [ NOTE ]: When a Bearish Crossover occurs (when the ADX line is above 25
-                  and the +DI line moves downward, which is from above to below
-                  the -DI line), we must sell at the next candle after the
-                  Crossover and place the stop-loss higher than the previous candle.
+    [ NOTE ]: When a Bearish Crossover occurs (when the ADX line is above 25
+                and the +DI line moves downward, which is from above to below
+                the -DI line), we must sell at the next candle after the
+                Crossover and place the stop-loss higher than the previous candle.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 10.84888017068431,
             "bullish-crossover": {
                 "flag": false,
@@ -739,12 +740,12 @@ cat <<EOF
             "description": "Average Directional Index Strategy"
         }
 
-    [ STRATEGY ]: Trading Volume
+[ STRATEGY ]: Trading Volume
 
-        [ NOTE ]: A large volume movement upwards can validate a large price
-                  movement either side.
+    [ NOTE ]: A large volume movement upwards can validate a large price
+                movement either side.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "value": 267248.64735,
             "volume-movement": {
                 "flag": true,
@@ -771,14 +772,14 @@ cat <<EOF
             "description": "Volume Strategy"
         }
 
-    [ STRATEGY ]: Price Action
+[ STRATEGY ]: Price Action
 
-        [ NOTE ]: Generates weak buy signal when it detects a large price
-                  movement up, and a sell signal when it detects a large price
-                  movement down. The signal is strengthened when the price
-                  movement is confirmed by a large volume movement up.
+    [ NOTE ]: Generates weak buy signal when it detects a large price
+                movement up, and a sell signal when it detects a large price
+                movement down. The signal is strengthened when the price
+                movement is confirmed by a large volume movement up.
 
-          [ Ex ]: Strategy evaluation - {
+        [ Ex ]: Strategy evaluation - {
             "price-movement": {
                 "flag": false,
                 "start-value": 17147.55,
@@ -806,33 +807,34 @@ cat <<EOF
             "description": "Price Action Strategy"
         }
 
-    [ EXAMPLE ]: OCO order -
-        * Symbol - ticker symbol for the order.
-        * Quantity - is the amount of crypto you want to purchase.
-        * Side - whether to buy or sell.
-        * stopLimitTimeInForce -
-            * GTC (Good-Till-Cancel): the order will last until it is
-                completed or you cancel it.
+[ EXAMPLE ]: OCO order -
+    * Symbol - ticker symbol for the order.
+    * Quantity - is the amount of crypto you want to purchase.
+    * Side - whether to buy or sell.
+    * stopLimitTimeInForce -
+        * GTC (Good-Till-Cancel): the order will last until it is
+            completed or you cancel it.
 
-            * IOC (Immediate-Or-Cancel): the order will attempt to execute
-                all or part of it immediately at the price and quantity
-                available, then cancel any remaining, unfilled part of the
-                order. If no quantity is available at the chosen price when
-                you place the order, it will be canceled immediately. Please
-                note that Iceberg orders are not supported.
+        * IOC (Immediate-Or-Cancel): the order will attempt to execute
+            all or part of it immediately at the price and quantity
+            available, then cancel any remaining, unfilled part of the
+            order. If no quantity is available at the chosen price when
+            you place the order, it will be canceled immediately. Please
+            note that Iceberg orders are not supported.
 
-            * FOK (Fill-Or-Kill): the order is instructed to execute in full
-                immediately (filled), otherwise it will be canceled (killed).
-                Please note that Iceberg orders are not supported.
+        * FOK (Fill-Or-Kill): the order is instructed to execute in full
+            immediately (filled), otherwise it will be canceled (killed).
+            Please note that Iceberg orders are not supported.
 
-        [ Limit order ]:
-            * Price - The price of your limit order.
-                This order will be visible on the order book.
+    [ Limit order ]:
+        * Price - The price of your limit order.
+            This order will be visible on the order book.
 
-        [ Stop-Limit order ]:
-            * StopPrice - The price at which your stop-limit order will be
-                triggered (e.g., 0.0024950 BTC).
+    [ Stop-Limit order ]:
+        * StopPrice - The price at which your stop-limit order will be
+            triggered (e.g., 0.0024950 BTC).
 
-            * StopLimitPrice - The actual price of your limit order after
-                the stop is triggered (e.g., 0.0024900 BTC).
+        * StopLimitPrice - The actual price of your limit order after
+            the stop is triggered (e.g., 0.0024900 BTC).
+
 EOF
