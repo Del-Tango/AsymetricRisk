@@ -56,7 +56,7 @@ class TradingReporter():
 
     # INTERFACE
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view(self, *args, **kwargs):
         '''
         [ NOTE ]: Lists existing reports.
@@ -91,7 +91,7 @@ class TradingReporter():
             )
         return target_report_ids
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def remove(self, *args, **kwargs):
         '''
         [ NOTE ]: Deletes specified report files or all if none specified.
@@ -121,7 +121,7 @@ class TradingReporter():
                 )
         return False if failures else True
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def read(self, *args, **kwargs):
         '''
         [ NOTE ]: Displays the content of an existing report.
@@ -142,7 +142,7 @@ class TradingReporter():
             self.display_report_content(report_id, all_reports[report_id])
         return False if failures else True
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def generate(self, *args, **kwargs):
         '''
         [ NOTE ]: High level interface function for report generation. Currently

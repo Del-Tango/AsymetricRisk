@@ -324,8 +324,7 @@ Options:
   -a CSV, --action=CSV  Action to execute - valid values include one or more
                         of the following labels given as a CSV string: (start-
                         watchdog | stop-watchdog | trade-report | withdrawal-
-                        report | deposit-report | single-trade | view-trade-
-                        report | view-withdrawal-report | view-deposit-report
+                        report | deposit-report | single-trade | view-report
                         | account-details | market-details | supported-coins |
                         supported-tickers | list-reports | remove-report |
                         report)

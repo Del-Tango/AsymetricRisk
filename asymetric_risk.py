@@ -75,7 +75,7 @@ AR_DEFAULT = {
     "test":                     True,
     "debug":                    True,
     "silence":                  False,
-    "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report | report | remove-report)
+    "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report | report | remove-report | get-config)
     "analyze-risk":             True,
     "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
     "side":                     "auto",
@@ -304,7 +304,7 @@ def action_list_reports(*args, **kwargs):
         return 1
     return 0
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def action_get_config(*args, **kwargs):
     log.debug('')
     log_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
@@ -314,7 +314,7 @@ def action_get_config(*args, **kwargs):
     stdout_msg(pretty_dict_print(json2dict(log_file_path)))
     return 0
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def action_market_details(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
@@ -410,7 +410,7 @@ def action_stop_watchdog(*args, **kwargs):
             '{} trading bot not running! No process anchor file found.'
             .format(AR_SCRIPT_NAME), err=True
         )
-        return False
+        return 1
     remove = os.remove(AR_DEFAULT['watchdog-anchor-file'])
     pid = fetch_watchdog_pid()
     stdout_msg('Process anchor file removed.', ok=True)
@@ -420,11 +420,11 @@ def action_stop_watchdog(*args, **kwargs):
             'Could not stop trading bot! Process ({}) still running.'
             .format(pid), nok=True
         )
-        return False
+        return 2
     stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
-    return True
+    return 0
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def action_start_watchdog(*args, **kwargs):
     '''
     [ RETURN ]: Trading watchdog exit code - type int
@@ -451,7 +451,7 @@ def action_start_watchdog(*args, **kwargs):
 
 # HANDLERS
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def handle_actions(actions=[], *args, **kwargs):
     log.debug('')
     failure_count = 0
@@ -463,6 +463,7 @@ def handle_actions(actions=[], *args, **kwargs):
                 'Invalid action label specified! ({})'
                 .format(action_label), nok=True
             )
+            failure_count += 1
             continue
         try:
             handle = handlers[action_label](*args, **kwargs)
@@ -483,7 +484,7 @@ def handle_actions(actions=[], *args, **kwargs):
         stdout_msg(
             "Action executed successfully! ({})".format(action_label), ok=True
         )
-    return True if failure_count == 0 else failure_count
+    return failure_count
 
 # CREATORS
 
@@ -1986,10 +1987,9 @@ def add_command_line_parser_options(parser):
         help='Action to execute - valid values include one or more of the '
              'following labels given as a CSV string: (start-watchdog | '
              'stop-watchdog | trade-report | withdrawal-report | deposit-report | '
-             'single-trade | view-trade-report | view-withdrawal-report | '
-             'view-deposit-report | account-details | market-details | '
+             'single-trade | view-report | account-details | market-details | '
              'supported-coins | supported-tickers | list-reports | remove-report | '
-             'report)',
+             'report | get-config)',
     )
     parser.add_option(
         '', '--history-backtrack', dest='backtrack', type='int', metavar='PERIOD',

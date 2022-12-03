@@ -24,7 +24,7 @@ log = logging.getLogger('AsymetricRisk')
 
 class TradingBot():
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def __init__(self, *args, **kwargs):
         '''
         [ NOTE ]: order_price:      price of 1 unit of BASE currency at which you
@@ -57,7 +57,7 @@ class TradingBot():
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
         self.max_trades = int(kwargs.get('max-trades', 3))
         self.market = {}
-        self.amount = kwargs.get('order-amount', 1)
+        self.amount = float(kwargs.get('order-amount', 1))
         self.quote_amount = float(0)    # Amount value in quote currency
         self.trade_amount = float(0)    # Amount value in base currency
         self.order_price = float()
@@ -97,7 +97,7 @@ class TradingBot():
 
     # FETCHERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def fetch_symbol_current_price(self, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -110,7 +110,7 @@ class TradingBot():
         log.debug('symbol info: {}'.format(info))
         return float(info['price'])
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def fetch_account_value(self, currency='base', **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -236,7 +236,7 @@ class TradingBot():
             return True
         return False
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_trade_count(self, *args, **kwargs):
         log.debug('')
         if len(kwargs.get('trades-today', self.trades_today)) \
@@ -260,7 +260,7 @@ class TradingBot():
         targets[target].update({trade_dict['orderId']: trade_dict})
         return True
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_current_account_value(self, currency='quote', **kwargs):
         log.debug('')
         value, free, locked = self.fetch_account_value(
@@ -376,7 +376,7 @@ class TradingBot():
 
     # ACTIONS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def generate_nightly_reports(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
@@ -402,7 +402,7 @@ class TradingBot():
         generate = self.reporter.generate(*args, **details)
         return generate
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def generate_report(self, *args, **kwargs):
         '''
         [ INPUT ]: args - Report type labels - *(
@@ -478,7 +478,7 @@ class TradingBot():
         log.debug('')
         return self.reporter.view(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
@@ -537,7 +537,7 @@ class TradingBot():
             self.bot_cooldown(cool_down_seconds)
         return failures
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade(self, *args, **kwargs):
         '''
         [ INPUT ]: args - *(vwap, rsi, macd, ma, ema, adx, price, volume)
@@ -714,7 +714,7 @@ class TradingBot():
         log.debug('Computed order price: {}'.format(self.order_price))
         return self.order_price
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_order_stop_price(self, stop_price, **kwargs):
         '''
         [ NOTE ]: stop_price:       price - N% (stop-loss)
@@ -732,7 +732,7 @@ class TradingBot():
         log.debug('Computed order stop price: {}'.format(self.order_stop_price))
         return self.order_stop_price
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_order_stop_limit_price(self, stop_limit_price, **kwargs):
         '''
         [ NOTE ]: stop_limit_price: price + N% (take-profit)
@@ -758,7 +758,7 @@ class TradingBot():
         )
         return self.order_stop_limit_price
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_quote_amount(self, percentage, **kwargs):
         '''
         [ DESCRIPTION ]: The amount (quantity) for a trade is specified by the
@@ -795,7 +795,7 @@ class TradingBot():
             else compute_percentage(percentage, value)
         return self.quote_amount
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_trade_amount(self, percentage, **kwargs):
         '''
         [ DESCRIPTION ]: The amount (quantity) for a trade is specified by the
@@ -884,7 +884,7 @@ class TradingBot():
 
     # VIEWERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_coin_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -892,7 +892,7 @@ class TradingBot():
             return False
         return market.fetch_supported_coins(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_api_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -900,7 +900,7 @@ class TradingBot():
             return False
         return market.fetch_api_permissions_details(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_deposit_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -908,7 +908,7 @@ class TradingBot():
             return False
         return market.fetch_deposit_details(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_withdrawal_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -916,7 +916,7 @@ class TradingBot():
             return False
         return market.fetch_withdrawal_details(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_report(self, *args, **kwargs):
         log.debug('')
         if not self.reporter:
@@ -924,7 +924,7 @@ class TradingBot():
             return False
         return self.reporter.read(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_market_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -934,7 +934,7 @@ class TradingBot():
             args = ('all', )
         return market.fetch_details(*args, **kwargs)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def view_account_details(self, *args, **kwargs):
         log.debug('')
         market = self.fetch_active_market()
@@ -1075,7 +1075,7 @@ class TradingBot():
 
     # PERSONAL
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def _bot_pre_setup(self, *args, **kwargs):
         '''
         [ NOTE ]: Called uppon on TradingBot.__init__()

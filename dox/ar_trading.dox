@@ -71,6 +71,68 @@ cat <<EOF
         [ NOTE ]: Converts all generated signals by the other strategies into
                   their opposites.
 
+          [ Ex ]: Strategy evaluation - {
+            "volume": {
+                "value": 267248.64735,
+                "volume-movement": {
+                    "flag": true,
+                    "start-value": 365.86029,
+                    "stop-value": 1090.25285,
+                    "min-value": 365.86029,
+                    "max-value": 1226.2393,
+                    "period-average": 624.7122678571429,
+                    "volume-direction": "up",
+                    "start-candle": 13,
+                    "stop-candle": 0,
+                    "min-candle": 13,
+                    "max-candle": 9,
+                    "side": "buy",
+                    "moved": 860.3790099999999,
+                    "moved-percentage": 137.72404581572079,
+                    "trigger-percentage": 5
+                },
+                "interval": "5m",
+                "period": 14,
+                "risk": 3,
+                "side": "buy",
+                "trade": true,
+                "description": "Volume Strategy"
+            },
+            "price": {
+                "price-movement": {
+                    "flag": false,
+                    "start-value": 17158.1,
+                    "stop-value": 17147.21,
+                    "min-value": 17144.38,
+                    "max-value": 17165.74,
+                    "period-average": 17153.4225,
+                    "price-direction": "down",
+                    "start-candle": 11,
+                    "stop-candle": 0,
+                    "min-candle": 7,
+                    "max-candle": 3,
+                    "moved": 21.360000000000582,
+                    "side": "up",
+                    "moved-percentage": 0.12452325476155317,
+                    "trigger-percentage": 5
+                },
+                "confirmed-by-volume": {},
+                "interval": "5m",
+                "period": 14,
+                "value": 17146.7,
+                "risk": 0,
+                "side": "",
+                "trade": false,
+                "description": "Price Action Strategy"
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "side": "sell",
+            "trade": true,
+            "description": "Intuition Reversal"
+        }
+
     [ STRATEGY ]: Moving Average
 
         [ NOTE ]: Technical indicator that sums up the data points of a financial
@@ -91,10 +153,168 @@ cat <<EOF
                   As long as we trade below the moving average, we should expect
                   lower prices.
 
+          [ Ex ]: Strategy evaluation - {
+            "value": 17146.045859373233,
+            "bullish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "down",
+                "price-direction": "up",
+                "side": "",
+                "values": {
+                    "ma": [
+                        17146.26392388936,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17146.26392388936,
+                    "start2": 17140.79,
+                    "end1": 17138.297735142347,
+                    "end2": 17147.55,
+                    "direction1": "down",
+                    "direction2": "up",
+                    "above": [
+                        17140.79,
+                        ...
+                    ],
+                    "below": [
+                        17146.26392388936,
+                        ...
+                    ]
+                }
+            },
+            "bearish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "up",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "ma": [
+                        17146.26392388936,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17146.26392388936,
+                    "start2": 17140.79,
+                    "end1": 17138.297735142347,
+                    "end2": 17147.55,
+                    "direction1": "down",
+                    "direction2": "up",
+                    "above": [
+                        17140.79,
+                        ...
+                    ],
+                    "below": [
+                        17146.26392388936,
+                        ...
+                    ]
+                }
+            },
+            "interval": "5m",
+            "period": 30,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Moving Average Strategy"
+        }
+
     [ STRATEGY ]: Exponential Moving Average
 
         [ NOTE ]: A Moving Average which gives more weight to the most recent
                   price points to make it more responsive to recent data points.
+
+          [ Ex ]: Strategy evaluation - {
+            "value": 17146.045859373233,
+            "bullish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "down",
+                "price-direction": "up",
+                "side": "",
+                "values": {
+                    "ema": [
+                        17146.26392388936,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17146.26392388936,
+                    "start2": 17140.79,
+                    "end1": 17138.297735142347,
+                    "end2": 17147.55,
+                    "direction1": "down",
+                    "direction2": "up",
+                    "above": [
+                        17140.79,
+                        ...
+                    ],
+                    "below": [
+                        17146.26392388936,
+                        ...
+                    ]
+                }
+            },
+            "bearish-trend": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "ema-direction": "up",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "ema": [
+                        17146.26392388936,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17146.26392388936,
+                    "start2": 17140.79,
+                    "end1": 17138.297735142347,
+                    "end2": 17147.55,
+                    "direction1": "down",
+                    "direction2": "up",
+                    "above": [
+                        17140.79,
+                    ],
+                    "below": [
+                        17146.26392388936,
+                    ]
+                }
+            },
+            "interval": "5m",
+            "period": 30,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Exponential Moving Average Strategy"
+        }
 
     [ STRATEGY ]: Volume Weighted Average Price
 
@@ -103,6 +323,74 @@ cat <<EOF
 
         [ NOTE ]: Sell when price is trading above VWAP and the breaks to begin
                   to trade below it - Bearish Trend Confirmation
+
+          [ Ex ]: Strategy evaluation - {
+            "value": 16962.345951788855,
+            "bullish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "vwap-direction": "down",
+                "price-direction": "up",
+                "side": "",
+                "values": {
+                    "vwap": [
+                        16962.424729374143,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16962.424729374143,
+                    "start2": 17140.79,
+                    "end1": 16957.93805366157,
+                    "end2": 17147.55,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "up"
+                }
+            },
+            "bearish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "vwap-direction": "up",
+                "price-direction": "down",
+                "side": "",
+                "values": {
+                    "vwap": [
+                        16962.424729374143,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 16962.424729374143,
+                    "start2": 17140.79,
+                    "end1": 16957.93805366157,
+                    "end2": 17147.55,
+                    "crossovers": [],
+                    "confirmed": true,
+                    "direction1": "down",
+                    "direction2": "up"
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Volume Weighted Average Price Strategy"
+        }
 
     [ STRATEGY ]: Relative Strength Index
 
@@ -123,6 +411,68 @@ cat <<EOF
 
                   After spotting a Bearish Divergence an investor might use a
                   crossback below 70 as an exit signal.
+
+          [ Ex ]: Strategy evaluation - {
+            "value": 49.33564764353903,
+            "bullish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "rsi-direction": "up",
+                "price-direction": "up",
+                "values": {
+                    "rsi": [
+                        53.25475801754539,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 53.25475801754539,
+                    "start2": 17140.79,
+                    "end1": 61.059220461846486,
+                    "end2": 17147.55,
+                    "direction1": "up",
+                    "direction2": "up"
+                }
+            },
+            "bearish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "rsi-direction": "up",
+                "price-direction": "up",
+                "values": {
+                    "rsi": [
+                        53.25475801754539,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17140.79,
+                    "start2": 53.25475801754539,
+                    "end1": 17147.55,
+                    "end2": 61.059220461846486,
+                    "direction1": "up",
+                    "direction2": "up"
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "trade": false,
+            "side": "",
+            "description": "Relative Strength Index Strategy"
+        }
 
     [ STRATEGY ]: Moving Average Convergence Divergence
 
@@ -147,6 +497,160 @@ cat <<EOF
                   trend is considered confirmation that the trend is likely to
                   continue.
 
+          [ Ex ]: Strategy evaluation - {
+            "value": 3.144200577709853,
+            "signal": 4.928255612084131,
+            "history": -1.784055034374278,
+            "bullish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "up",
+                "signal-direction": "down",
+                "values": {
+                    "macd": [
+                        3.794343027853756,
+                        ...
+                    ],
+                    "signal": [
+                        5.0582841021129115,
+                        ...
+                    ],
+                    "history": [
+                        -1.2639410742591553,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 3.794343027853756,
+                    "start2": 5.0582841021129115,
+                    "end1": 4.397334244989906,
+                    "end2": 1.721729092498208,
+                    "crossovers": [
+                        2
+                    ],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "bearish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "up",
+                "signal-direction": "down",
+                "values": {
+                    "macd": [
+                        3.794343027853756,
+                        ...
+                    ],
+                    "signal": [
+                        5.0582841021129115,
+                        ...
+                    ],
+                    "history": [
+                        -1.2639410742591553,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 3.794343027853756,
+                    "start2": 5.0582841021129115,
+                    "end1": 4.397334244989906,
+                    "end2": 1.721729092498208,
+                    "crossovers": [
+                        2
+                    ],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "bullish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "up",
+                "price-direction": "up",
+                "values": {
+                    "macd": [
+                        3.794343027853756,
+                        ...
+                    ],
+                    "signal": [
+                        5.0582841021129115,
+                        ...
+                    ],
+                    "history": [
+                        -1.2639410742591553,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 3.794343027853756,
+                    "start2": 17140.79,
+                    "end1": 4.397334244989906,
+                    "end2": 17147.55,
+                    "direction1": "up",
+                    "direction2": "up",
+                    "peaks": [],
+                    "peaks1": [],
+                    "peaks2": []
+                }
+            },
+            "bearish-divergence": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "macd-direction": "up",
+                "price-direction": "up",
+                "values": {
+                    "macd": [
+                        3.794343027853756,
+                        ...
+                    ],
+                    "signal": [
+                        5.0582841021129115,
+                        ...
+                    ],
+                    "history": [
+                        -1.2639410742591553,
+                        ...
+                    ],
+                    "price": [
+                        17140.79,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": false,
+                    "start1": 17140.79,
+                    "start2": 3.794343027853756,
+                    "end1": 17147.55,
+                    "end2": 4.397334244989906,
+                    "direction1": "up",
+                    "direction2": "up",
+                    "peaks": [],
+                    "peaks1": [],
+                    "peaks2": []
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 0,
+            "trade": false,
+            "side": "",
+            "description": "Moving Average Convergence Divergence Strategy"
+        }
+
     [ STRATEGY ]: Average Directional Index
 
         [ NOTE ]: When a Bullish Crossover occurs (when the ADX line is above
@@ -159,10 +663,113 @@ cat <<EOF
                   the -DI line), we must sell at the next candle after the
                   Crossover and place the stop-loss higher than the previous candle.
 
+          [ Ex ]: Strategy evaluation - {
+            "value": 10.84888017068431,
+            "bullish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "side": "buy",
+                "values": {
+                    "adx": [
+                        10.84888017068431,
+                        ...
+                    ],
+                    "+di": [
+                        16.512527812401217,
+                        ...
+                    ],
+                    "-di": [
+                        22.490938314939196,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 16.512527812401217,
+                    "start2": 22.490938314939196,
+                    "end1": 21.291752515701056,
+                    "end2": 17.52912413181928,
+                    "crossovers": [
+                        2
+                    ],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "bearish-crossover": {
+                "flag": false,
+                "start-candle": 11,
+                "stop-candle": 0,
+                "side": "sell",
+                "values": {
+                    "adx": [
+                        10.84888017068431,
+                        ...
+                    ],
+                    "+di": [
+                        16.512527812401217,
+                        ...
+                    ],
+                    "-di": [
+                        22.490938314939196,
+                        ...
+                    ]
+                },
+                "scan": {
+                    "flag": true,
+                    "start1": 16.512527812401217,
+                    "start2": 22.490938314939196,
+                    "end1": 21.291752515701056,
+                    "end2": 17.52912413181928,
+                    "crossovers": [
+                        2
+                    ],
+                    "confirmed": true,
+                    "direction1": "up",
+                    "direction2": "down"
+                }
+            },
+            "interval": "5m",
+            "period": 14,
+            "side": "",
+            "risk": 0,
+            "trade": false,
+            "description": "Average Directional Index Strategy"
+        }
+
     [ STRATEGY ]: Trading Volume
 
         [ NOTE ]: A large volume movement upwards can validate a large price
                   movement either side.
+
+          [ Ex ]: Strategy evaluation - {
+            "value": 267248.64735,
+            "volume-movement": {
+                "flag": true,
+                "start-value": 365.86029,
+                "stop-value": 1090.25285,
+                "min-value": 365.86029,
+                "max-value": 1226.2393,
+                "period-average": 624.7122678571429,
+                "volume-direction": "up",
+                "start-candle": 13,
+                "stop-candle": 0,
+                "min-candle": 13,
+                "max-candle": 9,
+                "side": "buy",
+                "moved": 860.3790099999999,
+                "moved-percentage": 137.72404581572079,
+                "trigger-percentage": 5
+            },
+            "interval": "5m",
+            "period": 14,
+            "risk": 3,
+            "side": "buy",
+            "trade": true,
+            "description": "Volume Strategy"
+        }
 
     [ STRATEGY ]: Price Action
 
@@ -170,6 +777,34 @@ cat <<EOF
                   movement up, and a sell signal when it detects a large price
                   movement down. The signal is strengthened when the price
                   movement is confirmed by a large volume movement up.
+
+          [ Ex ]: Strategy evaluation - {
+            "price-movement": {
+                "flag": false,
+                "start-value": 17147.55,
+                "stop-value": 17140.79,
+                "min-value": 17140.79,
+                "max-value": 17165.74,
+                "period-average": 17153.74,
+                "price-direction": "down",
+                "start-candle": 11,
+                "stop-candle": 0,
+                "min-candle": null,
+                "max-candle": 6,
+                "moved": 24.950000000000728,
+                "side": "down",
+                "moved-percentage": 0.14544933058330559,
+                "trigger-percentage": 5
+            },
+            "confirmed-by-volume": {},
+            "interval": "5m",
+            "period": 14,
+            "value": 17140.15,
+            "risk": 0,
+            "side": "",
+            "trade": false,
+            "description": "Price Action Strategy"
+        }
 
     [ EXAMPLE ]: OCO order -
         * Symbol - ticker symbol for the order.

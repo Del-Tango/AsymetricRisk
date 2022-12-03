@@ -19,11 +19,11 @@ class TradingStrategy():
 
     def __init__(self, *args, **kwargs):
         log.debug('')
-        self.risk_tolerance = kwargs.get('risk-tolerance', 1) # less-risk 1, 2, 3, 4, 5 more-risk
-        self.adx_bottom = kwargs.get('adx-bottom', 25)
-        self.adx_top = kwargs.get('adx-top', 70)
-        self.rsi_bottom = kwargs.get('rsi-bottom', 30)
-        self.rsi_top = kwargs.get('rsi-top', 70)
+        self.risk_tolerance = int(kwargs.get('risk-tolerance', 1))# less-risk 1, 2, 3, 4, 5 more-risk
+        self.adx_bottom = float(kwargs.get('adx-bottom', 25))
+        self.adx_top = float(kwargs.get('adx-top', 70))
+        self.rsi_bottom = float(kwargs.get('rsi-bottom', 30))
+        self.rsi_top = float(kwargs.get('rsi-top', 70))
         self.strategies = {
             'vwap': self.strategy_vwap,
             'rsi': self.strategy_rsi,
@@ -50,7 +50,7 @@ class TradingStrategy():
 
     # STRATEGIES
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_intuition_reversal(self, *args, **kwargs):
         '''
         [ NOTE ]: Converts all generated signals by the other strategies into
@@ -90,7 +90,7 @@ class TradingStrategy():
                 else 'buy'
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_ma(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Moving Average
@@ -152,7 +152,7 @@ class TradingStrategy():
             ][0]
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_ema(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Exponential Moving Average
@@ -201,7 +201,7 @@ class TradingStrategy():
             ][0]
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_vwap(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Volume Weighted Average Price
@@ -253,7 +253,7 @@ class TradingStrategy():
             ][0]
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_rsi(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Relative Strength Index
@@ -439,7 +439,7 @@ class TradingStrategy():
             ][0]
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def strategy_volume(self, *args, **kwargs):
         '''
         [ STRATEGY ]: Trading Volume
@@ -1151,7 +1151,7 @@ class TradingStrategy():
 
     # FILTERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def filter_signals_from_strategy_evaluation(self, evaluations_dict, *args, **kwargs):
         log.debug('')
         if not evaluations_dict or not isinstance(evaluations_dict, dict):
@@ -1172,7 +1172,7 @@ class TradingStrategy():
 
     # SCANNERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def scan_strategy_evaluation_for_signals(self, evaluations_dict, *args,
                                              signal='buy', **kwargs):
         '''
@@ -1243,7 +1243,7 @@ class TradingStrategy():
 
     # ACTIONS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def analyze_risk(self, strategy='vwap', side='auto', **kwargs):
         log.debug('')
         log.debug('Risk Analyzer received kwargs - {}'.format(kwargs))
@@ -1313,7 +1313,7 @@ class TradingStrategy():
                         or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_ma_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1424,7 +1424,7 @@ class TradingStrategy():
                             or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_ema_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1535,7 +1535,7 @@ class TradingStrategy():
                             or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_vwap_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1645,7 +1645,7 @@ class TradingStrategy():
                             or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_rsi_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1740,7 +1740,7 @@ class TradingStrategy():
                             or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_macd_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]:
@@ -1939,7 +1939,7 @@ class TradingStrategy():
                 or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_adx_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
@@ -2065,7 +2065,7 @@ class TradingStrategy():
             risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_volume_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
@@ -2131,7 +2131,7 @@ class TradingStrategy():
             risk_index = risk_index if risk_index == 1 else risk_index - 1
         return risk_index
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_price_trade_risk(self, return_dict, **kwargs):
         '''
         [ NOTE ]: Default risk index value is 0 and tells the trading bot to do
@@ -2243,7 +2243,7 @@ class TradingStrategy():
         instruction_set.update({'side': 'sell'})
         return self.evaluate_risk(evaluations_dict, signal='sell', **instruction_set)
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def evaluate_risk(self, evaluations_dict, signal='buy', **kwargs):
         '''
         [ NOTE ]: Risk index takes into account generated buy|sell signals

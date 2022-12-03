@@ -30,7 +30,7 @@ class TradingMarket(Client):
         self.base_currency = kwargs.get('base-currency', 'BTC')
         self.API_URL = kwargs.get(
             'api-url', 'https://testnet.binance.vision/api'
-        )                                                                       # Place where all the trades happen
+        )                                                                            # Place where all the trades happen
         if not self.API_KEY:
             self.API_KEY = kwargs.get('api-key', os.environ.get('binance_api'))
         if not self.API_SECRET:
@@ -43,17 +43,17 @@ class TradingMarket(Client):
         self.ticker_symbol = kwargs.get(
             'ticker-symbol', self.compute_ticker_symbol(
                 base=self.base_currency, quote=self.quote_currency
-            )                                                                   # 'BTC/USDT'
+            )                                                                        # 'BTC/USDT'
         )
-        self.period_interval = kwargs.get('period-interval', '1h')              # Time represented by each candle in chart
-        self.period = kwargs.get('period', 30)                                  # No. of candles when backtracking a chart
+        self.period_interval = kwargs.get('period-interval', '1h')                   # Time represented by each candle in chart
+        self.period = float(kwargs.get('period', 30))                                # No. of candles when backtracking a chart
         self.chart = kwargs.get('chart', 'candles')
-        self.cache_size_limit = kwargs.get('cache-size-limit', 20)              # Records (dict keys)
-        self.history_backtrack = kwargs.get('backtrack', 5),                    # Candles
-        self.history_backtracks = kwargs.get('backtracks', 14),                 # Candles
-        self.indicator_update_delay = kwargs.get('indicator-update-delay', 18)  # Seconds
-        self.market_open = kwargs.get('market-open', '08:00')                   # Hour at which the bot's mission begins!!
-        self.market_close = kwargs.get('market-close', '22:00')                 # Hour at which the bot starts generating reports for the past day
+        self.cache_size_limit = int(kwargs.get('cache-size-limit', 20))              # Records (dict keys)
+        self.history_backtrack = int(kwargs.get('backtrack', 5)),                    # Candles
+        self.history_backtracks = int(kwargs.get('backtracks', 14)),                 # Candles
+        self.indicator_update_delay = int(kwargs.get('indicator-update-delay', 18))  # Seconds
+        self.market_open = kwargs.get('market-open', '08:00')                        # Hour at which the bot's mission begins!!
+        self.market_close = kwargs.get('market-close', '22:00')                      # Hour at which the bot starts generating reports for the past day
         # WARNING: Longer delays between indicator api calls will result in
         # longer execution time. Delays that are too short may not retreive all
         # necessary data (depending on chosen Taapi API plan specifications)
@@ -74,8 +74,8 @@ class TradingMarket(Client):
         self.last_indicator_update_timestamp = None
         self.success_count = 0
         self.failure_count = 0
-        self.active_trades = {}                                                 #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
-        self.trades_to_report = {}                                              #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.active_trades = {}                                                      #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.trades_to_report = {}                                                   #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
         self.supported_tickers_cache = {}
         self.supported_coins_cache = {}
         self.recent_trades_cache = {}
@@ -93,7 +93,7 @@ class TradingMarket(Client):
 
     # FETCHERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def fetch_deposit_details(self, *args, **kwargs):
         '''
         [ INPUT ] : *args - (), **kwargs - Context + {
@@ -452,7 +452,7 @@ class TradingMarket(Client):
         log.debug('Active trades: {}'.format(active_trades))
         return active_trades
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def fetch_all_trades(self, *args, **kwargs):
         '''
         [ INPUT ]: *args - ticker symbols to get trades for
@@ -578,7 +578,7 @@ class TradingMarket(Client):
         if not quantity:
             stdout_msg('No trade quantity specified!', err=True)
             return False
-        if quantity < info['filters'][2]['minQty']:
+        if float(quantity) < float(info['filters'][2]['minQty']):
             stdout_msg(
                 'Not enough funds to trade withing specified parameters! '
                 'Quantity {} is below the minimum required of {} {}.'
@@ -624,7 +624,7 @@ class TradingMarket(Client):
         )
         return return_args, return_kwargs
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def format_trading_order_spot_account_args_kwargs(self, label, trade_amount=None,
                                          take_profit=None, stop_loss=None,
                                          trailing_stop=None, side=None, **kwargs):
@@ -984,7 +984,7 @@ class TradingMarket(Client):
 
     # GENERAL
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade(self, trade_amount, *args, take_profit=None, stop_loss=None,
               trailing_stop=None, side='buy', **kwargs):
         '''
@@ -1073,7 +1073,7 @@ class TradingMarket(Client):
         finally:
             return order
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def buy(self, trade_amount, *args, take_profit=None, stop_loss=None,
             trailing_stop=None, **kwargs):
         log.debug('')
@@ -1084,7 +1084,7 @@ class TradingMarket(Client):
             trailing_stop=trailing_stop, **details
         )
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def sell(self, trade_amount, *args, take_profit=None, stop_loss=None,
              trailing_stop=None,  **kwargs):
         log.debug('')
@@ -1222,7 +1222,7 @@ class TradingMarket(Client):
         while True:
             now = datetime.datetime.now()
             difference = now - self.last_indicator_update_timestamp
-            if difference.seconds < self.indicator_update_delay:
+            if float(difference.seconds) < float(self.indicator_update_delay):
                 continue
             break
         return True
@@ -1279,7 +1279,7 @@ class TradingMarket(Client):
             )
         return return_dict['history']
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_indicator_history(self, *update_targets,
                                  timestamp=str(time.time()), **kwargs):
         '''
@@ -1374,7 +1374,7 @@ class TradingMarket(Client):
         )
         return self.last_indicator_update_timestamp
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_cache(self, element, cache_dict, **kwargs):
         log.debug('')
         size_limit = kwargs.get('size_limit', self.cache_size_limit)
@@ -1554,7 +1554,7 @@ class TradingMarket(Client):
             )
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_details(self, *args, **kwargs):
         '''
         [ INPUT  ]: *(
