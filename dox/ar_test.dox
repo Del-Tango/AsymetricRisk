@@ -105,6 +105,26 @@ cat <<EOF
 
 [ AUTO ]: Testing
 
+    [ SETUP ]: (A)Risk Auto-Tester (A)RAT
+
+        Before you can start using the autotester, you need to add your keys
+        to the ./tst/test_asymetric_risk.sh file by updating the following array:
+
+        $ vim ./tst/test_asymetric_risk.sh
+
+        AR_DEFAULT=(
+            ...
+            ['log-file']='./log/asymetric_risk.log'
+            ['conf-file']='./conf/asymetric_risk.conf.json'
+            ....
+            ['api-key']='<binance-api-key>'
+            ['api-secret']='<binance-secret-key>'
+            ['taapi-key']='<taapi-api-key>'
+            ...
+        )
+
+        _ESC :wq___________________________
+
     [ AT ]: Start (A)RAT for AsymetricRisk init script interface testing
 
         $ ./tst/test_asymetric_risk.sh
