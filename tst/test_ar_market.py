@@ -1,15 +1,24 @@
 import unittest
+import os
 
 from src.ar_market import TradingMarket
+from src.backpack.bp_convertors import json2dict
 
 
 class TestARMarket(unittest.TestCase):
 
+    conf_file = 'conf/asymetric_risk.conf.json' \
+        if os.path.exists('conf/asymetric_risk.conf.json') else ''
+    AR_DEFAULT = json2dict(conf_file)['AR_DEFAULT']
+    api_key = AR_DEFAULT.get('api-key', '')
+    api_secret = AR_DEFAULT.get('api-secret', '')
+    taapi_key = AR_DEFAULT.get('taapi-key', '')
+
+    # PREREQUISITS
+
     @classmethod
     def setUpClass(cls):
-        cls.api_key = 'yxdLHNgKWzka2HjzR5jZF0ZXTCZaHp2V1X9EgXjKBxLsfKoClFvET1PqIUW9ctAw'
-        cls.api_secret = 'oPyuIoqWHBt5pvfCk1YLIslViuH87DJvRTgtOsLylGB58LRsEuHvu4KuZOv0DAv5'
-        cls.taapi_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjM2MmRkNThmYzVhOGFkZmVjM2ZhMmEzIiwiaWF0IjoxNjY3NzAxNzg5LCJleHAiOjMzMTcyMTY1Nzg5fQ.33yXXi5RK1oupATjS-RFMLKfD7grZdJ2r7GT4gH-tAE'
+        print('\n[ TradingMarket ]: Functional test suit -\n')
         cls.trading_market = TradingMarket(
             cls.api_key, cls.api_secret, sync=True, **{
                 'base-currency': 'BTC',
@@ -20,40 +29,75 @@ class TestARMarket(unittest.TestCase):
                 'quote-currency': 'USDT',
             }
         )
-        cls.buy_order = cls.trading_market.buy(0.0002, take_profit=30, stop_loss=10, trailing_stop=10)
 
     @classmethod
     def tearDownClass(cls):
-        pass
+        print('\n[ DONE ]: TradingMarket\n')
 
-    def test_ar_market_close_position(cls):
-        buy_order = cls.trading_market.buy(0.0002, **{
-            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+    # TESTERS
+
+    def test_ar_market_close_position(self):
+        print('\n[ TEST ]: Market Close\n')
+        details = self.AR_DEFAULT.copy()
+        details.update({
+            'symbol': 'BTCUSDT',
+            'order-recv-window': 60000,
         })
-        close_ok, close_nok = cls.trading_market.close_position(buy_order.get('orderId'))
-        cls.assertTrue(isinstance(close_ok, list))
-        cls.assertTrue(isinstance(close_nok, list))
-        cls.assertFalse(close_nok)
+        buy_order = self.trading_market.buy(0.0002, **details)
+        self.assertTrue(buy_order)
+        close_ok, close_nok = self.trading_market.close_position(
+            buy_order.get('orderId')
+        )
+        self.assertTrue(isinstance(close_ok, list))
+        self.assertTrue(isinstance(close_nok, list))
+        self.assertFalse(close_nok)
 
-    def test_ar_market_buy(cls):
-        buy_order = cls.trading_market.buy(0.0002, **{
-            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+    def test_ar_market_trade(self):
+        print('\n[ TEST ]: Market Trade Order\n')
+        details, trade_amount = self.AR_DEFAULT.copy(), 0.0002
+        details.update({
+            'take_profit': 30,
+            'stop_loss': 10,
+            'trailing_stop': 10,
+            'side': 'auto',
         })
-        cls.assertTrue(isinstance(buy_order, dict))
+        order = self.trading_market.trade(trade_amount, **details)
+        self.assertTrue(isinstance(order, dict))
 
-    def test_ar_market_sell(cls):
-        sell_order = cls.trading_market.sell(0.0002, **{
-            'take-profit': 30, 'stop-loss':10, 'trailing-stop': 10, 'test': True
+    def test_ar_market_buy(self):
+        print('\n[ TEST ]: Market Buy Order\n')
+        details, trade_amount = self.AR_DEFAULT.copy(), 0.0002
+        details.update({
+            'take_profit': 30,
+            'stop_loss': 10,
+            'trailing_stop': 10,
         })
-        cls.assertTrue(isinstance(sell_order, dict))
+        buy_order = self.trading_market.buy(trade_amount, **details)
+        self.assertTrue(isinstance(buy_order, dict))
 
-    def test_ar_market_update_details(cls):
-        update_details = cls.trading_market.update_details('all')
-        cls.assertTrue(isinstance(update_details, dict))
-        cls.assertFalse(update_detauls.get('error', False))
+    def test_ar_market_sell(self):
+        print('\n[ TEST ]: Market Sell Order\n')
+        details, trade_amount = self.AR_DEFAULT.copy(), 0.0002
+        details.update({
+            'take_profit': 30,
+            'stop_loss': 10,
+            'trailing_stop': 10,
+        })
+        sell_order = self.trading_market.sell(trade_amount, **details)
+        self.assertTrue(isinstance(sell_order, dict))
 
-    def test_ar_market_synced(cls):
-        account_info = cls.trading_market.synced('get_account', recvWindow=60000)
-        cls.assertTrue(account_info)
+    def test_ar_market_update_details(self):
+        print('\n[ TEST ]: Update Market Details\n')
+        details = self.AR_DEFAULT.copy()
+        update_details = self.trading_market.update_details('all', **details)
+        self.assertTrue(isinstance(update_details, dict))
+        self.assertFalse(update_detauls.get('error', False))
+
+    def test_ar_market_synced(self):
+        print('\n[ TEST ]: Synced Account Details\n')
+        account_info = self.trading_market.synced(
+            'get_account', recvWindow=60000
+        )
+        self.assertTrue(account_info)
 
 

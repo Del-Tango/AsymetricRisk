@@ -14,7 +14,7 @@ from src.backpack.bp_filters import list_intersection
 log = logging.getLogger('AsymetricRisk')
 
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def check_value_set_crossover(values1, values2, **kwargs):
     '''
     [ INPUT ]: [1,2,3,4,5], [5,4,3,2,1]
@@ -82,7 +82,7 @@ def check_value_set_crossover(values1, values2, **kwargs):
     return return_dict
 
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def check_value_set_divergence_peaks(values1, values2,
                                      peak_distance=1, error_margin=1, **kwargs):
     '''
@@ -147,7 +147,7 @@ def check_value_set_divergence_peaks(values1, values2,
     return return_dict
 
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def check_value_set_convergence_peaks(values1, values2,
                                       peak_distance=1, error_margin=1, **kwargs):
     '''
@@ -212,7 +212,7 @@ def check_value_set_convergence_peaks(values1, values2,
     return return_dict
 
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def check_value_set_convergence(values1, values2, **kwargs):
     log.debug('')
     if len(values1) != len(values2):

@@ -472,7 +472,36 @@ function start_auto_tester() {
     return $FAILURES
 }
 
+# DISPLAY
+
+function display_help() {
+    cat <<EOF
+
+[ (A)RAT ]: (A)Risk Auto-Tester Usage
+
+    [ Ex ]: Run (A)RAT autotester for interface actions only -
+
+        $ $0
+
+    [ Ex ]: Run (A)RAT autotester for interface actions as well as python3 test
+            suit composed of functional and unit tests -
+
+        $ $0 full
+
+EOF
+}
+
 # MISCELLANEOUS
+
+EXIT_CODE=1
+
+if [[ "$FULL_TEST_FLAG" == '--help' ]] || [[ "$FULL_TEST_FLAG" == '-h' ]]; then
+    display_help
+    exit 0
+elif [ ! -z "$FULL_TEST_FLAG" ] && [[ "$FULL_TEST_FLAG" != "full" ]]; then
+    stdout_msg 'WARNING' "Invalid auto-tester flag! ($FULL_TEST_FLAG) Did you mean (full)?"
+    exit $EXIT_CODE
+fi
 
 start_auto_tester
 EXIT_CODE=$?

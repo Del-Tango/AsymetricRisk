@@ -405,6 +405,9 @@ class TradingReporter():
     def format_api_permissions_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('api-permissions'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['api-permissions'],
@@ -414,6 +417,9 @@ class TradingReporter():
     def format_coin_details_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('coin-details'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['coin-details'],
@@ -423,6 +429,9 @@ class TradingReporter():
     def format_market_snapshot_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('market-snapshot'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['market-snapshot'],
@@ -432,6 +441,9 @@ class TradingReporter():
     def format_account_snapshot_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('account-snapshot'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['account-snapshot'],
@@ -441,6 +453,9 @@ class TradingReporter():
     def format_withdrawal_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('withdrawal-history'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['withdrawal-history'],
@@ -450,6 +465,9 @@ class TradingReporter():
     def format_deposit_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('deposit-history'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['deposit-history'],
@@ -459,6 +477,9 @@ class TradingReporter():
     def format_current_trades_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('current-trades'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['current-trades'],
@@ -468,6 +489,9 @@ class TradingReporter():
     def format_success_rate_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('success-rate'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['success-rate'],
@@ -477,6 +501,9 @@ class TradingReporter():
     def format_trade_history_report_details(self, *args, **kwargs):
         log.debug('TODO - Actually format something pretty, bro')
         log.debug('args, kwargs - {}, {}'.format(args, kwargs))
+        if not kwargs.get('raw-report-data') or \
+                not kwargs['raw-report-data'].get('trade-history'):
+            return {}
         # TODO - Formatt report data
         return {
 #           'raw-data': kwargs['raw-report-data']['trade-history'],

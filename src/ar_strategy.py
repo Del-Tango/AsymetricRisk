@@ -19,7 +19,7 @@ class TradingStrategy():
 
     def __init__(self, *args, **kwargs):
         log.debug('')
-        self.risk_tolerance = int(kwargs.get('risk-tolerance', 1))# less-risk 1, 2, 3, 4, 5 more-risk
+        self.risk_tolerance = int(kwargs.get('risk-tolerance', 1))  # less-risk 1, 2, 3, 4, 5 more-risk
         self.adx_bottom = float(kwargs.get('adx-bottom', 25))
         self.adx_top = float(kwargs.get('adx-top', 70))
         self.rsi_bottom = float(kwargs.get('rsi-bottom', 30))
@@ -76,6 +76,13 @@ class TradingStrategy():
             'trade': False,
             'description': 'Intuition Reversal'
         })
+        if not buy_scan and not sell_scan:
+            return_dict.update({
+                'error': True,
+                'msg': 'Data scanner failure during strategy evaluation!',
+            })
+            stdout_msg(return_dict['msg'], err=True)
+            return return_dict
         return_dict['risk'] = self.compute_intuition_reversal_trade_risk(
             return_dict, **kwargs
         )
@@ -88,6 +95,14 @@ class TradingStrategy():
             return_dict['side'] = 'sell' \
                 if len(buy_scan['confirmed']) > len(sell_scan['confirmed']) \
                 else 'buy'
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -150,6 +165,14 @@ class TradingStrategy():
                     'bullish-trend', 'bearish-trend'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -199,6 +222,14 @@ class TradingStrategy():
                     'bullish-trend', 'bearish-trend'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -251,6 +282,14 @@ class TradingStrategy():
                     'bullish-crossover', 'bearish-crossover'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -310,6 +349,14 @@ class TradingStrategy():
                     'bullish-divergence', 'bearish-divergence'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -383,6 +430,14 @@ class TradingStrategy():
                     'bullish-divergence', 'bearish-divergence'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
     def strategy_adx(self, *args, **kwargs):
@@ -437,6 +492,14 @@ class TradingStrategy():
                     'bullish-crossover', 'bearish-crossover'
                 ) if return_dict[item]['flag']
             ][0]
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -476,6 +539,14 @@ class TradingStrategy():
             > self.risk_tolerance or return_dict['risk'] == 0 else True
         return_dict['side'] = '' if not return_dict['trade'] \
             else return_dict['volume-movement']['side']
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
 #   @pysnooper.snoop()
@@ -581,6 +652,14 @@ class TradingStrategy():
             > self.risk_tolerance or return_dict['risk'] == 0 else True
         return_dict['side'] = '' if not return_dict['trade'] \
             else return_dict['price-movement']['side']
+        if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
+                and return_dict['side'] != kwargs.get('side', ''):
+            stdout_msg(
+                'Trade side restricted to ({}) orders. Skipping trade.'.format(
+                    kwargs['side']
+                ), nok=True
+            )
+            return_dict['trade'] = False
         return return_dict
 
     # SETTERS
@@ -1011,7 +1090,7 @@ class TradingStrategy():
             )
         return return_dict
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def check_large_volume_movement(*args, **kwargs):
         log.debug('')
         volume_movement = int(kwargs.get('volume-movement', 0)) # %
@@ -1229,7 +1308,7 @@ class TradingStrategy():
         scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='buy', **kwargs
         )
-        log.info('[ BUY ]: ' + pretty_dict_print(scan))
+        log.info('[ BUY ]: {}'.format(pretty_dict_print(scan)))
         return scan
 
     def scan_strategy_evaluation_for_sell_signals(self, evaluations_dict,
@@ -1238,7 +1317,7 @@ class TradingStrategy():
         scan = self.scan_strategy_evaluation_for_signals(
             evaluations_dict, signal='sell', **kwargs
         )
-        log.info('[ SELL ]: ' + pretty_dict_print(scan))
+        log.info('[ SELL ]: {}'.format(pretty_dict_print(scan)))
         return scan
 
     # ACTIONS
@@ -2046,7 +2125,8 @@ class TradingStrategy():
                 # crossover to be considered confirmed.
                 if return_dict[label]['flag'] \
                         and return_dict[label]['scan']['confirmed']:
-                    risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+                    risk_index = 1 if risk_index == 1 \
+                        or risk_index < 0 else risk_index - 1
                 # NOTE: A trendy number of crossovers is always plus in technical
                 # analysis numerology.. :) You're well entitled to judge btw -
                 # judging makes the world go round.
@@ -2062,7 +2142,8 @@ class TradingStrategy():
         # NOTE: If period and period interval decently sized
         if risk_index and (return_dict['interval'] in safer_intervals \
                 and return_dict['volume-movement']['start-candle'] >= safety_period):
-            risk_index = 1 if risk_index == 1 or risk_index < 0 else risk_index - 1
+            risk_index = 1 if risk_index == 1 \
+                or risk_index < 0 else risk_index - 1
         return risk_index
 
 #   @pysnooper.snoop()
@@ -2280,6 +2361,7 @@ class TradingStrategy():
             'adx': {value: , interval: , risk: , trade: , description: },
             'price': {value: , interval: , risk: , trade: , description: },
             'volume': {value: , interval: , risk: , trade: , description: },
+            'intuition-reversal': {value: , interval: , risk: , trade: , description: },
             ...
         }
 
@@ -2307,11 +2389,6 @@ class TradingStrategy():
             'sell': self.scan_strategy_evaluation_for_sell_signals,
         }
         scan = signal_scanners[signal](evaluations_dict, **kwargs)
-        # [ ? ]: Also, exclude signals generated by a large volume movement if
-        # there are no other indicators generating signals - you can't trade
-        # only volume (unless it's the only specified strategy), dummy.
-        # You need at least price, right?
-        # [ NOTE ]: Don't quote me on it tho, I'm not 100% on that.
         if not scan['flag']:
             stdout_msg(
                 'No ({}) signals detected during strategy evaluation.'
@@ -2390,172 +2467,4 @@ class TradingStrategy():
         return self.base_evaluators['trade'](evaluations_dict, **kwargs)
 
 # CODE DUMP
-
-#       stdout_msg(
-#           pretty_dict_print(scan), symbol='BUY',
-#           red=False if scan['flag'] else True,
-#           green=False if not scan['flag'] else True,
-#       )
-#       stdout_msg(
-#           pretty_dict_print(scan), symbol='SELL',
-#           red=False if scan['flag'] else True,
-#           green=False if not scan['flag'] else True,
-#       )
-
-# or (len(evaluations_dict) != 1 \
-#               and ('volume' in evaluations_dict \
-#               and len(scan['confirmed']) == 1 \
-#               and evaluations_dict['volume']['trade'])):
-
-
-#   def compute_risk_index(self, evaluations_dict, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       return 0
-
-#   def compute_trade_flag(self, evaluations_dict, **kwargs):
-#       log.debug('TODO - Under construction, building...')
-#       return False
-
-#       details = kwargs['details']['history']
-#       adx_top = float(kwargs.get('adx-top', self.adx_top))
-#       adx_bottom = float(kwargs.get('adx-bottom', self.adx_bottom))
-#       adx_values = {
-#           'adx': [ float(details['adx'][index]['adx'])
-#                   for index in range(len(details['adx'])) ],
-#           '+di': [ float(details['adx'][index]['plusdi'])
-#                   for index in range(len(details['adx'])) ],
-#           '-di': [ float(details['adx'][index]['minusdi'])
-#                   for index in range(len(details['adx'])) ],
-#       }
-#       scan = scan_value_sets(
-#           adx_values['+di'], adx_values['-di'], look_for='crossover'
-#       )
-#       return_dict = {
-#           'flag': False, #scan.get('flag', False),
-#           'start-candle': details['adx'][len(details['adx'])-1]['backtrack'],
-#           'stop-candle': details['adx'][0]['backtrack'],
-#           'side': 'sell' if scan['flag'] else '',
-#           'values': adx_values,
-#           'scan': scan,
-#       }
-
-
-
-#{'flag': True, 'start1': 9, 'start2': 1, 'end1': 2, 'end2': 8, 'crossovers': [4], 'confirmed': True}
-
-#       period_volume_avg = sum(volume_values) / len(volume_values)
-#       min_val, max_val = min(volume_values), max(volume_values)
-#       min_candle = [
-#           item for item in details['volume']
-#           if float(item['value']) == float(min_val)
-#       ]
-#       if min_candle:
-#           min_candle = min_candle[0]['backtrack']
-#       max_candle = [
-#           item for item in details['volume']
-#           if float(item['value']) == float(max_val)
-#       ]
-#       if max_candle:
-#           max_candle = max_candle[0]['backtrack']
-#       movement = max_val - min_val
-#       move_percent = compute_percentage_of(movement, period_volume_avg)
-#       return_dict = {
-#           'flag': True if move_percent >= volume_movement else False,
-#           'start-value': volume_values[-1],
-#           'stop-value': volume_values[0],
-#           'min-value': min_val,
-#           'max-value': max_val,
-#           'period-average': period_volume_avg,
-#           'start-candle': details['volume'][len(volume_values)-1]['backtrack'],
-#           'stop-candle': details['volume'][0]['backtrack'],
-#           'min-candle': min_candle or None,
-#           'max-candle': max_candle or None,
-#           'side': '',
-#           'moved': movement,
-#           'moved-percentage': move_percent,
-#           'trigger-percentage': volume_movement,
-#       }
-#       return {}
-
-
-#           'buy' if return_dict['bullish-crossover']['flag'] \
-#               else 'sell' if return_dict['bearish-crossover']['flag']
-#       False if \
-#           not (return_dict['bullish-crossover'] \
-#                and return_dict['bearish-crossover']) \
-#           or return_dict['risk'] > self.risk_tolerance \
-#           or return_dict['risk'] == 0 else True
-
-
-        # TODO - Research how to trade ADX
-#       return_dict = {
-#           'interval': kwargs.get('adx-interval', kwargs.get('interval')),
-#           'period': kwargs.get('adx-period', kwargs.get('period')),
-#           'value': kwargs.get('adx'),
-#           'risk': 0,
-#           'trade': False,
-#           'description': 'Volume Strategy',
-#       }
-#       return_dict['risk'] = self.compute_adx_trade_risk(return_dict, **kwargs)
-#       return_dict['trade'] = False if return_dict['risk'] \
-#           > self.risk_tolerance or return_dict['risk'] == 0 else True
-#       return return_dict
-
-#       stdout_msg(
-#           '\nStrategy Price {}'.format(pretty_dict_print(return_dict)),
-#           red=False if return_dict['trade'] else True,
-#           green=False if not return_dict['trade'] else True,
-#       )
-
-
-
-#           5: self.evaluate_high_risk_tolerance,
-#       }
-#       base_evaluators = {
-#           'buy': self.evaluate_buy,
-#           'sell': self.evaluate_sell,
-#       }
-
-
-
-#       trade_flag, risk_index, trade_side = False, 0, kwargs.get('side', 'auto')
-#       if not self.base_evaluators:
-#           return False
-#       if trade_side == 'auto':
-#           buy_flag, buy_risk = self.base_evaluators['buy'](
-#               evaluations_dict, **kwargs
-#           )
-#           sell_flag, sell_risk = self.base_evaluators['sell'](
-#               evaluations_dict, **kwargs
-#           )
-#           if buy_flag:
-#               trade_flag, trade_side, risk_index = buy_flag, 'buy', buy_risk
-#           elif sell_flag:
-#               trade_flag, trade_side, risk_index = sell_flag, 'sell', sell_risk
-#       else:
-#           trade_flag, risk_index = self.base_evaluators[trade_side](
-#               evaluations_dict, **kwargs
-#           )
-#       return trade_flag if risk_index <= 4 else False, risk_index, trade_side
-
-
-#       trade_flag, risk_index, trade_side = False, 0, kwargs.get('side', 'auto')
-#       if not self.base_evaluators:
-#           return False
-#       if trade_side == 'auto':
-#           buy_flag, buy_risk = self.base_evaluators['buy'](
-#               evaluations_dict, **kwargs
-#           )
-#           sell_flag, sell_risk = self.base_evaluators['sell'](
-#               evaluations_dict, **kwargs
-#           )
-#           if buy_flag:
-#               trade_flag, trade_side, risk_index = buy_flag, 'buy', buy_risk
-#           elif sell_flag:
-#               trade_flag, trade_side, risk_index = sell_flag, 'sell', sell_risk
-#       else:
-#           trade_flag, risk_index = self.base_evaluators[trade_side](
-#               evaluations_dict, **kwargs
-#           )
-#       return trade_flag, risk_index, trade_side
 

@@ -1100,8 +1100,8 @@ class TradingMarket(Client):
         log.debug('')
         try:
             candle_info = self.fetch_candle_info(*args, **kwargs)
-            if not candle_info:
-                stdout_msg('Could not fetch candle info!', err=True)
+#           if not candle_info:
+#               stdout_msg('Could not fetch candle info!', err=True)
             data_frame = pandas.DataFrame(candle_info)
             data_frame.columns = self.fetch_candle_info_column_labels()
         except Exception as e:
@@ -1127,10 +1127,10 @@ class TradingMarket(Client):
         for key in keys_to_remove:
             del cache_dict[key]
 
-    def synced(self, func_name, **args):
+    def synced(self, func_name, **kwargs):
         log.debug('')
-        args['timestamp'] = int(time.time() - self.time_offset)
-        return getattr(self, func_name)(**args)
+        kwargs['timestamp'] = int(time.time() - self.time_offset)
+        return getattr(self, func_name)(**kwargs)
 
     def close_position(self, *args, **kwargs):
         '''
@@ -1207,7 +1207,6 @@ class TradingMarket(Client):
         log.debug('')
         return str(base) + '/' + str(quote)
 
-
     # ENSURANCE
 
     def ensure_indicator_delay(self):
@@ -1249,7 +1248,15 @@ class TradingMarket(Client):
                 warn=True
             )
             details.update({'backtracks': self.history_backtracks,})
-        candle_info = self.build_candle_info_data_frame(**kwargs)
+        try:
+            candle_info = self.build_candle_info_data_frame(**kwargs)
+        except Exception as e:
+            return_dict.update({
+                'error': True,
+                'msg': 'Could not build candle info data frame!',
+            })
+            stdout_msg(return_dict['msg'], err=True)
+            return return_dict
         log.debug('Candle INFO dataframe - {}'.format(candle_info))
         if 'all' in update_targets or 'price' in update_targets:
             return_dict['history']['price'] = self.fetch_price_value(**details)
@@ -1703,374 +1710,4 @@ class TradingMarket(Client):
         return return_dict
 
 # CODE DUMP
-
-#       sanitized_ticker = self.ticker_symbol.replace('/', '')
-#       return_args, return_kwargs = (), {
-#           'symbol': sanitized_ticker,
-#           'side': side.upper(),
-#           'type': kwargs.get('trading-order-type'),
-#           'quantity': trade_amount,
-#           'quoteOrderQty': kwargs.get('quote-amount'),
-#           'timeInForce': kwargs.get('order-time-in-force'),
-#           'stopLimitTimeInForce': kwargs.get('order-time-in-force'),
-#           'price': kwargs.get('order-price'),
-#           'stopPrice': kwargs.get('stop-price'),
-#           'stopLimitPrice': kwargs.get('stop-limit-price'),
-#           'newClientOrderId': kwargs.get('order-id'),
-#           'icebergQty': kwargs.get('order-iceberg-quantity'),
-#           'newOrderRespType': kwargs.get('order-response-type'),
-#           'recvWindow': kwargs.get('recvWindow', 60000),
-#       }
-
-
-#           info = self.get_symbol_info(order_kwargs['symbol'])
-#           if order_kwargs.get('quantity'):
-#               if order_kwargs['quantity'] < info['filters'][2]['minQty']:
-#                   stdout_msg(
-#                       'Not enough funds to trade withing specified parameters! '
-#                       'Quantity {} is below the minimum required of {} {}.'
-#                       .format(
-#                           order_kwargs['quantity'],
-#                           info['filters'][2]['minQty'],
-#                           kwargs['base-currency']
-#                       ), warn=True
-#                   )
-#                   return False
-
-
-
-#   @pysnooper.snoop()
-#   def format_trading_order_futures_account_args_kwargs(self, label, trade_amount=None,
-#                                        take_profit=None, stop_loss=None,
-#                                        trailing_stop=None, side=None, **kwargs):
-#       log.debug('TODO - UNDER CONSTRUCTION')
-#       sanitized_ticker = self.ticker_symbol.replace('/', '')
-#       return_args, return_kwargs = (), {
-#           'symbol': sanitized_ticker,
-#           'side': side.upper(),
-#           'type': kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
-#           'price': 0,
-#           'quantity': trade_amount,
-#           'quoteOrderQty': None if trade_amount else kwargs.get('quote-trade-amount'),
-#           'recvWindow': kwargs.get('recvWindow', 60000),
-#       }
-
-#       if label == 'TEST' and 'quoteOrderQty' in return_kwargs:
-#           del return_kwargs['quoteOrderQty']
-
-#       kwargs_keys2rem = [
-#           item for item in return_kwargs if not return_kwargs[item]
-#       ]
-#       for rd_key in kwargs_keys2rem:
-#           del return_kwargs[rd_key]
-#       log.debug(
-#           'Futures Trade order *args, **kwargs - ({}) ({})'.format(
-#               return_args, return_kwargs
-#           )
-#       )
-#       return return_args, return_kwargs
-#   def format_trading_order_margin_account_args_kwargs(self, label, trade_amount=None,
-#                                        take_profit=None, stop_loss=None,
-#                                        trailing_stop=None, side=None, **kwargs):
-#       '''
-#       [ NOTE ]:
-#       '''
-#       log.debug('TODO - UNDER CONSTRUCTION')
-#   def format_trading_order_options_account_args_kwargs(self, label, trade_amount=None,
-#                                        take_profit=None, stop_loss=None,
-#                                        trailing_stop=None, side=None, **kwargs):
-#       '''
-#       [ NOTE ]:
-#       '''
-#       log.debug('TODO - UNDER CONSTRUCTION')
-#       return_args, return_kwargs = self.format_trading_order_general_args_kwargs(
-#           label, trade_amount=trade_amount, take_profit=take_profit,
-#           stop_loss=stop_loss, trailing_stop=trailing_stop, side=side,
-#           **kwargs
-#       )
-
-
-
-
-
-
-
-
-
-#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
-#               (
-#                   symbol=sanitized_ticker,
-#                   side=side.upper(),
-#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
-#                   price=0,
-#                   quantity=trade_amount,
-#                   quoteOrderQty=None if trade_amount \
-#                       else kwargs.get('quote-trade-amount'),
-#                   recvWindow=kwargs.get('recvWindow', 60000),
-#               )
-
-
-
-
-
-#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
-#       try:
-#           if kwargs.get('test'):
-#               stdout_msg('Creating test sell order...', info=True)
-#               order = self.create_test_order(
-#                   symbol=sanitized_ticker,
-#                   side=self.SIDE_SELL,
-#                   type=self.ORDER_TYPE_MARKET,
-#                   price=0,
-#                   quantity=trade_amount,
-#                   quoteOrderQty=None if trade_amount \
-#                       else kwargs.get('quote-trade-amount'),
-#                   recvWindow=kwargs.get('recvWindow', 60000),
-#               )
-#           else:
-#               stdout_msg('Creating sell order...', info=True)
-
-#               # TODO - Uncomment
-#   #           order = self.create_order(
-#   #               symbol=sanitized_ticker,
-#   #               side=self.SIDE_SELL,
-#   #               type=self.ORDER_TYPE_MARKET,
-#   #               quoteOrderQty=trade_amount,
-#   #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-#   #               recvWindow=kwargs.get('recvWindow', 60000),
-#   #           )
-
-#               # TODO - Remove
-#               order = None
-#               stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-
-#       except Exception as e:
-#           log.error(e)
-#       finally:
-#           return order
-
-
-#       sanitized_ticker, order = self.ticker_symbol.replace('/', ''), None
-#       handlers = {
-#           'TEST': self.create_test_order,
-#           'GODSPEED': self.create_order,
-#       }
-#       try:
-
-
-#           hlabel = 'TEST' if kwargs.get('test') else 'GODSPEED'
-#           if hlabel == 'TEST':
-#               stdout_msg('Creating test buy order...', info=True)
-#           else:
-#               stdout_msg('Creating buy order...', info=True)
-
-#           # TODO - Remove
-#           if hlabel == 'GODSPEED':
-#               order = None
-#               stdout_msg('No, we\'re not executing any real trade right now!', warn=True)
-#           else:
-#               order = handlers[hlabel](
-#                   symbol=sanitized_ticker,
-#                   side=self.SIDE_BUY,
-#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
-#                   price=0,
-#                   quantity=trade_amount,
-#                   quoteOrderQty=None if trade_amount \
-#                       else kwargs.get('quote-trade-amount'),
-#                   recvWindow=kwargs.get('recvWindow', 60000),
-#               )
-#       except Exception as e:
-#           log.error(e)
-#       finally:
-#           return order
-
-
-#       return handlers[side](
-#           trade_amount, *args, take_profit=take_profit, stop_loss=stop_loss,
-#           trailing_stop=trailing_stop, **kwargs
-#       )
-
-
-
-#           if kwargs.get('test'):
-#               stdout_msg('Creating test buy order...', info=True)
-#               order = self.create_test_order(
-#                   symbol=sanitized_ticker,
-#                   side=self.SIDE_BUY,
-#                   type=kwargs.get('trading-order-type', self.ORDER_TYPE_MARKET),
-#                   price=0,
-#                   quantity=trade_amount,
-#                   quoteOrderQty=None if trade_amount \
-#                       else kwargs.get('quote-trade-amount'),
-#                   recvWindow=kwargs.get('recvWindow', 60000),
-#               )
-#           else:
-#               stdout_msg('Creating buy order...', info=True)
-
-#               # TODO - Uncomment
-#   #           order = self.create_order(
-#   #               symbol=sanitized_ticker,
-#   #               side=self.SIDE_BUY,
-#   #               type=self.ORDER_TYPE_MARKET,
-#   #               quoteOrderQty=trade_amount,
-#   #               newOrderRespType=kwargs.get('newOrderRespType', 'JSON'),
-#   #               recvWindow=kwargs.get('recvWindow', 60000),
-#   #           )
-
-
-
-
-    # TODO - DEPRECATED
-#   def fetch_data_frame(self, *args, **kwargs):
-#       log.debug('TODO - DEPRECATED')
-#       if not self.data_frame:
-#           self.data_frame = pandas.DataFrame()
-#       return self.data_frame
-
-
-#       timestamp = str(time.time())
-#       self.update_cache(
-#           self.get_account(recvWindow=60000), self.account_cache,
-#           label=timestamp
-#       )
-
-
-
-#       return {}
-#       self.update_cache(
-#           return_dict, self.history_cache[timestamp], label=timestamp,
-#       )
-
-#           self.buy_price = float(
-#               self.ticker_info_cache[timestamp].get('bidPrice')
-#           )
-#           self.sell_price = float(
-#               self.ticker_info_cache[timestamp].get('askPrice')
-#           )
-#           return_dict.update(
-#               {'buy-price': self.buy_price, 'sell-price': self.sell_price}
-#           )
-
-#           self.volume = float(
-#               self.ticker_info_cache[timestamp].get('volume')
-#           )
-#           return_dict.update({'volume': self.volume})
-
-
-
-
-#   # Author : Yogesh K for finxter.com
-#   # SMA(simple moving average) using python-binance
-#   import os
-#   from binance.client import Client
-#   from binance import ThreadedWebsocketManager # This import can be removed. not needed
-#   import pprint
-#   import datetime      # This import can be removed, not needed
-#   import pandas as pd     # needs pip install
-#   import numpy as np
-#   import matplotlib.pyplot as plt   # needs pip install
-
-#   def get_hourly_dataframe(): # we want hourly data and for past 1 week.
-#       # valid intervals - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
-#       # request historical candle (or klines) data using timestamp from above, interval either every min, hr, day or month
-#       # starttime = '30 minutes ago UTC' for last 30 mins time
-#       # e.g. client.get_historical_klines(symbol='ETHUSDTUSDT', '1m', starttime)
-#       # starttime = '1 Dec, 2017', '1 Jan, 2018'  for last month of 2017
-#       # e.g. client.get_historical_klines(symbol='BTCUSDT', '1h', "1 Dec, 2017", "1 Jan, 2018")
-#       starttime = '1 week ago UTC'  # to start for 1 week ago
-#       interval = '1h'
-#       bars = client.get_historical_klines(symbol, interval, starttime)
-#       for line in bars:        # Keep only first 5 columns, "date" "open" "high" "low" "close"
-#           del line[5:]
-#       df = pd.DataFrame(bars, columns=['date', 'open', 'high', 'low', 'close']) #  2 dimensional tabular data
-#       return df
-
-#   def plot_graph(df):
-#       df=df.astype(float)
-#       df[['close', '5sma','15sma']].plot()
-#       plt.xlabel('Date',fontsize=18)
-#       plt.ylabel('Close price',fontsize=18)
-#       plt.scatter(df.index,df['Buy'], color='purple',label='Buy',  marker='^', alpha = 1) # purple = buy
-#       plt.scatter(df.index,df['Sell'], color='red',label='Sell',  marker='v', alpha = 1)  # red = sell
-#       plt.show()
-
-#   def buy_or_sell(buy_sell_list, df):
-#       for index, value in enumerate(buy_sell_list):
-#           current_price = client.get_symbol_ticker(symbol =symbol)
-#           print(current_price['price']) # Output is in json format, only price needs to be accessed
-#           if value == 1.0 : # signal to buy (either compare with current price to buy/sell or use limit order with close price)
-#               if current_price['price'] < df['Buy'][index]:
-#                   print("buy buy buy....")
-#                   buy_order = client.order_market_buy(symbol=symbol, quantity=2)
-#                   print(buy_order)
-#           elif value == -1.0: # signal to sell
-#               if current_price['price'] > df['Sell'][index]:
-#                   print("sell sell sell....")
-#                   sell_order = client.order_market_sell(symbol=symbol, quantity=10)
-#                   print(sell_order)
-#           else:
-#               print("nothing to do...")
-
-#   def sma_trade_logic():
-#       symbol_df = get_hourly_dataframe()
-#       # small time Moving average. calculate 5 moving average using Pandas over close price
-#       symbol_df['5sma'] = symbol_df['close'].rolling(5).mean()
-#       # long time moving average. calculate 15 moving average using Pandas
-#       symbol_df['15sma'] = symbol_df['close'].rolling(15).mean()
-#       # To print in human readable date and time (from timestamp)
-#       symbol_df.set_index('date', inplace=True)
-#       symbol_df.index = pd.to_datetime(symbol_df.index, unit='ms')
-#       # Calculate signal column
-#       symbol_df['Signal'] = np.where(symbol_df['5sma'] > symbol_df['15sma'], 1, 0)
-#       # Calculate position column with diff
-#       symbol_df['Position'] = symbol_df['Signal'].diff()
-#
-#       # Add buy and sell columns
-#       symbol_df['Buy'] = np.where(symbol_df['Position'] == 1,symbol_df['close'], np.NaN )
-#       symbol_df['Sell'] = np.where(symbol_df['Position'] == -1,symbol_df['close'], np.NaN )
-#       with open('output.txt', 'w') as f:
-#           f.write(
-#                   symbol_df.to_string()
-#               )
-#       #plot_graph(symbol_df)
-#       # get the column=Position as a list of items.
-#       buy_sell_list = symbol_df['Position'].tolist()
-#       buy_or_sell(buy_sell_list, symbol_df)
-
-#   def main():
-#       sma_trade_logic()
-#   if __name__ == "__main__":
-#       api_key = os.environ.get('BINANCE_TESTNET_KEY')     # passkey (saved in bashrc for linux)
-#       api_secret = os.environ.get('BINANCE_TESTNET_PASSWORD')  # secret (saved in bashrc for linux)
-#       client = Client(api_key, api_secret, testnet=True)
-#       print("Using Binance TestNet Server")
-#       pprint.pprint(client.get_account())
-#       symbol = 'BNBUSDT'   # Change symbol here e.g. BTCUSDT, BNBBTC, ETHUSDT, NEOBTC
-#       main()
-
-
-
-
-
-#   >>> klines = client.get_historical_klines('BTCUSDT', '5m')
-#   >>> df = pandas.DataFrame(klines)
-#   >>> df.columns = ['open_time','open', 'high', 'low', 'close', 'volume','close_time', 'qav','num_trades','taker_base_vol', 'taker_quote_vol', 'ignore']
-#   >>> df.index
-#   RangeIndex(start=0, stop=1000, step=1)
-#   >>> df.to_csv('BTCUSDT.csv', index=None, header=True)
-#   >>> df.astype(float)
-#           open_time      open      high       low     close     volume    close_time           qav  num_trades  taker_base_vol  taker_quote_vol  ignore
-#   0    1.668655e+12  16605.73  16609.40  16591.73  16594.93  406.28587  1.668655e+12  6.745211e+06      9824.0       185.42670     3.078612e+06     0.0
-#   1    1.668656e+12  16594.07  16601.55  16584.21  16594.90  326.43187  1.668656e+12  5.417243e+06      9414.0       163.59533     2.714979e+06     0.0
-#   2    1.668656e+12  16595.36  16599.54  16565.36  16582.03  788.64793  1.668656e+12  1.308035e+07     17636.0       375.63970     6.230347e+06     0.0
-#   3    1.668656e+12  16582.03  16590.19  16551.00  16577.26  708.80975  1.668656e+12  1.174623e+07     16412.0       380.73812     6.309786e+06     0.0
-#   4    1.668656e+12  16577.25  16594.95  16576.01  16578.33  524.85937  1.668657e+12  8.704904e+06     14693.0       264.54180     4.387601e+06     0.0
-#   ..            ...       ...       ...       ...       ...        ...           ...           ...         ...             ...              ...     ...
-#   995  1.668954e+12  16570.38  16575.68  16553.22  16554.25  513.19995  1.668954e+12  8.500602e+06     17573.0       232.79453     3.856155e+06     0.0
-#   996  1.668954e+12  16554.25  16555.85  16542.97  16550.40  634.06216  1.668954e+12  1.049428e+07     16621.0       318.35584     5.269239e+06     0.0
-#   997  1.668954e+12  16550.40  16565.18  16546.24  16562.38  330.40569  1.668955e+12  5.470655e+06     13703.0       168.53287     2.790560e+06     0.0
-#   998  1.668955e+12  16562.38  16563.43  16544.19  16544.19  356.52770  1.668955e+12  5.900975e+06     13539.0       169.22395     2.800937e+06     0.0
-#   999  1.668955e+12  16544.58  16556.59  16544.12  16551.63  259.84942  1.668955e+12  4.300507e+06     11053.0       131.21379     2.171608e+06     0.0
-
-#   [1000 rows x 12 columns]
 

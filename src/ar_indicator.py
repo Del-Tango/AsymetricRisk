@@ -121,7 +121,9 @@ class TradingIndicator():
 
     def macd(self, **kwargs):
         '''
-        [ RETURN ]: Example - 'b\'{"valueMACD":47.481220348032366,"valueMACDSignal":78.66025805066222,"valueMACDHist":-31.179037702629856}\''
+        [ RETURN ]: Example - 'b\'{"valueMACD":47.481220348032366,\
+            "valueMACDSignal":78.66025805066222,\
+            "valueMACDHist":-31.179037702629856}\''
         '''
         log.debug('')
         details = kwargs.copy()

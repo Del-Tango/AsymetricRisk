@@ -382,6 +382,7 @@ class TradingBot():
         if not self.reporter:
             log.error('No trading reporter set up!')
             return False
+        details = kwargs.copy()
         raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
         report_types = self.fetch_valid_report_types()
         for report_label in self.nightly_reports:
