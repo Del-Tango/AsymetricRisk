@@ -185,3 +185,5 @@ class TestARIndicator(unittest.TestCase):
         time.sleep(self.AR_DEFAULT['indicator-update-delay'])
         self.assertTrue(response_raw)
 
+# CODE DUMP
+

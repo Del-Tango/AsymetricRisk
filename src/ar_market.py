@@ -74,8 +74,8 @@ class TradingMarket(Client):
         self.last_indicator_update_timestamp = None
         self.success_count = 0
         self.failure_count = 0
-        self.active_trades = {}                                                      #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
-        self.trades_to_report = {}                                                   #{id: {<value-key>: <value>}} - {'id': 54569, 'price': '328.30000000', 'qty': '2.02000000', 'quoteQty': '663.16600000', 'time': 1667254909509, 'isBuyerMaker': False, 'isBestMatch': True}
+        self.active_trades = {}
+        self.trades_to_report = {}
         self.supported_tickers_cache = {}
         self.supported_coins_cache = {}
         self.recent_trades_cache = {}
