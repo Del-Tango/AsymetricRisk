@@ -10,7 +10,7 @@ import logging
 import pysnooper
 
 from src.backpack.bp_general import stdout_msg, pretty_dict_print
-from src.backpack.ar_generators import generate_msg_id
+from src.backpack.bp_generators import generate_msg_id
 
 log = logging.getLogger('AsymetricRisk')
 

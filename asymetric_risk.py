@@ -606,10 +606,10 @@ def create_command_line_parser():
             -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
             -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
             -x  | --max-trades 3 \\             # Maximum number of trades allowed per trading day
-                | --television \\
+                | --television \\               # If you want to use a telegram bot to control (A)Risk
                 | --tv-bot-token "********************************************" \\
-                | --tv-chat-id "**************"\\
-                | --trade-timeout 180 \\
+                | --tv-chat-id "**********************************************"\\
+                | --trade-timeout 180 \\        # Number of seconds cached risky trades are valid
                 | --history-backtrack 14 \\     # General period backtrack value for indicator history
                 | --history-backtracks 14 \\    # General period backtracks value for indicator history
                 | --stop-loss 10 \\             # Set trading stop loss at X% of amount
@@ -751,7 +751,7 @@ def process_command_line_options(parser):
     }
     return processed
 
-def process_television_argument(parser, options)
+def process_television_argument(parser, options):
     global AR_DEFAULT
     log.debug('')
     value = options.television
@@ -767,7 +767,7 @@ def process_television_argument(parser, options)
     )
     return True
 
-def process_tv_bot_token_argument(parser, options)
+def process_tv_bot_token_argument(parser, options):
     global AR_DEFAULT
     log.debug('')
     value = options.tv_bot_token
@@ -781,7 +781,7 @@ def process_tv_bot_token_argument(parser, options)
     stdout_msg('TeleVision Bot Token setup', ok=True)
     return True
 
-def process_tv_chat_id_argument(parser, options)
+def process_tv_chat_id_argument(parser, options):
     global AR_DEFAULT
     log.debug('')
     value = options.tv_chat_id
@@ -2127,7 +2127,7 @@ def add_command_line_parser_options(parser):
     )
     parser.add_option(
         '', '--television', dest='television', action='store_true',
-        help='Make ARisk use TeleVision to send updates over Telegram.
+        help='Make ARisk use TeleVision to send updates over Telegram.'
     )
     parser.add_option(
         '', '--tv-bot-token', dest='tv_bot_token', type='string', metavar='TOKEN',
@@ -2666,7 +2666,7 @@ def television_msg(*args, **kwargs):
 
 def television_scroll_file(*args, **kwargs):
     log.debug('')
-    file_path = kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file']
+    file_path = kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file'])
     content = ' '.join(args)
     write2file(content, file_path=file_path, mode='w')
     arguments = format_television_scroll_file_args(**kwargs)
@@ -2852,9 +2852,9 @@ def format_television_scroll_file_args(**kwargs):
     arguments = format_television_default_cli_args(**kwargs)
     arguments.extend([
         '--action=scroll-file',
-        '--input-file=' + str(kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file']))
+        '--input-file=' + str(kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file'])),
         '--bot-token=' + str(kwargs.get('tv-bot-token', AR_DEFAULT['tv-bot-token'])),
-        '--chat-id=' + str(kwargs.get('tv-chat-id', AR_DEFAULT['tv-chat-id']))
+        '--chat-id=' + str(kwargs.get('tv-chat-id', AR_DEFAULT['tv-chat-id'])),
     ])
     return '"' + '" "'.join(arguments) + '"'
 

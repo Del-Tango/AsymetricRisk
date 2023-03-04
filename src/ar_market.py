@@ -1007,7 +1007,7 @@ class TradingMarket(Client):
         [ INPUT ]: *args = (Trade(), Trade(), Trade(), ...)
         '''
         log.debug('')
-        failures, ok, nok += 0, [], []
+        failures, ok, nok = 0, [], []
         for trade_obj in args:
             if not isinstance(trade_obj, Trade):
                 continue
