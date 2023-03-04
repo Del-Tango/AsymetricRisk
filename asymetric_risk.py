@@ -271,12 +271,14 @@ def check_log_file(**kwargs):
 def action_start_watchdog(*args, **kwargs):
     '''
     [ RETURN ]: Trading watchdog exit code - type int
+
+    [ NOTE ]: Executed in foreground, process hands while watchdog is running!
     '''
     log.debug('')
     stdout_msg('[ ACTION ]: Start Trading Bot', bold=True)
-    stdout_msg('Starting {} trading bot in watchdog mode...'
-        .format(AR_SCRIPT_NAME), info=True
-    )
+    msg = 'Starting {} trading bot in watchdog mode...'.format(AR_SCRIPT_NAME)
+    stdout_msg(msg, info=True)
+    television_msg(msg, **kwargs)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     try:
         watchdog = trading_bot.trade_watchdog(
@@ -298,7 +300,9 @@ def action_report(*args, **kwargs):
     '''
     log.debug('')
     stdout_msg('[ ACTION ]: Generate All Reports', bold=True)
+    television_msg('Generating all reports...', **kwargs)
     generate = trading_bot.generate_report(**kwargs)
+    television_msg('Reports: {}'.format(generate), **kwargs)
     if not generate:
         return 1
     return 0
@@ -306,7 +310,9 @@ def action_report(*args, **kwargs):
 def action_trade_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Trade Report', bold=True)
+    television_msg('Generating trade history report...', **kwargs)
     generate = trading_bot.generate_report('trade-history', **kwargs)
+    television_msg('Trades: {}'.format(generate), **kwargs)
     if not generate:
         return 1
     return 0
@@ -314,7 +320,9 @@ def action_trade_report(*args, **kwargs):
 def action_withdrawal_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
+    television_msg('Generating withdrawal history report...', **kwargs)
     generate = trading_bot.generate_report('withdrawal-history', **kwargs)
+    television_msg('Withdrawals: {}'.format(generate), **kwargs)
     if not generate:
         return 1
     return 0
@@ -322,7 +330,9 @@ def action_withdrawal_report(*args, **kwargs):
 def action_deposit_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
+    television_msg('Generating deposit history report...', **kwargs)
     generate = trading_bot.generate_report('deposit-history', **kwargs)
+    television_msg('Deposits: {}'.format(generate), **kwargs)
     if not generate:
         return 1
     return 0
@@ -330,19 +340,31 @@ def action_deposit_report(*args, **kwargs):
 def action_view_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Report', bold=True)
-    generate = trading_bot.view_report(
-        *AR_DEFAULT['report-id'].split(','), **kwargs
+    television_msg(
+        'Viewing reports ({})...'.format(
+            kwargs.get('report-id', AR_DEFAULT['report-id'])
+        ), **kwargs
     )
-    if not generate:
+    view = trading_bot.view_report(
+        *kwargs.get('report-id', AR_DEFAULT['report-id']).split(','), **kwargs
+    )
+    television_msg('View: {}'.format(view), **kwargs)
+    if not view:
         return 1
     return 0
 
 def action_remove_report(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Remove Reports', bold=True)
-    remove = trading_bot.remove_report(
-        *AR_DEFAULT['report-id'].split(','), **kwargs
+    television_msg(
+        'Removing reports ({})...'.format(
+            kwargs.get('report-id', AR_DEFAULT['report-id'])
+        ), **kwargs
     )
+    remove = trading_bot.remove_report(
+        *kwargs.get('report-id', AR_DEFAULT['report-id']).split(','), **kwargs
+    )
+    television_msg('Removed: {}'.format(remove), **kwargs)
     if not remove:
         return 1
     return 0
@@ -350,9 +372,15 @@ def action_remove_report(*args, **kwargs):
 def action_list_reports(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: List Reports', bold=True)
+    television_msg(
+        'Listing reports ({})...'.format(
+            kwargs.get('report-id', AR_DEFAULT['report-id'])
+        ), **kwargs
+    )
     reports = trading_bot.list_reports(
         *AR_DEFAULT['report-id'].split(','), **kwargs
     )
+    television_msg('Reports: {}'.format(reports), **kwargs)
     if not reports:
         return 1
     return 0
@@ -365,6 +393,7 @@ def action_get_config(*args, **kwargs):
         '[ ACTION ]: Get Config - {}'.format(conf_file_path), bold=True
     )
     stdout_msg(pretty_dict_print(json2dict(conf_file_path)))
+    television_msg('Viewing config ({})...'.format(conf_file_path), **kwargs)
     return 0
 
 #@pysnooper.snoop()
@@ -372,74 +401,74 @@ def action_market_details(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Market Details', bold=True)
     log.debug('Action Market Details args/kwargs - {} / {}'.format(args, kwargs))
+    television_msg('Viewing market details...', **kwargs)
     if not kwargs.get('update-flag'):
         kwargs.update({'update-flag': False})
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     details = trading_bot.view_market_details(*args, **kwargs)
     if not details:
-        stdout_msg(
-            'Could not fetch trading market info! Details: ({})'.format(
-               details
-            ), nok=True
-        )
+        msg = 'Could not fetch trading market info!'
+        stdout_msg('{} Details: ({})'.format(msg, details), nok=True)
+        television_msg(msg, **kwargs)
         return 1
     print(dict2json(details))
+    television_msg('Details: {}'.format(details), **kwargs)
     return 0
 
 def action_account_details(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Account Details', bold=True)
+    television_msg('Viewing account details...', **kwargs)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     account = trading_bot.view_account_details(*args, **kwargs)
     if not account:
-        stdout_msg(
-            'Could not fetch account info! Details: ({})'.format(
-               account
-            ), nok=True
-        )
+        msg = 'Could not fetch account info!'
+        stdout_msg('{} Details: ({})'.format(msg, account), nok=True)
+        television_msg(msg, **kwargs)
         return 1
     print(dict2json(account))
+    television_msg('Details: {}'.format(details), **kwargs)
     return 0
 
 # @pysnooper.snoop()
 def action_supported_coins(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Supported Coins', bold=True)
+    television_msg('Viewing supported crypto coins...', **kwargs)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     coins = trading_bot.view_supported_coins(*args, **kwargs)
     if not coins:
-        stdout_msg(
-            'Could not fetch supported crypto coins! Details: ({})'.format(
-               coins
-            ), nok=True
-        )
+        msg = 'Could not fetch supported crypto coins!'
+        stdout_msg('{} Details: ({})'.format(msg, coins), nok=True)
+        television_msg(msg, **kwargs)
         return 1
     print(dict2json(coins))
     stdout_msg('Available crypto coins ({})'.format(len(coins)), ok=True)
+    television_msg('Coins: {}'.firnat(pretty_dict_print(coins)), **kwargs)
     return 0
 
 def action_supported_tickers(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: View Supported Ticker Symbols...', bold=True)
+    television_msg('Viewing supported ticker symbols...', **kwargs)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     tickers = trading_bot.view_supported_tickers(*args, **kwargs)
     if not tickers:
-        stdout_msg(
-            'Could not fetch supported ticker symbols! Details: ({})'.format(
-                tickers
-            ), nok=True
-        )
+        msg = 'Could not fetch supported ticker symbols!'
+        stdout_msg('{} Details: ({})'.format(msg, tickers), nok=True)
+        television_msg(msg, **kwargs)
         return 1
     print(dict2json(tickers))
     stdout_msg('Available ticker symbols ({})'.format(len(tickers)), ok=True)
+    television_msg('Tickers: {}'.format(pretty_dict_print(tickers)), **kwargs)
     return 0
 
 def action_single_trade(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Single Trade', bold=True)
-    stdout_msg('Starting {} trading bot in single trade mode...'
-        .format(AR_SCRIPT_NAME), info=True
-    )
+    msg = 'Starting {} trading bot in single trade mode...'.format(AR_SCRIPT_NAME)
+    stdout_msg(msg, info=True)
+    television_msg(msg, **kwargs)
     ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
     try:
         watchdog = trading_bot.trade(
@@ -458,23 +487,26 @@ def action_single_trade(*args, **kwargs):
 def action_stop_watchdog(*args, **kwargs):
     log.debug('')
     stdout_msg('[ ACTION ]: Stop Trading Bot', bold=True)
+    television_msg('Stoping (A)Risk trading bot...', **kwargs)
     if not os.path.exists(AR_DEFAULT['watchdog-anchor-file']):
-        stdout_msg(
-            '{} trading bot not running! No process anchor file found.'
-            .format(AR_SCRIPT_NAME), err=True
-        )
+        msg = '{} trading bot not running! No process anchor file found.'\
+            .format(AR_SCRIPT_NAME)
+        stdout_msg(msg, err=True)
+        television_msg(msg, **kwargs)
         return 1
     remove = os.remove(AR_DEFAULT['watchdog-anchor-file'])
     pid = fetch_watchdog_pid()
     stdout_msg('Process anchor file removed.', ok=True)
     time.sleep(1)
     if check_pid_running(pid):
-        stdout(
-            'Could not stop trading bot! Process ({}) still running.'
-            .format(pid), nok=True
-        )
+        msg = 'Could not stop trading bot! Process ({}) still running.'\
+            .format(pid)
+        stdout(msg, nok=True)
+        television_msg(msg, **kwargs)
         return 2
-    stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
+    msg = 'Trading bot process ({}) terminated!'.format(pid)
+    stdout_msg(msg, ok=True)
+    television_msg(msg, **kwargs)
     return 0
 
 # HANDLERS
@@ -2613,6 +2645,24 @@ def interpret_television_bot_command_kill(command, trading_bot_obj, **kwargs):
     return action_stop_watchdog()
 
 # GENERAL
+
+def television_msg(*args, **kwargs):
+    '''
+    [ RETURN ]:
+        True  - When TeleVision flag is ON and message was sent successfully
+        False - When TeleVision flag is ON and message could not be sent
+        None  - When TeleVision flag is OFF
+    '''
+    log.debug('')
+    if AR_DEFAULT['television']:
+        tv_out = television_scroll_file(*args, **kwargs)
+        if not tv_out:
+            stdout_msg('Could not issue TeleVision update!', nok=True)
+            return False
+        else:
+            stdout_msg('TeleVision notified viewers of this action!', ok=True)
+        return True
+    return
 
 def television_scroll_file(*args, **kwargs):
     log.debug('')
