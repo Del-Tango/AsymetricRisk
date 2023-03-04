@@ -302,7 +302,7 @@ def action_report(*args, **kwargs):
     stdout_msg('[ ACTION ]: Generate All Reports', bold=True)
     television_msg('Generating all reports...', **kwargs)
     generate = trading_bot.generate_report(**kwargs)
-    television_msg('Reports: {}'.format(generate), **kwargs)
+    television_msg('Reports: {}'.format(pretty_dict_print(generate)), **kwargs)
     if not generate:
         return 1
     return 0
@@ -312,7 +312,7 @@ def action_trade_report(*args, **kwargs):
     stdout_msg('[ ACTION ]: Trade Report', bold=True)
     television_msg('Generating trade history report...', **kwargs)
     generate = trading_bot.generate_report('trade-history', **kwargs)
-    television_msg('Trades: {}'.format(generate), **kwargs)
+    television_msg('Trades: {}'.format(pretty_dict_print(generate)), **kwargs)
     if not generate:
         return 1
     return 0
@@ -322,7 +322,7 @@ def action_withdrawal_report(*args, **kwargs):
     stdout_msg('[ ACTION ]: Withdrawal Report', bold=True)
     television_msg('Generating withdrawal history report...', **kwargs)
     generate = trading_bot.generate_report('withdrawal-history', **kwargs)
-    television_msg('Withdrawals: {}'.format(generate), **kwargs)
+    television_msg('Withdrawals: {}'.format(pretty_dict_print(generate)), **kwargs)
     if not generate:
         return 1
     return 0
@@ -332,7 +332,7 @@ def action_deposit_report(*args, **kwargs):
     stdout_msg('[ ACTION ]: Deposit Report', bold=True)
     television_msg('Generating deposit history report...', **kwargs)
     generate = trading_bot.generate_report('deposit-history', **kwargs)
-    television_msg('Deposits: {}'.format(generate), **kwargs)
+    television_msg('Deposits: {}'.format(pretty_dict_print(generate)), **kwargs)
     if not generate:
         return 1
     return 0
@@ -380,7 +380,7 @@ def action_list_reports(*args, **kwargs):
     reports = trading_bot.list_reports(
         *AR_DEFAULT['report-id'].split(','), **kwargs
     )
-    television_msg('Reports: {}'.format(reports), **kwargs)
+    television_msg('Reports: {}'.format(pretty_dict_print(reports)), **kwargs)
     if not reports:
         return 1
     return 0
@@ -412,7 +412,7 @@ def action_market_details(*args, **kwargs):
         television_msg(msg, **kwargs)
         return 1
     print(dict2json(details))
-    television_msg('Details: {}'.format(details), **kwargs)
+    television_msg('Details: {}'.format(pretty_dict_print(details)), **kwargs)
     return 0
 
 def action_account_details(*args, **kwargs):
@@ -427,7 +427,7 @@ def action_account_details(*args, **kwargs):
         television_msg(msg, **kwargs)
         return 1
     print(dict2json(account))
-    television_msg('Details: {}'.format(details), **kwargs)
+    television_msg('Details: {}'.format(pretty_dict_print(details)), **kwargs)
     return 0
 
 # @pysnooper.snoop()
