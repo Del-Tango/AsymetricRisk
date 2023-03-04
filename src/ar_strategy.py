@@ -1322,9 +1322,10 @@ class TradingStrategy():
 
     # ACTIONS
 
+    # TODO
 #   @pysnooper.snoop()
     def analyze_risk(self, strategy='vwap', side='auto', **kwargs):
-        log.debug('')
+        log.debug('TODO - Refactor')
         log.debug('Risk Analyzer received kwargs - {}'.format(kwargs))
         failures = 0
         trade_flag, risk_index, trade_side, evaluations = False, 0, side, {}
@@ -2310,20 +2311,8 @@ class TradingStrategy():
 
     # EVALUATORS
 
-#   @pysnooper.snoop()
-    def evaluate_buy(self, evaluations_dict, **kwargs):
-        log.debug('')
-        instruction_set = kwargs.copy()
-        instruction_set.update({'side': 'buy'})
-        return self.evaluate_risk(evaluations_dict, signal='buy', **instruction_set)
 
-#   @pysnooper.snoop()
-    def evaluate_sell(self, evaluations_dict, **kwargs):
-        log.debug('')
-        instruction_set = kwargs.copy()
-        instruction_set.update({'side': 'sell'})
-        return self.evaluate_risk(evaluations_dict, signal='sell', **instruction_set)
-
+    # TODO
 #   @pysnooper.snoop()
     def evaluate_risk(self, evaluations_dict, signal='buy', **kwargs):
         '''
@@ -2367,7 +2356,7 @@ class TradingStrategy():
 
         [ RETURN ]: trade-flag (type bool), risk_index (type int, values 0-5)
         '''
-        log.debug('')
+        log.debug('TODO - Refactoring')
         log.debug('evaluations_dict - {}'.format(evaluations_dict))
         log.debug('kwargs - {}'.format(kwargs))
         if not evaluations_dict or signal not in ('buy', 'sell'):
@@ -2407,32 +2396,11 @@ class TradingStrategy():
                 'Trade ({}) too risky for specified risk tolerance! ({})'
                 .format(signal, self.risk_tolerance), nok=True
             )
-            return False, 0
-        return trade_flag, risk_index if trade_flag else 0
 
-    def evaluate_trade(self, evaluations_dict, **kwargs):
-        log.debug('')
-        if not evaluations_dict or not self.base_evaluators:
-            return False
-        trade_flag, risk_index, trade_side = False, 0, kwargs.get('side', 'auto')
-        if trade_side == 'auto':
-            buy_flag, buy_risk = self.base_evaluators['buy'](
-                evaluations_dict, **kwargs
-            )
-            sell_flag, sell_risk = self.base_evaluators['sell'](
-                evaluations_dict, **kwargs
-            )
-            if buy_flag:
-                trade_flag, trade_side, risk_index = buy_flag, 'buy', buy_risk
-            elif sell_flag:
-                trade_flag, trade_side, risk_index = sell_flag, 'sell', sell_risk
-            if 'intuition-reversal' in evaluations_dict:
-                trade_side = evaluations_dict['intuition-reversal']['side']
-        else:
-            trade_flag, risk_index = self.base_evaluators[trade_side](
-                evaluations_dict, **kwargs
-            )
-        return trade_flag, risk_index, trade_side
+        # TODO
+#            return False, 0
+        return trade_flag, risk_index #if trade_flag else 0
+
 
     def evaluate_low_risk_tolerance(self, evaluations_dict, **kwargs):
         log.debug('')
@@ -2465,6 +2433,44 @@ class TradingStrategy():
     def evaluate_high_risk_tolerance(self, evaluations_dict, **kwargs):
         log.debug('')
         return self.base_evaluators['trade'](evaluations_dict, **kwargs)
+
+#   @pysnooper.snoop()
+    def evaluate_buy(self, evaluations_dict, **kwargs):
+        log.debug('')
+        instruction_set = kwargs.copy()
+        instruction_set.update({'side': 'buy'})
+        return self.evaluate_risk(evaluations_dict, signal='buy', **instruction_set)
+
+#   @pysnooper.snoop()
+    def evaluate_sell(self, evaluations_dict, **kwargs):
+        log.debug('')
+        instruction_set = kwargs.copy()
+        instruction_set.update({'side': 'sell'})
+        return self.evaluate_risk(evaluations_dict, signal='sell', **instruction_set)
+
+    def evaluate_trade(self, evaluations_dict, **kwargs):
+        log.debug('')
+        if not evaluations_dict or not self.base_evaluators:
+            return False
+        trade_flag, risk_index, trade_side = False, 0, kwargs.get('side', 'auto')
+        if trade_side == 'auto':
+            buy_flag, buy_risk = self.base_evaluators['buy'](
+                evaluations_dict, **kwargs
+            )
+            sell_flag, sell_risk = self.base_evaluators['sell'](
+                evaluations_dict, **kwargs
+            )
+            if buy_flag:
+                trade_flag, trade_side, risk_index = buy_flag, 'buy', buy_risk
+            elif sell_flag:
+                trade_flag, trade_side, risk_index = sell_flag, 'sell', sell_risk
+            if 'intuition-reversal' in evaluations_dict:
+                trade_side = evaluations_dict['intuition-reversal']['side']
+        else:
+            trade_flag, risk_index = self.base_evaluators[trade_side](
+                evaluations_dict, **kwargs
+            )
+        return trade_flag, risk_index, trade_side
 
 # CODE DUMP
 

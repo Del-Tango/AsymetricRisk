@@ -14,13 +14,19 @@ AR_INIT='./asymetric_risk.py'
 AR_DEFAULT=(
 ['log-file']="./log/asymetric_risk.log"
 ['conf-file']="./conf/asymetric_risk.conf.json"
+['tv-conf-file']="./conf/television.conf.json"
 ['profit-baby']=20
 ['watchdog-pid-file']=".ar-bot.pid"
 ['watchdog-anchor-file']=".ar-bot.anchor"
-['timestamp-format']="%d/%m/%Y-%H:%M:%S"
+['tv-pid-file']=".tv-bot.pid"
+['tv-in-file']="dta/television.in"
+['tv-out-file']="dta/television.out"
+['tv-bot-token']="<SoMuchNopeGetYourOwn>"
+['tv-chat-id']="<SoMuchNopeGetYourOwn>"
 ['api-key']="<SoMuchNopeGetYourOwn>"
 ['api-secret']="<SoMuchNopeGetYourOwn>"
 ['taapi-key']="<SoMuchNopeGetYourOwn>"
+['timestamp-format']="%d/%m/%Y-%H:%M:%S"
 ['api-url']="https://api.binance.com/api"
 ['taapi-url']="https://api.taapi.io"
 ['max-trades']=3
@@ -45,6 +51,8 @@ AR_DEFAULT=(
 ['debug']='off'
 ['silence']='off'
 ['indicator-update-delay']=18
+['television']='off'
+['trade-timeout']=180
 ['risk-tolerance']='High'
 ['analyze-risk']='on'
 ['strategy']="vwap,rsi,macd,adx,ma,ema,price,volume"
@@ -293,6 +301,9 @@ function format_asymetric_risk_constant_args() {
     fi
     if [[ ${AR_DEFAULT['test']} == 'on' ]]; then
         local ARGUMENTS=( ${ARGUMENTS[@]} '--test' )
+    fi
+    if [[ ${AR_DEFAULT['television']} == 'on' ]]; then
+         local ARGUMENTS=( ${ARGUMENTS[@]} '--television' )
     fi
     echo -n "${ARGUMENTS[@]}"
     return $?

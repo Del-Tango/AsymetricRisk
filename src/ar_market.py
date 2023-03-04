@@ -86,6 +86,8 @@ class TradingMarket(Client):
         self.ticker_info_cache = {}
         self.trade_fee_cache = {}
         self.history_cache = {}
+        self.trade_cache = {}
+        self.risky_trades_cache = {}
         if sync:
             self.time_offset = self._fetch_time_offset()
         if kwargs.get('update-flag'):
@@ -992,6 +994,37 @@ class TradingMarket(Client):
 
     # GENERAL
 
+    def search_risky_trade(self, trade_id, cache):
+        log.debug('')
+        return {
+            timestamp: trade_obj for timestamp in cache
+            if cache[timestamp].order_id == trade_id
+        }
+
+    def run(self, *args, **kwargs):
+        '''
+        [ NOTE ]: TradingMarket.run(Trade(), Trade(), ..)
+        [ INPUT ]: *args = (Trade(), Trade(), Trade(), ...)
+        '''
+        log.debug('')
+        failures, ok, nok += 0, [], []
+        for trade_obj in args:
+            if not isinstance(trade_obj, Trade):
+                continue
+            self.update_trade_cache(trade_obj)
+            details = trade_obj.details()
+            trade = self.trade(details['amount'], **details)
+            if not trade:
+                failures += 1
+                nok.append(trade)
+            trade_obj.update(trade)
+            ok.append(trade)
+        return {
+            'failures': failures,
+            'ok': ok,
+            'nok': nok,
+        }
+
 #   @pysnooper.snoop('log/nomads-gold.log')
     def build_candle_info_data_frame(self, *args, **kwargs):
         log.debug('')
@@ -1238,7 +1271,30 @@ class TradingMarket(Client):
             break
         return True
 
+    # CLEANERS
+
+    def cleanup_cache(self, *elements, cache, **kwargs):
+        log.debug('')
+        if not elements:
+            log.error('No elements specified to remove from cache!')
+            return False
+        for element in elements:
+            del cache[element]
+        return True
+
     # UPDATERS
+
+    def update_risky_trades_cache(self, trade_obj, timestamp=str(time.time()), **kwargs):
+        log.debug('')
+        self.update_cache(
+            trade_obj, self.risky_trades_cache, label=timestamp, size_limit=9001
+        )
+        return {'risky-trades-cache': self.risky_trades_cache}
+
+    def update_trade_cache(self, trade_obj, timestamp=str(time.time()), **kwargs):
+        log.debug('')
+        self.update_cache(trade_obj, self.trade_cache, label=timestamp)
+        return {'trades-cache': self.trade_cache}
 
 #   @pysnooper.snoop('log/nomads-gold.log')
     def update_price_volume_history(self, *update_targets,

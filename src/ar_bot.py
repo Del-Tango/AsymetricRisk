@@ -13,11 +13,12 @@ import pysnooper
 from .ar_reporter import TradingReporter
 from .ar_market import TradingMarket
 from .ar_strategy import TradingStrategy
+from .ar_engine import TradingEngine
 
 from src.backpack.bp_ensurance import ensure_files_exist
 from src.backpack.bp_convertors import json2dict, dict2json
 from src.backpack.bp_computers import compute_percentage, compute_percentage_of
-from src.backpack.bp_general import stdout_msg, pretty_dict_print
+from src.backpack.bp_general import stdout_msg, pretty_dict_print, write2file
 
 log = logging.getLogger('AsymetricRisk')
 
@@ -57,6 +58,7 @@ class TradingBot():
         self.trading_stragies = kwargs.get('trading-strategies', 'vwap') # vwap,rsi,macd,adx
         self.max_trades = int(kwargs.get('max-trades', 3))
         self.market = {}
+        self.engine = None
         self.amount = float(kwargs.get('order-amount', 1))
         self.quote_amount = float(0)    # Amount value in quote currency
         self.trade_amount = float(0)    # Amount value in base currency
@@ -94,6 +96,19 @@ class TradingBot():
         self.analyzer = self.setup_analyzer(**kwargs)
         self.trades_today = {}
         self.trades_archive = {}
+        self.trades_cache = {}
+        self.cargo = {'television': 'src/TeleVision/television.py'}
+        self.cargo_details = {
+            'television': {
+                'conf-file': kwargs.get('conf-dir', 'conf') + '/' \
+                    + kwargs.get('tv-conf-file', 'conf/television.conf.json'),
+                'log-file': kwargs.get('log-dir') + '/' \
+                    + kwargs.get('log-file', 'asymetric_risk.log'),
+                'input-file': kwargs.get('tv-in-file', 'dta/television.in'),
+                'bot-token': kwargs.get('tv-bot-token', str()),
+                'chat-id': kwargs.get('tv-chat-id', str()),
+            }
+        }
 
     # FETCHERS
 
@@ -246,6 +261,20 @@ class TradingBot():
             return True
         return False
 
+    # FORMATTERS
+
+    def format_television_scroll_msg_args(self, **kwargs):
+        log.debug('')
+        arguments = [
+            '--config-file=' + self.cargo_details['television']['conf-file'],
+            '--log-file=' + self.cargo_details['television']['log-file'],
+            '--action=scroll-msg',
+            '--bot-token=' + self.cargo_details['television']['bot-token'],
+            '--chat-id=' + self.cargo_details['television']['chat-id'],
+            '--input-file=' + self.cargo_details['television']['input-file'],
+        ]
+        return ' '.join(arguments)
+
     # UPDATERS
 
     def update_trades(self, trade_dict, target='today', **kwargs):
@@ -377,109 +406,6 @@ class TradingBot():
     # ACTIONS
 
 #   @pysnooper.snoop()
-    def generate_nightly_reports(self, *args, **kwargs):
-        log.debug('')
-        if not self.reporter:
-            log.error('No trading reporter set up!')
-            return False
-        details = kwargs.copy()
-        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
-        report_types = self.fetch_valid_report_types()
-        for report_label in self.nightly_reports:
-            if report_label not in report_types:
-                stdout_msg(
-                    'Invalid report label! Skipping ({})'.format(report_label),
-                    err=True
-                )
-                continue
-            elif report_label == 'success-rate' \
-                    and raw_data.get('trade-history'):
-                raw_data[report_label] = raw_data['trade-history']
-                continue
-            raw_data[report_label] = raw_data_scrapers[report_label](
-                *args, **kwargs
-            )
-        details['raw-report-data'] = raw_data
-        generate = self.reporter.generate(*args, **details)
-        return generate
-
-#   @pysnooper.snoop()
-    def generate_report(self, *args, **kwargs):
-        '''
-        [ INPUT ]: args - Report type labels - *(
-                        trade-history, deposit-history, withdrawal-history,
-                        current-trades, success-rate, 'coin-details',
-                        api-permissions, account-snapshot, market-snapshot
-                    )
-                   kwargs - Context - **{}
-
-        [ RETURN ]: {
-            'flag': False,
-            'reports': {
-                'trade-history': {
-                    'timestamp': '',
-                    'report-id': '',
-                    'report-type': '',
-                    'report-location': '',
-                    'raw-data': {},
-                    'report': {},
-                },
-                'deposit-history': {},
-                'withdrawal-history': {},
-                'current-trades': {},
-                'success-rate': {},
-                'market-snapshot': {},
-                'account-snapshot': {},
-                'api-permissions': {},
-                'coin-details': {},
-
-            }
-            'errors': [{msg: '', type: '', code: ,}],
-        }
-        '''
-        log.debug('')
-        if not self.reporter:
-            log.error('No trading reporter set up!')
-            return False
-        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
-        report_types = self.fetch_valid_report_types()
-        target_reports, details = args or report_types, kwargs.copy()
-        for report_label in target_reports:
-            if report_label not in report_types:
-                stdout_msg(
-                    'Invalid report label! Skipping ({})'.format(report_label),
-                    err=True
-                )
-                continue
-            elif report_label == 'success-rate' \
-                    and raw_data.get('trade-history'):
-                raw_data[report_label] = raw_data['trade-history']
-                continue
-            raw_data[report_label] = raw_data_scrapers[report_label](
-                *args, **kwargs
-            )
-        details['raw-report-data'] = raw_data
-        generate = self.reporter.generate(*args, **details)
-        for report_type in generate['reports']:
-            report_id = generate['reports'][report_type]['report-id']
-            file_path = generate['reports'][report_type]['report-file']
-            stdout_msg(
-                '{} - {}\n{}\n'.format(
-                    report_id, file_path,
-                    pretty_dict_print(json2dict(file_path))
-                ), symbol='NEW REPORT', bold=True
-            )
-        return generate
-
-    def remove_report(self, *args, **kwargs):
-        log.debug('')
-        return self.reporter.remove(*args, **kwargs)
-
-    def list_reports(self, *args, **kwargs):
-        log.debug('')
-        return self.reporter.view(*args, **kwargs)
-
-#   @pysnooper.snoop()
     def trade_watchdog(self, *args, **kwargs):
         log.debug('')
         failures, anchor_file = 0, kwargs.get(
@@ -488,12 +414,8 @@ class TradingBot():
         ensure_files_exist(anchor_file)
         cool_down_seconds = kwargs.get('watchdog-interval', 60)
         market_hours = {
-            'opening': [
-                int(item) for item in kwargs.get('market-open', '08:00').split(':')
-            ],
-            'closing': [
-                int(item) for item in kwargs.get('market-close', '22:00').split(':')
-            ]
+            'opening': kwargs.get('market-open', '08:00').split(':'),
+            'closing': kwargs.get('market-close', '22:00').split(':'),
         }
         market_closed_flag = False
         while True:
@@ -620,6 +542,8 @@ class TradingBot():
         market_details = market.update_details(*market_update_args, **details)
         trade_flag, risk_index, trade = False, 0, None
         trade_values = self.compute_trade_values(details, **kwargs)
+        trade_obj = self.engine.generate(**trade_values)
+        details.update({'trade': trade_obj})
         if details.get('analyze-risk'):
             details.update({
                 'details': market_details,
@@ -636,24 +560,139 @@ class TradingBot():
             trade_flag, risk_index, trade_side, failures = self.analyzer.analyze_risk(
                 **details
             )
-        if risk_index == 0 or not trade_flag:
+        if not trade_flag:  # risk_index == 0 or
             # [ NOTE ]: Trading cycle should stop here according to specified
             #           risk tolerance. Do nothing, try again later.
             stdout_msg('[ N/A ]: Skipping trade, not a good ideea right now.')
-            return False
-        if trade_flag:
-            trade_sides = {'buy': market.buy, 'sell': market.sell,}
-            trade = trade_sides[trade_side](details['trade-amount'], **details)
-            if not trade:
+            if risk_index != 0:
                 stdout_msg(
-                    'Something went wrong! Errors occured during trade! \n'
-                    'Check log file ({}) for more details. God speed!!!'.format(
-                        kwargs.get('log-file')
-                    ), err=True
+                    'Updating ({}) market risky trades with ({})...'
+                    .format(market.ticker_symbol, trade_obj.order_id), info=True
                 )
-        else:
+                market.update_risky_trades_cache(trade_obj)
+                notification = self.television_scroll_msg(
+                    '[ {} ]: Trade ({}) too risky for specified risk tolerance! '
+                    'Manual confirmation required! Please review trade details '
+                    'issue command "/confirm {}" if you wish to continue: \n{}'
+                    .format(
+                        market.ticker_symbol, trade_obj.order_id,
+                        trade_obj.order_id, pretty_dict_print(details)
+                    ), **kwargs
+                )
             return False
+        trade_sides = {'buy': market.buy, 'sell': market.sell,}
+        trade = trade_sides[trade_side](details['trade-amount'], **details)
+        if not trade:
+            stdout_msg(
+                'Something went wrong! Errors occured during trade! \n'
+                'Check log file ({}) for more details. God speed!!!'.format(
+                    kwargs.get('log-file')
+                ), err=True
+            )
         return False if (not trade or trade.get('error')) else trade
+
+#   @pysnooper.snoop()
+    def generate_nightly_reports(self, *args, **kwargs):
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        details = kwargs.copy()
+        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
+        report_types = self.fetch_valid_report_types()
+        for report_label in self.nightly_reports:
+            if report_label not in report_types:
+                stdout_msg(
+                    'Invalid report label! Skipping ({})'.format(report_label),
+                    err=True
+                )
+                continue
+            elif report_label == 'success-rate' \
+                    and raw_data.get('trade-history'):
+                raw_data[report_label] = raw_data['trade-history']
+                continue
+            raw_data[report_label] = raw_data_scrapers[report_label](
+                *args, **kwargs
+            )
+        details['raw-report-data'] = raw_data
+        generate = self.reporter.generate(*args, **details)
+        return generate
+
+#   @pysnooper.snoop()
+    def generate_report(self, *args, **kwargs):
+        '''
+        [ INPUT ]: args - Report type labels - *(
+                        trade-history, deposit-history, withdrawal-history,
+                        current-trades, success-rate, 'coin-details',
+                        api-permissions, account-snapshot, market-snapshot
+                    )
+                   kwargs - Context - **{}
+
+        [ RETURN ]: {
+            'flag': False,
+            'reports': {
+                'trade-history': {
+                    'timestamp': '',
+                    'report-id': '',
+                    'report-type': '',
+                    'report-location': '',
+                    'raw-data': {},
+                    'report': {},
+                },
+                'deposit-history': {},
+                'withdrawal-history': {},
+                'current-trades': {},
+                'success-rate': {},
+                'market-snapshot': {},
+                'account-snapshot': {},
+                'api-permissions': {},
+                'coin-details': {},
+
+            }
+            'errors': [{msg: '', type: '', code: ,}],
+        }
+        '''
+        log.debug('')
+        if not self.reporter:
+            log.error('No trading reporter set up!')
+            return False
+        raw_data_scrapers, raw_data = self.fetch_report_data_scrapers(), {}
+        report_types = self.fetch_valid_report_types()
+        target_reports, details = args or report_types, kwargs.copy()
+        for report_label in target_reports:
+            if report_label not in report_types:
+                stdout_msg(
+                    'Invalid report label! Skipping ({})'.format(report_label),
+                    err=True
+                )
+                continue
+            elif report_label == 'success-rate' \
+                    and raw_data.get('trade-history'):
+                raw_data[report_label] = raw_data['trade-history']
+                continue
+            raw_data[report_label] = raw_data_scrapers[report_label](
+                *args, **kwargs
+            )
+        details['raw-report-data'] = raw_data
+        generate = self.reporter.generate(*args, **details)
+        for report_type in generate['reports']:
+            report_id = generate['reports'][report_type]['report-id']
+            file_path = generate['reports'][report_type]['report-file']
+            stdout_msg(
+                '{} - {}\n{}\n'.format(
+                    report_id, file_path,
+                    pretty_dict_print(json2dict(file_path))
+                ), symbol='NEW REPORT', bold=True
+            )
+        return generate
+
+    def remove_report(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.remove(*args, **kwargs)
+
+    def list_reports(self, *args, **kwargs):
+        log.debug('')
+        return self.reporter.view(*args, **kwargs)
 
     def close_trade(self, *args, **kwargs):
         '''
@@ -701,7 +740,7 @@ class TradingBot():
         }
         return values
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def compute_order_price(self, order_price, **kwargs):
         '''
         [ NOTE ]: order_price:      price of 1 unit of BASE currency at which you
@@ -850,6 +889,29 @@ class TradingBot():
         return self.profit_baby
 
     # GENERAL
+
+    def television_scroll_msg(self, msg, **kwargs):
+        log.debug('')
+        arguments = self.format_television_scroll_msg_args(**kwargs)
+        write = write2file(
+            msg, file_path=self.cargo_details['television']['input-file'],
+            mode='w'
+        )
+        if not write:
+            stdout_msg(
+                'Something went wrong! Could not write to file ({})'.format(
+                    self.cargo_details['television']['input-file']
+                ), err=True
+            )
+            return False
+        command = str(self.cargo['television']) + ' ' + arguments
+        stdout, stderr, exit = shell_cmd(command)
+        if exit != 0:
+            stdout_msg(
+                'Failed to issue scroll message to TeleVision bot!', warn=True
+            )
+            return False
+        return True
 
     def bot_cooldown(self, cool_down_seconds, silent=False):
         log.debug('')
@@ -1048,6 +1110,11 @@ class TradingBot():
 
     # SETUP
 
+    def setup_engine(self, **kwargs):
+        log.debug('')
+        engine = TradingEngine(**kwargs)
+        return engine
+
     def setup_analyzer(self, **kwargs):
         log.debug('')
         analyzer = TradingStrategy(**kwargs)
@@ -1084,6 +1151,11 @@ class TradingBot():
         log.debug('')
         failures = 0
         self.market = self.setup_market(**kwargs) # {'BTC/USDT': TradingMarket()}
+        if not self.market:
+            failures += 1
+        self.engine = self.setup_engine(**kwargs) # TradingEngine()
+        if not self.engine:
+            failures += 1
         if not self.market:
             stdout_msg('Could not set up trading market!', nok=True)
             failures += 1

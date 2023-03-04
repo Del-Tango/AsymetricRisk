@@ -622,5 +622,46 @@ Options:
                         Creates and validates a new order but does not send it
                         into the matching engine..
 
+
+[ SCHEMATTIX ]: Integration with TeleVision bot -
+
+    [ Ex ]: A trade opportunity was identified with a risk higher than the risk
+            tolerance specified.
+
+    Scroll MSG1 - Are you really too scared for this juicy trade?! (12345)
+    Cmd         - /confirm 12345
+    Info        - Processing confirmation of trade 12345...
+    Scroll MSG2 - Trade detail: {Profit BABY!...}
+
+
+            ARisk_______________________________________________
+                        |      ^             |
+                        |      |             |
+                        |      |             |
+                        |      | Read        |
+                        |      |             |
+                        |      |             |
+                        | _____|___________  |
+                 Scroll | |               |  | Scroll
+                  MSG1  | |AR Instructions|  |  MSG2
+                        | |    File       |  |
+                        | |_______________|  |
+                        |      ^             |
+                        |      |             |
+                        |      | Write       |
+                        |      |             |
+                        v      |             v
+            TV__________________________________________________
+                        |      ^       |     |
+                        |      |       |     |
+                        |      |       |     |
+                    Msg |      | Cmd   |Info | Reply
+                        |      |       |     |
+                        |      |       |     |
+                        |      |       |     |
+                        v      |       v     v
+
+                        Chat Room      Chat Room
+
 EOF
 

@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-# TODO - Unimplemented
 #
 # Excellent Regards, the Alveare Solutions #!/Society -x
 #
@@ -11,20 +10,30 @@ import pysnooper
 import optparse
 import json
 import time
+import datetime
 
 from src.backpack.bp_log import log_init
-from src.backpack.bp_ensurance import ensure_files_exist, ensure_directories_exist
+from src.backpack.bp_ensurance import (
+    ensure_files_exist, ensure_directories_exist
+)
 from src.backpack.bp_shell import shell_cmd
-from src.backpack.bp_checkers import check_file_exists, check_pid_running
-from src.backpack.bp_general import stdout_msg, clear_screen, pretty_dict_print
+from src.backpack.bp_checkers import (
+    check_file_exists, check_pid_running, check_seconds_passed
+)
+from src.backpack.bp_general import (
+    stdout_msg, clear_screen, pretty_dict_print, read_file, write2file
+)
 from src.backpack.bp_convertors import dict2json, json2dict
-from src.backpack.bp_filters import filter_file_name_from_path, filter_directory_from_path
+from src.backpack.bp_filters import (
+    filter_file_name_from_path, filter_directory_from_path
+)
+from src.backpack.bp_threads import threadify
 from src.ar_bot import TradingBot
 
 AR_SCRIPT_NAME = "AsymetricRisk"
 AR_SCRIPT_DESCRIPTION = "Crypto Trading Bot"
 AR_VERSION = "AR15"
-AR_VERSION_NO = "1.0"
+AR_VERSION_NO = "1.1"
 
 # COLD ARGS
 
@@ -42,16 +51,23 @@ AR_DEFAULT = {
     "tmp-dir":                  "/tmp",
     "log-file":                 "asymetric_risk.log",
     "conf-file":                "asymetric_risk.conf.json",
+    "tv-conf-file":             "television.conf.json",
     "init-file":                __file__,
+    "tv-init-file":             "tv-init",
+    "tv-pid-file":              ".tv-bot.pid",
+    "input-file":               "dta/television.out",
     "watchdog-pid-file":        "ar-bot.pid",
     "watchdog-anchor-file":     "ar-bot.anchor",
     "log-format":               "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
     "timestamp-format":         "%d/%m/%Y-%H:%M:%S",
-    "api-key":                  os.environ.get('binance_api'),
-    "api-secret":               os.environ.get('binance_secret'),
-    "taapi-key":                os.environ.get('taapi_api'),
+    "api-key":                  os.environ.get('AR_BINANCE_API'),
+    "api-secret":               os.environ.get('AR_BINANCE_SECRET'),
+    "taapi-key":                os.environ.get('AR_TAAPI_API'),
+    "tv-bot-token":             os.environ.get('TV_BOT_TOKEN'),
+    "tv-chat-id":               os.environ.get('TV_CHAT_ID'),
     "api-url":                  'https://testnet.binance.vision/api',
     "taapi-url":                "https://api.taapi.io",
+    "trade-timeout":            180,
     "max-trades":               3,
     "trade-amount":             0,
     "quote-trade-amount":       1,
@@ -76,6 +92,7 @@ AR_DEFAULT = {
     "test":                     True,
     "debug":                    True,
     "silence":                  False,
+    "television":               False,
     "action":                   '', #(start-watchdog | trade-report | withdrawal-report | deposit-report | stop-watchdog | single-trade | view-report | report | remove-report | get-config | market-details | account-details | list-reports)
     "analyze-risk":             True,
     "strategy":                 "vwap,rsi,macd,adx,ma,ema,price,volume",
@@ -141,6 +158,9 @@ AR_DEFAULT = {
     "report-id-characters":     "abcdefghijklmnopqrstuvwxyz0123456789",
     "report-location":          "./data/reports",
 }
+AR_CARGO = {
+    "television": AR_DEFAULT['src-dir'] + '/TeleVision/television.py',
+}
 
 log = logging.getLogger('AsymetricRisk')
 trading_bot = None
@@ -177,7 +197,10 @@ def fetch_action_handlers():
 
 def check_preconditions(**kwargs):
     log.debug('')
-    stdout_msg('Verifying action preconditions...', info=True)
+    stdout_msg(
+        'Verifying action preconditions...', info=True,
+        silence=AR_DEFAULT['silence']
+    )
     checkers = {
         'preconditions-conf': check_config_file(**kwargs),
         'preconditions-log': check_log_file(**kwargs),
@@ -192,13 +215,17 @@ def check_trading_bot(**kwargs):
     log.debug('')
     if str(kwargs.get('action')) == 'stop-watchdog':
         return
-    stdout_msg('Checking trading bot setup properly...', info=True)
+    stdout_msg(
+        'Checking trading bot setup properly...', info=True,
+        silence=AR_DEFAULT['silence']
+    )
     if trading_bot and isinstance(trading_bot, TradingBot):
         stdout_msg('Trading bot!', ok=True)
         return trading_bot
     stdout_msg('No trading bot found!', nok=True)
     stdout_msg('Creating new trading bot...', info=True)
-    return create_trading_bot(**AR_DEFAULT)
+#   return create_trading_bot(**AR_DEFAULT)
+    return setup_trading_bot(**AR_DEFAULT)
 
 def check_config_file(**kwargs):
     log.debug('')
@@ -239,6 +266,31 @@ def check_log_file(**kwargs):
     return return_flag
 
 # ACTIONS
+
+#@pysnooper.snoop()
+def action_start_watchdog(*args, **kwargs):
+    '''
+    [ RETURN ]: Trading watchdog exit code - type int
+    '''
+    log.debug('')
+    stdout_msg('[ ACTION ]: Start Trading Bot', bold=True)
+    stdout_msg('Starting {} trading bot in watchdog mode...'
+        .format(AR_SCRIPT_NAME), info=True
+    )
+    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
+    try:
+        watchdog = trading_bot.trade_watchdog(
+            *kwargs.get('strategy').split(','), **kwargs
+        )
+        if watchdog == 0:
+            stdout_msg('Trading bot!', ok=True)
+        return watchdog
+    except KeyboardInterrupt as e:
+        log.debug(e)
+        return 0
+    except Exception as e:
+        log.error(e)
+    return 1
 
 def action_report(*args, **kwargs):
     '''
@@ -308,11 +360,11 @@ def action_list_reports(*args, **kwargs):
 #@pysnooper.snoop()
 def action_get_config(*args, **kwargs):
     log.debug('')
-    log_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
+    conf_file_path = AR_DEFAULT['conf-dir'] + '/' + AR_DEFAULT['conf-file']
     stdout_msg(
-        '[ ACTION ]: Get Config - {}'.format(log_file_path), bold=True
+        '[ ACTION ]: Get Config - {}'.format(conf_file_path), bold=True
     )
-    stdout_msg(pretty_dict_print(json2dict(log_file_path)))
+    stdout_msg(pretty_dict_print(json2dict(conf_file_path)))
     return 0
 
 #@pysnooper.snoop()
@@ -425,31 +477,6 @@ def action_stop_watchdog(*args, **kwargs):
     stdout_msg('Trading bot process ({}) terminated!'.format(pid), ok=True)
     return 0
 
-#@pysnooper.snoop()
-def action_start_watchdog(*args, **kwargs):
-    '''
-    [ RETURN ]: Trading watchdog exit code - type int
-    '''
-    log.debug('')
-    stdout_msg('[ ACTION ]: Start Trading Bot', bold=True)
-    stdout_msg('Starting {} trading bot in watchdog mode...'
-        .format(AR_SCRIPT_NAME), info=True
-    )
-    ensure_market = trading_bot.ensure_trading_market_setup(**kwargs)
-    try:
-        watchdog = trading_bot.trade_watchdog(
-            *kwargs.get('strategy').split(','), **kwargs
-        )
-        if watchdog == 0:
-            stdout_msg('Trading bot!', ok=True)
-        return watchdog
-    except KeyboardInterrupt as e:
-        log.debug(e)
-        return 0
-    except Exception as e:
-        log.error(e)
-    return 1
-
 # HANDLERS
 
 #@pysnooper.snoop()
@@ -457,6 +484,11 @@ def handle_actions(actions=[], *args, **kwargs):
     log.debug('')
     failure_count = 0
     handlers = fetch_action_handlers()
+    # NOTE: Only starts if CLI arg --television is received
+    if kwargs.get('television', AR_DEFAULT['television']):
+        tv_setup = setup_television_bot_ctrls(**kwargs)
+        if not tv_setup:
+            failure_count += 1
     for action_label in actions:
         stdout_msg('Processing action... ({})'.format(action_label), info=True)
         if action_label not in handlers.keys():
@@ -542,6 +574,10 @@ def create_command_line_parser():
             -Z  | --ticker-symbol BTC/USDT \\   # Market identifier
             -P  | --profit-baby 10 \\           # Stop trading bot at X% gains of start account value
             -x  | --max-trades 3 \\             # Maximum number of trades allowed per trading day
+                | --television \\
+                | --tv-bot-token "********************************************" \\
+                | --tv-chat-id "**************"\\
+                | --trade-timeout 180 \\
                 | --history-backtrack 14 \\     # General period backtrack value for indicator history
                 | --history-backtracks 14 \\    # General period backtracks value for indicator history
                 | --stop-loss 10 \\             # Set trading stop loss at X% of amount
@@ -676,8 +712,73 @@ def process_command_line_options(parser):
         'max-trades': process_max_trades_argument(parser, options),
         'market-open': process_market_open_argument(parser, options),
         'market-close': process_market_close_argument(parser, options),
+        'television': process_television_argument(parser, options),
+        'tv-bot-token': process_tv_bot_token_argument(parser, options),
+        'tv-chat-id': process_tv_chat_id_argument(parser, options),
+        'trade-timeout': process_trade_timeout_argument(parser, options),
     }
     return processed
+
+def process_television_argument(parser, options)
+    global AR_DEFAULT
+    log.debug('')
+    value = options.television
+    if value == None:
+        log.warning(
+            'No TeleVision flag provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['television'])
+        )
+        return False
+    AR_DEFAULT['television'] = value
+    stdout_msg(
+        'TeleVision Flag setupi ({})'.format(AR_DEFAULT['television']), ok=True
+    )
+    return True
+
+def process_tv_bot_token_argument(parser, options)
+    global AR_DEFAULT
+    log.debug('')
+    value = options.tv_bot_token
+    if value == None:
+        log.warning(
+            'No TeleVision Bot Token provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['tv-bot-token'])
+        )
+        return False
+    AR_DEFAULT['tv-bot-token'] = value
+    stdout_msg('TeleVision Bot Token setup', ok=True)
+    return True
+
+def process_tv_chat_id_argument(parser, options)
+    global AR_DEFAULT
+    log.debug('')
+    value = options.tv_chat_id
+    if value == None:
+        log.warning(
+            'No TeleVision Chat ID provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['tv-chat-id'])
+        )
+        return False
+    AR_DEFAULT['tv-chat-id'] = value
+    stdout_msg('TeleVision Chat ID setup', ok=True)
+    return True
+
+def process_trade_timeout_argument(parser, options):
+    global AR_DEFAULT
+    log.debug('')
+    value = options.trade_timeout
+    if value == None:
+        log.warning(
+            'No trade timeout provided. Defaulting to ({}).'\
+            .format(AR_DEFAULT['trade-timeout'])
+        )
+        return False
+    AR_DEFAULT['trade-timeout'] = value
+    stdout_msg(
+        'Trade Timeout setup ({})'.format(AR_DEFAULT['trade-timeout']),
+        ok=True
+    )
+    return True
 
 def process_max_trades_argument(parser, options):
     global AR_DEFAULT
@@ -1993,6 +2094,24 @@ def add_command_line_parser_options(parser):
              'report | get-config)',
     )
     parser.add_option(
+        '', '--television', dest='television', action='store_true',
+        help='Make ARisk use TeleVision to send updates over Telegram.
+    )
+    parser.add_option(
+        '', '--tv-bot-token', dest='tv_bot_token', type='string', metavar='TOKEN',
+        help='String token the Telegram @BotFather gave you for your /newbot'
+    )
+    parser.add_option(
+        '', '--tv-chat-id', dest='tv_chat_id', type='string', metavar='ID',
+        help='Target Chatroom ID. You can ask @RawDataBot for it using /start'
+    )
+    parser.add_option(
+        '', '--trade-timeout', dest='trade_timeout', type='int', metavar='SECONDS',
+        help='Number of seconds until a trade object expires after it has been '
+             'generated but not executed yet due to risk tolerance and workflow '
+             'constraints.'
+    )
+    parser.add_option(
         '', '--history-backtrack', dest='backtrack', type='int', metavar='PERIOD',
         help='General backtrack value for indicator history. Backtrack returns a '
              'single candle value from X periods back. Given value can be overwritten '
@@ -2313,12 +2432,50 @@ def parse_command_line_arguments():
 
 # CLEANERS
 
+def cleanup_television_process(*args, **kwargs):
+    log.debug('')
+    exit = False
+    file_lines = read_file(
+        file_path=kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']),
+        mode='r', **kwargs
+    )
+    tv_pid = 0 if not file_lines else int(file_lines[0])
+    if not tv_pid:
+        log.debug('TeleVision not running.')
+        exit = True
+    else:
+        cmd_out, cmd_err, exit_code = shell_cmd(
+            'kill -9 ' + str(tv_pid) + ' &> /dev/null'
+        )
+        exit = exit_code
+        if exit_code != 0:
+            stdout_msg(
+                'Issues encountered when killing process {}! Details: {}, Exit ({})'
+                .format(tv_pid, cmd_err, exit_code), nok=True
+            )
+    return exit
+
+def cleanup_television_pid_file(*args, **kwargs):
+    log.debug('')
+    exit = False
+    file_path = kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file'])
+    try:
+        if os.path.exists(file_path):
+            remove_fl = os.remove(file_path)
+        exit = True
+    except Exception as w:
+        log.warning(w)
+        exit = False
+    return exit
+
 def cleanup(*args, **kwargs):
     log.debug('')
     return_dict = {}
     cleanup = {
         'watchdog-anchor-file': cleanup_watchdog_anchor_file, #(*args, **kwargs),
         'watchdog-pid-file': cleanup_watchdog_pid_file,
+        'television': cleanup_television_process,
+        'television-pid-file': cleanup_television_pid_file,
     }
     stdout_msg(
         'Cleaning up... Jordan Peterson recommendation', info=True
@@ -2374,7 +2531,148 @@ def cleanup_watchdog_anchor_file(*args, **kwargs):
         exit = False
     return exit
 
+# INTERPRETERS
+
+def interpret_television_bot_command_confirm(command, trading_bot_obj, **kwargs):
+    log.debug('')
+    order_id = command.split(' ')[1]
+    market = trading_bot_obj.fetch_active_market()
+    if not market:
+        stdout_msg('No active market found for trading bot!', err=True)
+        return False
+    risky_trade = market.search_risky_trade(order_id, market.risky_trades_cache)
+    if not risky_trade:
+        msg = 'Risky trade not found! ({})'.format(order_id)
+        stdout_msg(msg, nok=True)
+        television_scroll_file(msg, **kwargs)
+        return False
+    risky_trade_obj = risky_trade.values()[0]
+    if risky_trade_obj.expired or check_seconds_passed(
+            risky_trade_obj.create_date, datetime.datetime.now(),
+            kwargs.get('trade-timeout', AR_DEFAULT['trade-timeout'])):
+        msg = 'Risky trade expired! ({}) can no longer be executed.'\
+            .format(order_id)
+        stdout_msg(msg, warn=True)
+        market.cleanup_cache(risky_trade.keys()[0])
+        television_scroll_file(msg, **kwargs)
+        return False
+    trade = market.run(risky_trade_obj)
+    if not trade:
+        msg = 'Could not execute risky trade! Details: {}, {}'\
+            .format(order_id, trade)
+        stdout_msg(msg, nok=True)
+        television_scroll_file(msg, **kwargs)
+        return False
+    market.cleanup_cache(risky_trade.keys()[0])
+    television_scroll_file('Trade executed ({})'.format(order_id), **kwargs)
+    return trade
+
+def interpret_television_bot_command_deny(command, trading_bot_obj, **kwargs):
+    log.debug('')
+    order_id = command.split(' ')[1]
+    market = trading_bot_obj.fetch_active_market()
+    if not market:
+        stdout_msg('No active market found for trading bot!', err=True)
+        television_scroll_file(
+            'Server side error detected! Check log files!', **kwargs
+        )
+        return False
+    risky_trade = market.search_risky_trade(order_id, market.risky_trades_cache)
+    if not risky_trade:
+        msg = 'Risky trade not found! ({})'.format(order_id)
+        stdout_msg(msg, nok=True)
+        television_scroll_file(msg, **kwargs)
+        return False
+    cleanup = market.cleanup_cache(risky_trade.keys()[0])
+    if not cleanup:
+        msg = 'Something went wrong. Could not remove ({}) from risky trade cache!'\
+            .format(order_id)
+    else:
+        msg = '({}) removed from risky trade cache!'.format(order_id)
+    television_scroll_file(msg, **kwargs)
+    return True
+
+def interpret_television_bot_command_state(command, trading_bot_obj, **kwargs):
+    log.debug('')
+    account_value, free, locked = trading_bot_obj.update_current_account_value()
+    data_scraped = trading_bot_obj.fetch_report_data_scrapers()
+    formatted_data = '[ Account Value ]: {}\n\n Free: {}\n Locked: {}\n\n'\
+        .format( account_value, free, locked)
+    formatted_data = formatted_data + '[ Account Snapshot ]: \n\n' \
+        + pretty_dict_print(data_scraped['account-snapshot']) + '\n\n'
+    formatted_data = formatted_data + '[ API Permissions ]: \n\n' \
+        + pretty_dict_print(data_scraped['api-permissions']) + '\n\n'
+    formatted_data = formatted_data + '[ Current Trades ]: \n\n' \
+        + pretty_dict_print(data_scraped['current-trades']) + '\n\n'
+    formatted_data = formatted_data + '[ Success Rate ]: \n\n' \
+        + pretty_dict_print(data_scraped['success-rate'])
+    return television_scroll_file(formatted_data, **kwargs)
+
+def interpret_television_bot_command_kill(command, trading_bot_obj, **kwargs):
+    log.debug('')
+    return action_stop_watchdog()
+
 # GENERAL
+
+def television_scroll_file(*args, **kwargs):
+    log.debug('')
+    file_path = kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file']
+    content = ' '.join(args)
+    write2file(content, file_path=file_path, mode='w')
+    arguments = format_television_scroll_file_args(**kwargs)
+    command = AR_CARGO['television'] + ' ' + arguments
+    out, err, exit = shell_cmd(command)
+    if exit != 0:
+        log.error('TeleVision scroll-file call failed! Exit ({})'.format(exit))
+    elif err:
+        log.warning(
+            'Possible issues detected during TeleVision scroll-file call! {}'
+            .format(err)
+        )
+    return True if exit == 0 else False
+
+def arisk_command_interpreter(command, trading_bot_obj, **kwargs):
+    log.debug('')
+    if not trading_bot_obj:
+        stdout_msg('No (A)Risk trading bot instance found!', err=True)
+        return False
+    cmd = command.split(' ')[0].lstrip('/')
+    handlers = {
+        'confirm': interpret_television_bot_command_confirm,
+        'deny': interpret_television_bot_command_deny,
+        'state': interpret_television_bot_command_state,
+        'kill': interpret_television_bot_command_kill,
+    }
+    if cmd not in handlers:
+        stdout_msg(
+            'Invalid TeleVision bot command received! ({})'.format(cmd),
+            err=True
+        )
+        return False
+    return handlers[cmd](command, trading_bot_obj, **kwargs)
+
+def arisky_watchdog(input_file, trading_bot_obj, **kwargs):
+    log.debug('')
+    while True:
+        commands = read_file(file_path=input_file, mode='r', cleanup=True)
+        if not commands:
+            time.sleep(1)
+            continue
+        for command in commands:
+            run = arisk_command_interpreter(command, trading_bot_obj, **kwargs)
+            if 'command' == '/kill':
+                return True
+        time.sleep(1)
+    return True
+
+def start_arisky_watchdog(**kwargs):
+    log.debug('')
+    try:
+        t = threadify(arisky_watchdog, AR_DEFAULT['input-file'], trading_bot, join=False)
+    except Exception as e:
+        log.error(e)
+        return False
+    return t
 
 def update_log():
     global log
@@ -2398,27 +2696,53 @@ def load_config_json():
     if not os.path.isfile(conf_file_path):
         stdout_msg('File not found! ({})'.format(conf_file_path), nok=True)
         return False
-    with open(conf_file_path, 'r', encoding='utf-8', errors='ignore') as conf_file:
-        try:
-            with open(conf_file_path) as fl:
-                content = json.load(fl)
-            AR_DEFAULT.update(content['AR_DEFAULT'])
-            AR_SCRIPT_NAME = content['AR_SCRIPT_NAME']
-            AR_SCRIPT_DESCRIPTION = content['AR_SCRIPT_DESCRIPTION']
-            AR_VERSION = content['AR_VERSION']
-            AR_VERSION_NO = content['AR_VERSION_NO']
-        except Exception as e:
-            log.error(e)
-            stdout_msg(
-                'Could not load config file! ({})'.format(conf_file_path), nok=True
-            )
-            return False
+    try:
+        with open(conf_file_path, 'r', encoding='utf-8', errors='ignore') as fl:
+            content = json.load(fl)
+        AR_DEFAULT.update(content['AR_DEFAULT'])
+        AR_SCRIPT_NAME = content['AR_SCRIPT_NAME']
+        AR_SCRIPT_DESCRIPTION = content['AR_SCRIPT_DESCRIPTION']
+        AR_VERSION = content['AR_VERSION']
+        AR_VERSION_NO = content['AR_VERSION_NO']
+        AR_CARGO = content['AR_CARGO']
+    except Exception as e:
+        log.error(e)
+        stdout_msg(
+            'Could not load config file! ({})'.format(conf_file_path), nok=True
+        )
+        return False
     stdout_msg(
         'Settings loaded from config file! ({})'.format(conf_file_path), ok=True
     )
     return True
 
 # SETUP
+
+def setup_television_bot_ctrl(*args, **kwargs):
+    log.debug('')
+    # [ NOTE ]: Checking for running / starting TeleVision bot-ctrl bg process
+    television_pid = init_television_bot_ctrl_process(**kwargs)
+    if not television_pid or not isinstance(television_pid, int):
+        stdout_msg(
+            'Could not setup TeleVision bot process! Details: {}'
+            .format(television_pid), err=True
+        )
+        return False
+    stdout_msg(
+        'TeleVision bot-ctrl process running with PID ({})'
+        .format(television_pid), ok=True
+    )
+    # [ NOTE ]: Start ARisk input file monitor on background thread that passes
+    # commands to interpreter
+    start_watchdog = start_arisky_watchdog(**kwargs)
+    if not start_watchdog:
+        stdout_msg(
+            'Could not start (A)Risky Watchdog thread! Details: {}'
+            .format(start_watchdog), err=True
+        )
+        return False
+    stdout_msg('(A)Risky Watchdog thread', ok=True)
+    return True
 
 #@pysnooper.snoop()
 def setup_trading_bot(**kwargs):
@@ -2432,9 +2756,57 @@ def setup_trading_bot(**kwargs):
     enter_market = trading_bot.enter_market(**kwargs)
     if not enter_market:
         stdout_msg('Trading Bot could not enter trading market!', warn=True)
+    trading_bot.cargo['television'] = AR_CARGO['television']
     return trading_bot
 
 # FORMATTERS
+
+def format_television_default_cli_args(**kwargs):
+    '''
+    [ RETURN ]: ['--arg1=val1', '--arg2=val2', ...]
+    '''
+    log.debug('')
+    conf_file_path = str(kwargs.get('conf-dir', AR_DEFAULT['conf-dir'])) \
+        + str(kwargs.get('tv-conf-file', AR_DEFAULT['tv-conf-file']))
+    log_file_path = str(kwargs.get('log-dir', AR_DEFAULT['log-dir'])) \
+        + str(kwargs.get('log-file', AR_DEFAULT['log-file']))
+    arguments = [
+        '--config-file=' + conf_file_path,
+        '--log-file=' + log_file_path,
+    ]
+    if kwargs.get('silence', AR_DEFAULT['silence']):
+        arguments.append('--silence')
+    if kwargs.get('debug', AR_DEFAULT['debug']):
+        arguments.append('--debug')
+    return arguments
+
+def format_television_bot_ctrl_cli_args(**kwargs):
+    '''
+    [ WARNING ]: Currently unused!
+
+    [ RETURN ]: '"--arg1=val1" "--arg2=val2" ...'
+    '''
+    log.debug('')
+    arguments = format_television_default_cli_args(**kwargs)
+    arguments.extend([
+        '--action=bot-ctrl',
+        '--bot-token=' + str(kwargs.get('tv-bot-token', AR_DEFAULT['tv-bot-token'])),
+    ])
+    return '"' + '" "'.join(arguments) + '"'
+
+def format_television_scroll_file_args(**kwargs):
+    '''
+    [ RETURN ]: '"--arg1=val1" "--arg2=val2" ...'
+    '''
+    log.debug('')
+    arguments = format_television_default_cli_args(**kwargs)
+    arguments.extend([
+        '--action=scroll-file',
+        '--input-file=' + str(kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file']))
+        '--bot-token=' + str(kwargs.get('tv-bot-token', AR_DEFAULT['tv-bot-token'])),
+        '--chat-id=' + str(kwargs.get('tv-chat-id', AR_DEFAULT['tv-chat-id']))
+    ])
+    return '"' + '" "'.join(arguments) + '"'
 
 def format_header_string():
     header = '''
@@ -2455,6 +2827,36 @@ def display_header():
     return True
 
 # INIT
+
+#@pysnooper.snoop()
+def init_television_bot_ctrl_process(*args, **kwargs):
+    '''
+    [ RETURN ]: Process ID
+    '''
+    log.debug('')
+    # WARNING: Background process not persistent! Cannot detach process.. yet
+    # NOTE: In order to get around this, ./tv-init must be configured and run
+    # manually before executing this script with the --television argument.
+    stdout_msg(
+        'Make sure TeleVision bot-ctrl process is already running by executing '
+        './{}. Fetching PID from file ({})'.format(
+            kwargs.get('tv-init-file', AR_DEFAULT['tv-init-file']),
+            kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']),
+        ), warn=True
+    )
+    tv_pid_file = kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file'])
+    if not check_file_exists(tv_pid_file):
+        stdout_msg(
+            'TeleVision bot-ctrl process not running! PID file not found ({})'
+            .format(tv_pid_file), err=True
+        )
+        return False
+    pid_file_content = read_file(
+        file_path=kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']), mode='r'
+    )
+    tv_pid = 0 if not pid_file_content \
+        else int(str(pid_file_content[0]).replace('\\n\'', '').replace('b\'', ''))
+    return tv_pid
 
 # @pysnooper.snoop()
 def init_asymetric_risk(*args, **kwargs):
@@ -2491,4 +2893,27 @@ if __name__ == '__main__':
     exit(EXIT_CODE)
 
 # CODE DUMP
+
+#def init_television_bot_ctrl_process(*args, **kwargs):
+#   command = 'nohup bash ./' + str(kwargs.get('tv-init-file', AR_DEFAULT['tv-init-file']))
+#   out, err, exit = shell_cmd(command)
+#   if exit != 0:
+#       stdout_msg('Could not start TeleVision bot-ctrl process!', warn=True)
+#       return False
+#   tv_pid = int(out.replace('\\n\'', '').replace('b\'', ''))
+
+    # TODO - Uncomment when init_television_bot_ctrl_process can start a
+    # detached background process and ARisk won't rely on the ./tv-init crutch
+#def setup_television_bot_ctrl(*args, **kwargs):
+#   write_pid_file = write2file(
+#       television_pid, mode='w',
+#       file_path=kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']),
+#   )
+#   if not write_pid_file:
+#       stdout_msg(
+#           'Could not write TeleVision PID to file! Details: PID {}, {}'
+#           .format(television_pid, write_pid_file), err=True
+#       )
+#       return False
+
 

@@ -8,7 +8,7 @@ cat <<EOF
     ___________________________________________________________________________
 
      *                          *  Asymetric Risk  *                         *
-    ________________________________________________________v1.0AR15___________
+    ________________________________________________________v1.1AR15___________
                 Excellent Regards, the Alveare Solutions #!/Society -x
 
 
@@ -59,6 +59,15 @@ cat <<EOF
             * AR_DEFAULT['taapi-key']=
             * AR_DEFAULT['taapi-url']=
 
+    [ TeleVision ]: Telegram bot
+
+        [ NOTE ]: Also, if you plan on using TeleVision to receive notifications
+            from (A)Risk and control the bot via Telegram, a Bot Token take from
+            the BotFather and your Chat ID needs to be specified.
+
+            * AR_DEFAULT['tv-bot-token']=
+            * AR_DEFAULT['tv-chat-id']=
+
 [ NOTE ]: The config file you need to update is located at -
 
     ./conf/asymetric_risk.conf.json
@@ -74,6 +83,16 @@ cat <<EOF
         "conf-dir":                 "conf",
         "log-file":                 "asymetric_risk.log",
         "conf-file":                "asymetric_risk.conf.json",
+        "tv-conf-file":             "television.conf.json",
+        "tv-pid-file":              ".tv-bot.pid",
+        "tv-in-file":               "dta/television.in",
+        "tv-out-file":              "dta/television.out",
+        "tv-bot-token":             "<SoMuchNopeGetYourOwn>",
+            [ NOTE ]: Token you received from https://t.me/Botfather
+
+        "tv-chat-id":               "<SoMuchNopeGetYourOwn>",
+            [ NOTE ]: Can be found from @raw_info_bot with /start command
+
         "watchdog-anchor-file":     ".ar-bot.anchor",
         "log-format":               "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
         "timestamp-format":         "%d/%m/%Y-%H:%M:%S",
@@ -300,6 +319,36 @@ cat <<EOF
             [ NOTE ]: Directory where reports will be generated.
     }
 
+[ CONFIG ]: Tweak it out - asymetric_risk.conf.json
+
+    "TV_DEFAULT": {
+         "log-file":                 "log/television.log",
+         "conf-file":                "conf/television.conf.json",
+         "input-file":               "dta/television.in",
+         "out-file":                 "dta/television.out",
+         "log-format":               "[ %(asctime)s ] %(name)s [ %(levelname)s ] %(thread)s - %(filename)s - %(lineno)d: %(funcName)s - %(message)s",
+         "timestamp-format":         "%d/%m/%Y-%H:%M:%S",
+         "target-url":               "https://api.telegram.org",
+         "message":                  "TeleVision works!",
+         "bot-token":                "<SoMuchNopeGetYourOwn>",
+         "chat-id":                  "<SoMuchNopeGetYourOwn>",
+         "action":                   "scroll-file",
+         "poll-interval":            0.0,
+         "scroll-interval":          1,
+         "watchdog":                 false,
+         "silence":                  false,
+         "debug":                    false
+    }
+
+[ TELEVISION ]: Setup Telegram bot-ctrl background process
+
+    [ Ex ]: ~$ ./tv-init
+
+    [ NOTE ]: Takes in messages via the television.in file, sends it to the
+        Telegram chat room, and when commands are fetched from the user via the
+        chat room the are written to television.out in order to be process by
+        the (A)Risk RiskyWatchdog thread.
+
 [ TRADE ]: Take (A)Risk for a ride and GO Big or learn something!
 
     [ NOTE ]: No matter what happens, push back the tears in public :'(
@@ -350,5 +399,7 @@ cat <<EOF
                 --risk-tolerance high \\
                 --analyze-risk \\
                 &> /dev/null &                  # Redirect all STDOUT && STDERR messages to a black whole while running it as a daemon in the background
+
+
 
 EOF
