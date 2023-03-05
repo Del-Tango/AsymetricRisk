@@ -47,7 +47,7 @@ AR_DEFAULT = {
     "lib-dir":                  AR_PROJECT_DIR + "/lib",
     "src-dir":                  AR_PROJECT_DIR + "/src",
     "dox-dir":                  AR_PROJECT_DIR + "/dox",
-    "dta-dir":                  AR_PROJECT_DIR + "/data",
+    "dta-dir":                  AR_PROJECT_DIR + "/dta",
     "tmp-dir":                  "/tmp",
     "log-file":                 "asymetric_risk.log",
     "conf-file":                "asymetric_risk.conf.json",

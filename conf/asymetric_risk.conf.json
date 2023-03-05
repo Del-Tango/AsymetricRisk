@@ -12,7 +12,7 @@
          "lib-dir":                  "lib",
          "src-dir":                  "src",
          "dox-dir":                  "dox",
-         "dta-dir":                  "data",
+         "dta-dir":                  "dta",
          "bin-dir":                  "/usr/local/sbin",
          "tmp-dir":                  "/tmp",
          "cron-dir":                 "/var/spool/cron/crontabs/risky",
