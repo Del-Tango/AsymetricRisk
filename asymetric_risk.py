@@ -2664,7 +2664,7 @@ def television_msg(*args, **kwargs):
         return True
     return
 
-@pysnooper.snoop()
+#@pysnooper.snoop()
 def television_scroll_file(*args, **kwargs):
     log.debug('')
     file_path = kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file'])
