@@ -208,9 +208,13 @@ def action_scroll_msg(*args, **kwargs):
             )
     return 0
 
+#@pysnooper.snoop()
 def action_scroll_file(*args, **kwargs):
     log.debug('')
-    return action_scroll(*TV_DEFAULT['input-file'].split(','), **kwargs)
+    log.debug('Action *args, **kwargs - {}, {}'.format(args, kwargs))
+    in_files = kwargs.get('input-file', TV_DEFAULT['input-file']).split(',')
+    log.debug('Input files: {}'. format(in_files))
+    return action_scroll(*in_files, **kwargs)
 
 #@pysnooper.snoop()
 def action_scroll(*args, **kwargs):
@@ -277,6 +281,7 @@ def action_bot_ctrl(*args, **kwargs):
 
 # HANDLERS
 
+#@pysnooper.snoop()
 def handle_actions(*args, **kwargs):
     log.debug('')
     failure_count = 0
@@ -435,7 +440,7 @@ def process_chat_id_argument(parser, options):
 def process_input_file_argument(parser, options):
     global TV_DEFAULT
     log.debug('')
-    file_path = options.config_file_path
+    file_path = options.input_file_path
     if file_path == None:
         log.warning(
             'No input file provided. Defaulting to ({}).'\
@@ -656,6 +661,7 @@ def parse_command_line_arguments():
 
 # INIT
 
+#@pysnooper.snoop()
 def init_television(**kwargs):
     log.debug('')
     display_header()

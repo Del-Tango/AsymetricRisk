@@ -229,6 +229,7 @@ class TradingBot():
 
     # CHECKERS
 
+#   @pysnooper.snoop()
     def check_market_hours(self, opening=[8, 00], closing=[22, 00]):
         '''
         [ NOTE ]: When testing an order and you're at 4am somewhere in eastern
@@ -414,8 +415,12 @@ class TradingBot():
         ensure_files_exist(anchor_file)
         cool_down_seconds = kwargs.get('watchdog-interval', 60)
         market_hours = {
-            'opening': kwargs.get('market-open', '08:00').split(':'),
-            'closing': kwargs.get('market-close', '22:00').split(':'),
+            'opening': [
+                int(item) for item in kwargs.get('market-open', '08:00').split(':')
+            ],
+            'closing': [
+                int(item) for item in kwargs.get('market-close', '22:00').split(':')
+            ],
         }
         market_closed_flag = False
         while True:
@@ -452,7 +457,7 @@ class TradingBot():
                     failures += 1
             self.update_current_account_value(**kwargs)
             if self.profit_target \
-                    and self.current_account_value >= self.profit_target:
+                    and float(self.current_account_value) >= float(self.profit_target):
                 self.mission_accomplished()
                 break
             if trade:

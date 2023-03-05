@@ -518,7 +518,7 @@ def handle_actions(actions=[], *args, **kwargs):
     handlers = fetch_action_handlers()
     # NOTE: Only starts if CLI arg --television is received
     if kwargs.get('television', AR_DEFAULT['television']):
-        tv_setup = setup_television_bot_ctrls(**kwargs)
+        tv_setup = setup_television_bot_ctrl(**kwargs)
         if not tv_setup:
             failure_count += 1
     for action_label in actions:
@@ -2664,6 +2664,7 @@ def television_msg(*args, **kwargs):
         return True
     return
 
+@pysnooper.snoop()
 def television_scroll_file(*args, **kwargs):
     log.debug('')
     file_path = kwargs.get('tv-in-file', AR_DEFAULT['tv-in-file'])
@@ -2817,9 +2818,9 @@ def format_television_default_cli_args(**kwargs):
     '''
     log.debug('')
     conf_file_path = str(kwargs.get('conf-dir', AR_DEFAULT['conf-dir'])) \
-        + str(kwargs.get('tv-conf-file', AR_DEFAULT['tv-conf-file']))
+        + '/' + str(kwargs.get('tv-conf-file', AR_DEFAULT['tv-conf-file']))
     log_file_path = str(kwargs.get('log-dir', AR_DEFAULT['log-dir'])) \
-        + str(kwargs.get('log-file', AR_DEFAULT['log-file']))
+        + '/' + str(kwargs.get('log-file', AR_DEFAULT['log-file']))
     arguments = [
         '--config-file=' + conf_file_path,
         '--log-file=' + log_file_path,
@@ -2880,6 +2881,7 @@ def display_header():
 
 #@pysnooper.snoop()
 def init_television_bot_ctrl_process(*args, **kwargs):
+    global AR_DEFAULT
     '''
     [ RETURN ]: Process ID
     '''
@@ -2889,10 +2891,8 @@ def init_television_bot_ctrl_process(*args, **kwargs):
     # manually before executing this script with the --television argument.
     stdout_msg(
         'Make sure TeleVision bot-ctrl process is already running by executing '
-        './{}. Fetching PID from file ({})'.format(
-            kwargs.get('tv-init-file', AR_DEFAULT['tv-init-file']),
-            kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']),
-        ), warn=True
+        './{}.'.format(kwargs.get('tv-init-file', AR_DEFAULT['tv-init-file']),
+        ), info=True
     )
     tv_pid_file = kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file'])
     if not check_file_exists(tv_pid_file):
@@ -2900,6 +2900,8 @@ def init_television_bot_ctrl_process(*args, **kwargs):
             'TeleVision bot-ctrl process not running! PID file not found ({})'
             .format(tv_pid_file), err=True
         )
+        AR_DEFAULT['television']=False
+        kwargs['television']=False
         return False
     pid_file_content = read_file(
         file_path=kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']), mode='r'
