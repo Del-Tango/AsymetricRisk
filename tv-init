@@ -12,7 +12,7 @@ LOG_FILE="${CURRENT_DIR}/log/asymetric_risk.log"
 CONF_FILE="${CURRENT_DIR}/conf/television.conf.json"
 PID_FILE="${CURRENT_DIR}/.tv-bot.pid"
 ACTION='bot-ctrl'
-CMD="${TV_INIT} --log-file=${LOG_FILE} --config-file=${CONF_FILE} --action=${ACTION} --watchdog"
+CMD="${TV_INIT} --log-file=${LOG_FILE} --config-file=${CONF_FILE} --action=${ACTION} --watchdog &> /dev/null &"
 
 ${CMD} &> /dev/null &
 echo $! > ${PID_FILE}; cat ${PID_FILE}
