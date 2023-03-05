@@ -879,6 +879,7 @@ class TradingBot():
             )
         return self.trade_amount
 
+#   @pysnooper.snoop()
     def compute_profit_baby(self, percentage, **kwargs):
         log.debug('')
         account_value, free, locked = self.fetch_account_value(
@@ -1073,6 +1074,7 @@ class TradingBot():
             return False
         return self.set_market(ticker_symbol, self.markets[ticker_symbol])
 
+#   @pysnooper.snoop()
     def enter_market(self, **kwargs):
         '''
         [ NOTE ]: Add new TradingMarket object to markets

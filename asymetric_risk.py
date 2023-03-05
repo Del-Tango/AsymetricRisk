@@ -211,6 +211,7 @@ def check_preconditions(**kwargs):
         return len([item for item in checkers.values() if not item])
     return 0
 
+#@pysnooper.snoop()
 def check_trading_bot(**kwargs):
     log.debug('')
     if str(kwargs.get('action')) == 'stop-watchdog':
@@ -222,9 +223,8 @@ def check_trading_bot(**kwargs):
     if trading_bot and isinstance(trading_bot, TradingBot):
         stdout_msg('Trading bot!', ok=True)
         return trading_bot
-    stdout_msg('No trading bot found!', nok=True)
+    log.info('No trading bot found!')
     stdout_msg('Creating new trading bot...', info=True)
-#   return create_trading_bot(**AR_DEFAULT)
     return setup_trading_bot(**AR_DEFAULT)
 
 def check_config_file(**kwargs):
