@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Excellent Regards, the Alveare Solutions #!/Society -x
+#
+# (A)Risk init wrapper
+
+DOES_ANYBODY_WATCH_TV_ANYMORE='no'
+TV_INIT_WRAPPER='./tv-init'
+FC_INIT_WRAPPER='./fc-setup'
+AR_INIT='./asymetric_risk.py'
+AR_DIR=`dirname ${AR_INIT}`
+
+cd ${AR_DIR} &> /dev/null
+if [ $? -ne 0 ]; then
+    echo "[ ERROR ]: Directory not found! (${AR_DIR})"
+    return 1
+fi
+
+for opt in $@; do
+    case "${opt}" in
+        '--television')
+            DOES_ANYBODY_WATCH_TV_ANYMORE='yes'
+            ;;
+        '--setup')
+            ${FC_INIT_WRAPPER}
+            exit $?
+            ;;
+    esac
+done
+
+if [[ ${DOES_ANYBODY_WATCH_TV_ANYMORE} == 'yes' ]]; then
+    ${TV_INIT_WRAPPER}
+fi
+
+${AR_INIT} $@
+EXIT_CODE=$?
+
+cd - &> /dev/null
+
+exit $EXIT_CODE
