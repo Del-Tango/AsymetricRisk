@@ -43,7 +43,7 @@ class Trade():
         self.recv_window = kwargs.get('order-recv-window', int())
         self.trade_timeout = kwargs.get('trade-timeout', int())
         self.order_id = kwargs.get(
-            'order-id', generate_msg_id(random.randint(20))
+            'order-id', generate_msg_id(random.randint(10000, 20000))
         )
 
     def __str__(self):
