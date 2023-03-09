@@ -1,5 +1,5 @@
 {
-    "[ Stage 1 ]: Ensuring Project Structure": [
+    "Stage 1: Ensuring Project Structure": [
         {
             "name": "Ensuring directory structure...",
             "time": "Light Speed",
@@ -23,7 +23,7 @@
             "timeout": "3m"
         }
     ],
-    "[ Stage 2 ]: Creating Project Symlinks": [
+    "Stage 2: Creating Project Symlinks": [
         {
             "name": "Linking AsymetricRisk/src/backpack with TeleVision/src/backpack",
             "time": "Light Speed",
@@ -47,7 +47,7 @@
             "timeout": "3m"
         }
     ],
-    "[ Stage 3 ]: Configuration File Transfer": [
+    "Stage 3: Configuration File Transfer": [
          {
             "name": "Moving TeleVision config files to AsymetricRisk/conf",
             "time": "Light Speed",
@@ -71,7 +71,7 @@
             "timeout": "3m"
         }
     ],
-    "[ Stage 4 ]: Log File Transfer": [
+    "Stage 4: Log File Transfer": [
          {
             "name": "Moving TeleVision log files to AsymetricRisk/log",
             "time": "Light Speed",

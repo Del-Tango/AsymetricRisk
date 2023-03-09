@@ -10,7 +10,7 @@ import logging
 log = logging.getLogger('AsymetricRisk')
 
 
-def fetch_time():
+def fetch_timestamp():
     log.debug('')
     return time.strftime('%H:%M:%S')
 

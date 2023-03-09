@@ -2,7 +2,7 @@
 #
 # Excellent Regards, the Alveare Solutions #!/Society -x
 #
-# TeleVision bot-ctrl init process
+# TeleVision bot-ctrl init wrapper
 
 CURRENT_DIR="$(
     cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd
@@ -15,5 +15,6 @@ ACTION='bot-ctrl'
 CMD="${TV_INIT} --log-file=${LOG_FILE} --config-file=${CONF_FILE} --action=${ACTION} --watchdog &> /dev/null &"
 
 ${CMD} &> /dev/null &
+
 echo $! > ${PID_FILE}; cat ${PID_FILE}
 exit $?

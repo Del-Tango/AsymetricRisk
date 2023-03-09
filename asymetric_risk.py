@@ -156,7 +156,7 @@ AR_DEFAULT = {
     "report-id":                "",
     "report-id-length":         8,
     "report-id-characters":     "abcdefghijklmnopqrstuvwxyz0123456789",
-    "report-location":          "./data/reports",
+    "report-location":          "./dta/reports",
 }
 AR_CARGO = {
     "television": AR_DEFAULT['src-dir'] + '/TeleVision/television.py',
@@ -2945,27 +2945,4 @@ if __name__ == '__main__':
     exit(EXIT_CODE)
 
 # CODE DUMP
-
-#def init_television_bot_ctrl_process(*args, **kwargs):
-#   command = 'nohup bash ./' + str(kwargs.get('tv-init-file', AR_DEFAULT['tv-init-file']))
-#   out, err, exit = shell_cmd(command)
-#   if exit != 0:
-#       stdout_msg('Could not start TeleVision bot-ctrl process!', warn=True)
-#       return False
-#   tv_pid = int(out.replace('\\n\'', '').replace('b\'', ''))
-
-    # TODO - Uncomment when init_television_bot_ctrl_process can start a
-    # detached background process and ARisk won't rely on the ./tv-init crutch
-#def setup_television_bot_ctrl(*args, **kwargs):
-#   write_pid_file = write2file(
-#       television_pid, mode='w',
-#       file_path=kwargs.get('tv-pid-file', AR_DEFAULT['tv-pid-file']),
-#   )
-#   if not write_pid_file:
-#       stdout_msg(
-#           'Could not write TeleVision PID to file! Details: PID {}, {}'
-#           .format(television_pid, write_pid_file), err=True
-#       )
-#       return False
-
 
