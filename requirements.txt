@@ -1,9 +1,4 @@
-unittest
 python-binance
-time
-json
-os
-threading
 logging
 pysnooper
 optparse
@@ -12,7 +7,6 @@ string
 datetime
 random
 base64
-threading
 stat
 pprint
 pandas

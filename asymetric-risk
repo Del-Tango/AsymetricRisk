@@ -32,8 +32,17 @@ if [[ ${DOES_ANYBODY_WATCH_TV_ANYMORE} == 'yes' ]]; then
     ${TV_INIT_WRAPPER}
 fi
 
-${AR_INIT} $@
+${AR_INIT} $@ 2> /dev/null
 EXIT_CODE=$?
+
+if [[ "$1" == '-h' ]] || [[ "$1" == '--help' ]]; then
+    cat<<EOF
+  --setup               Ensure project file structure consistency, installs
+                        Python3 dependencies and updates system date/time in
+                        order to ensure that the Binance API keys work properly.
+
+EOF
+fi
 
 cd - &> /dev/null
 

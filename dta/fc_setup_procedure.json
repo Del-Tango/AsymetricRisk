@@ -94,5 +94,29 @@
             "fatal-nok": false,
             "timeout": "3m"
         }
+    ],
+    "Stage 5: System setup": [
+        {
+            "name": "Updating system date & time",
+            "time": "(Almost) Light Speed",
+            "cmd": "sudo ntpdate in.pool.ntp.org",
+            "setup-cmd": "sudo apt-get install ntpdate -y",
+            "teardown-cmd": "",
+            "on-ok-cmd": "echo '[ OK ]: System DateTime'",
+            "on-nok-cmd": "echo '[ NOK ]: System DateTime'",
+            "fatal-nok": true,
+            "timeout": "3m"
+        },
+        {
+            "name": "Installing Python3 dependencies",
+            "time": "10m",
+            "cmd": "pip3 install -r ./requirements.txt",
+            "setup-cmd": "",
+            "teardown-cmd": "",
+            "on-ok-cmd": "echo '[ OK ]: Python3 Dependencies'",
+            "on-nok-cmd": "echo '[ NOK ]: Python3 Dependencies'",
+            "fatal-nok": true,
+            "timeout": "20m"
+        }
     ]
 }

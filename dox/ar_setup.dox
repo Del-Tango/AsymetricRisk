@@ -72,9 +72,10 @@ cat <<EOF
 
     ./conf/asymetric_risk.conf.json
 
-[ System Requirements ]: Install python3 packages from requirements.txt
+[ Project Structure ]: Ensure project file structure, python3 packages and
+    system datetime
 
-    [ Ex ]: ~$ pip3 install -r ./requirements.txt
+    [ Ex ]: ~$ ./asymetric-risk --setup
 
 [ CONFIG ]: Tweak it out - asymetric_risk.conf.json
 
