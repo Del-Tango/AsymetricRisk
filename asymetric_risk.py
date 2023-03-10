@@ -292,6 +292,7 @@ def action_start_watchdog(*args, **kwargs):
         return 0
     except Exception as e:
         log.error(e)
+        return 1
     return 1
 
 def action_report(*args, **kwargs):

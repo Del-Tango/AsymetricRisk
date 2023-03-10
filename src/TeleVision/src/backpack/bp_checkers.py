@@ -31,7 +31,7 @@ def check_value_set_crossover(values1, values2, **kwargs):
         'end1': 5,              # values1[len(values1)-1] value
         'end2': 1,              # values2[len(values2)-1] value
         'crossovers': [3],      # List of positions where crossovers occur (indexes)
-        'confirmed': True       # If after a crossover values continuously increase
+        'confirmed': True,      # If after a crossover values continuously increase
         'direction1': 'down',
         'direction2': 'up',
     }

@@ -93,8 +93,8 @@ class TradingStrategy():
         ]) else False
         if return_dict['trade']:
             return_dict['side'] = 'sell' \
-                if len(buy_scan['confirmed']) > len(sell_scan['confirmed']) \
-                else 'buy'
+                if len(buy_scan.get('confirmed', [])) \
+                > len(sell_scan.get('confirmed')) else 'buy'
         if return_dict['side'] and kwargs.get('side', '') in ('buy', 'sell') \
                 and return_dict['side'] != kwargs.get('side', ''):
             stdout_msg(
@@ -833,6 +833,7 @@ class TradingStrategy():
             crossover['flag'] = False
         return crossover
 
+#   @pysnooper.snoop()
     def check_rsi_bullish_divergence(self, *args, **kwargs):
         log.debug('')
         divergence = self.check_rsi_divergence(
@@ -857,6 +858,7 @@ class TradingStrategy():
             divergence['flag'] = False
         return divergence
 
+#   @pysnooper.snoop()
     def check_rsi_divergence(self, *args, direction='bullish', **kwargs):
         log.debug('')
         details = kwargs['details']['history']
@@ -885,7 +887,7 @@ class TradingStrategy():
             'values': rsi_values,
             'scan': scan,
         }
-        if not scan['flag'] or not scan['confirmed']:
+        if not scan['flag'] or not scan.get('confirmed'):
             return return_dict
         return_dict['flag'] = scan['flag']
         return return_dict
@@ -945,7 +947,7 @@ class TradingStrategy():
             'values': macd_values,
             'scan': scan,
         }
-        if not scan['flag'] or not scan['confirmed'] \
+        if not scan['flag'] or not scan.get('confirmed') \
                 or len(scan['peaks']) not in (2, 3):
             return return_dict
         return_dict['flag'] = scan['flag']
@@ -995,7 +997,7 @@ class TradingStrategy():
             'values': macd_values,
             'scan': scan,
         }
-        if not scan['flag'] or not scan['confirmed'] \
+        if not scan['flag'] or not scan.get('confirmed') \
                 or len(scan['crossovers']) not in (2, 3, 4):
             return return_dict
         return_dict['flag'] = scan['flag']
@@ -1322,7 +1324,6 @@ class TradingStrategy():
 
     # ACTIONS
 
-    # TODO
 #   @pysnooper.snoop()
     def analyze_risk(self, strategy='vwap', side='auto', **kwargs):
         log.debug('TODO - Refactor')
@@ -1701,7 +1702,7 @@ class TradingStrategy():
         if risk_index:
             for label in ('bullish-crossover', 'bearish-crossover'):
                 if return_dict[label]['flag']:
-                    if return_dict[label]['scan']['confirmed']:
+                    if return_dict[label]['scan'].get('confirmed'):
                         risk_index = 1 if risk_index == 1 \
                             or risk_index < 0 else risk_index - 1
                     # NOTE: Check general price direction over entire period
@@ -1996,7 +1997,7 @@ class TradingStrategy():
                 # crossover to be considered confirmed.
                 if return_dict[label]['flag']:
                     if label in ('bullish-crossover', 'bearish-crossover') \
-                            and return_dict[label]['scan']['confirmed']:
+                            and return_dict[label]['scan'].get('confirmed'):
                         risk_index = 1 if risk_index == 1 \
                             or risk_index < 0 else risk_index - 1
                         # NOTE: A trendy number of crossovers is always plus in technical
@@ -2125,7 +2126,7 @@ class TradingStrategy():
                 # NOTE: If bullish/bearish crossover values distanced enough after
                 # crossover to be considered confirmed.
                 if return_dict[label]['flag'] \
-                        and return_dict[label]['scan']['confirmed']:
+                        and return_dict[label]['scan'].get('confirmed'):
                     risk_index = 1 if risk_index == 1 \
                         or risk_index < 0 else risk_index - 1
                 # NOTE: A trendy number of crossovers is always plus in technical
@@ -2385,7 +2386,7 @@ class TradingStrategy():
             )
             return False, 0
         confirmed_sig_percentage = compute_percentage_of(
-            len(scan['confirmed']), len(scan['signals'])
+            len(scan.get('confirmed', [])), len(scan['signals'])
         )
         risk_tolerance_percentage = compute_percentage_of(
             self.risk_tolerance, 5
