@@ -588,13 +588,13 @@ class TradingMarket(Client):
         if not quantity:
             stdout_msg('No trade quantity specified!', err=True)
             return False
-        if float(quantity) < float(info['filters'][2]['minQty']):
+        if float(quantity) < float(info['filters'][2].get('minQty', float())):
             stdout_msg(
                 'Not enough funds to trade withing specified parameters! '
                 'Quantity {} is below the minimum required of {} {}.'
                 .format(
                     quantity,
-                    info['filters'][2]['minQty'],
+                    info['filters'][2].get('minQty', float()),
                     kwargs['base-currency']
                 ), warn=True
             )
