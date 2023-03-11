@@ -634,7 +634,7 @@ class TradingMarket(Client):
         )
         return return_args, return_kwargs
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def format_trading_order_spot_account_args_kwargs(self, label, trade_amount=None,
                                          take_profit=None, stop_loss=None,
                                          trailing_stop=None, side=None, **kwargs):
@@ -1045,7 +1045,7 @@ class TradingMarket(Client):
             return False
         return data_frame
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def trade(self, trade_amount, *args, take_profit=None, stop_loss=None,
               trailing_stop=None, side='buy', **kwargs):
         '''
@@ -1452,12 +1452,12 @@ class TradingMarket(Client):
         )
         return self.last_indicator_update_timestamp
 
-#   @pysnooper.snoop()
+    @pysnooper.snoop()
     def update_cache(self, element, cache_dict, **kwargs):
         log.debug('')
         size_limit = kwargs.get('size_limit', self.cache_size_limit)
         if len(cache_dict.keys()) > size_limit:
-            truncate_cache = truncate_cache(cache_dict, size_limit - 1)
+            truncate_cache = self.truncate_cache(cache_dict, size_limit - 1)
             if not truncate_cache:
                 return 1
         label = kwargs.get('label', str(time.time()))
