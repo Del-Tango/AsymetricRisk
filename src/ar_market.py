@@ -614,27 +614,32 @@ class TradingMarket(Client):
         log.debug('')
         sanitized_ticker = self.ticker_symbol.replace('/', '')
         return_args, return_kwargs = (), {
-            'symbol': sanitized_ticker,
-            'side': side.upper(),
-            'type': kwargs.get('trading-order-type'),
-            'quantity': trade_amount or kwargs.get('trade-amount'),
-            'quoteOrderQty': kwargs.get('quote-amount'),
-            'timeInForce': kwargs.get('order-time-in-force'),
-            'stopLimitTimeInForce': kwargs.get('order-time-in-force'),
-            'price': kwargs.get('order-price'),
-            'stopPrice': kwargs.get('stop-price'),
-            'stopLimitPrice': kwargs.get('stop-limit-price'),
-            'newClientOrderId': kwargs.get('order-id'),
-            'icebergQty': kwargs.get('order-iceberg-quantity'),
-            'newOrderRespType': kwargs.get('order-response-type'),
-            'recvWindow': kwargs.get('recvWindow', 60000),
+            'symbol': sanitized_ticker,                                         #   :type symbol: str
+            'side': side.upper(),                                               #   :type side: str
+#           'type': kwargs.get('trading-order-type'),
+            'quantity': trade_amount or kwargs.get('trade-amount'),             #   :type quantity: decimal
+#           'quoteOrderQty': kwargs.get('quote-amount'),
+#           'timeInForce': kwargs.get('order-time-in-force'),
+            'stopLimitTimeInForce': kwargs.get('order-time-in-force'),          #   :type stopLimitTimeInForce: str
+            'price': round(kwargs.get('order-price', float()), 4),              #   :type price: str
+            'stopPrice': round(kwargs.get('stop-price', float()), 4),           #   :type stopPrice: str
+            'stopLimitPrice': round(kwargs.get('stop-limit-price', float()), 4),#   :type stopLimitPrice: str
+            'stopClientOrderId': kwargs.get('stop-order-id'),                   #   :type stopClientOrderId: str
+            'newClientOrderId': kwargs.get('order-id'),                         #   :type newClientOrderId: str
+            'limitClientOrderId': kwargs.get('limit-order-id'),                 #   :type limitClientOrderId: str
+            'listClientOrderId': kwargs.get('list-order-id'),                   #   :type listClientOrderId: str
+#           'icebergQty': kwargs.get('order-iceberg-quantity'),
+            'limitIcebergQty': kwargs.get('limit-iceberg-quantity'),            #   :type limitIcebergQty: decimal
+            'stopIcebergQty': kwargs.get('stop-iceberg-quantity'),              #   :type stopIcebergQty: decimal
+#           'newOrderRespType': kwargs.get('order-response-type'),              #   :type newOrderRespType: str
+            'recvWindow': kwargs.get('recvWindow', 60000),                      #   :type recvWindow: int
         }
         log.debug(
             'return_kwargs - {}'.format(pretty_dict_print(return_kwargs))
         )
         return return_args, return_kwargs
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def format_trading_order_spot_account_args_kwargs(self, label, trade_amount=None,
                                          take_profit=None, stop_loss=None,
                                          trailing_stop=None, side=None, **kwargs):
@@ -1045,7 +1050,7 @@ class TradingMarket(Client):
             return False
         return data_frame
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def trade(self, trade_amount, *args, take_profit=None, stop_loss=None,
               trailing_stop=None, side='buy', **kwargs):
         '''
@@ -1088,6 +1093,7 @@ class TradingMarket(Client):
         handlers, order = {'buy': self.buy, 'sell': self.sell}, None
         if side not in handlers:
             log.error('Invalid trade side! ({})'.format(side))
+            return False
         hlabel, handlers = 'TEST' if kwargs.get('test') else 'GODSPEED', {
             'TEST': self.create_test_order,
             'GODSPEED': self.create_oco_order,
@@ -1099,9 +1105,9 @@ class TradingMarket(Client):
             ), symbol=side.upper(), bold=True
         )
         if hlabel == 'TEST':
-            stdout_msg('Creating test buy order...', info=True)
+            stdout_msg('Creating test trading order...', info=True)
         else:
-            stdout_msg('Creating buy order...', info=True)
+            stdout_msg('Creating trading order...', info=True)
         try:
             order_args, order_kwargs = self.format_trading_order_args_kwargs(
                 hlabel, trade_amount=trade_amount, take_profit=take_profit,
@@ -1162,7 +1168,7 @@ class TradingMarket(Client):
         sanitized = ''.join(list(raw_value)[1:]).replace("'", '')
         return json.loads(sanitized)
 
-    def truncate_cache(cache_dict, size_limit):
+    def truncate_cache(self, cache_dict, size_limit):
         log.debug('')
         if not cache_dict or not isinstance(size_limit, int) \
                 or size_limit > len(cache_dict):
@@ -1452,7 +1458,7 @@ class TradingMarket(Client):
         )
         return self.last_indicator_update_timestamp
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def update_cache(self, element, cache_dict, **kwargs):
         log.debug('')
         size_limit = kwargs.get('size_limit', self.cache_size_limit)
