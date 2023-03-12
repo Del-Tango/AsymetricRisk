@@ -1,16 +1,17 @@
 # **(A)Risk**
 
-[ **Description** ]: Crypto trading bot for Binance
+[ **Description** ]: Crypto trading bot for Binance - now integrated with
+TeleVision (a telegram messaging bot) ever since v1.1AR15.
+
+[ **Dox** ]: Read up on how to configure the bot
+
+    ~$ ./dox/ar_setup.dox
 
 [ **Setup** ]: Install project dependencies and configure for live runs
 
     ~$ ./asymetric-risk --setup
 
-[ **Dox** ]: Read up on how to configure this baby
-
-    ~$ ./dox/ar_setup.dox
-
-[ **Test** ]: Run (A)RAT - (A)Risk auto-esters
+[ **Test** ]: Run (A)RAT suit - (A)Risk Auto Testers
 
     ~$ ./tst/test_asymetric_risk.sh full
 
