@@ -46,7 +46,7 @@ class TestARMarket(unittest.TestCase):
 
     # TODO
     def generate_mock_trade_instance(self):
-        new_trade = Trade(**context)
+        new_trade = Trade(**self.context)
         data = self.market_data_scan_cache
         # TODO - Fetch details from last market scan
         new_trade.update(**{
@@ -55,7 +55,7 @@ class TestARMarket(unittest.TestCase):
             'base_quantity': 0.1,
             'quote_quantity': None,
             'side': new_trade.SIDE_BUY,
-            'current_price': data.get(''),
+            'current_price': data['ticker'],
             'stop_loss_price': data.get(''),
             'take_profit_price': data.get(''),
             'trade_fee': 0.1,
@@ -64,10 +64,17 @@ class TestARMarket(unittest.TestCase):
 
     # TESTERS
 
-    # TODO
     def test_ar_market_run_trade(self):
         trade_obj = self.generate_mock_trade_instance()
         run = self.trading_market.run(trade_obj)
+        self.assertTrue(run)
+        self.assertTrue(isinstance(run, dict))
+        self.assertTrue(isinstance(run.get('failures'), int))
+        self.assertEqual(run['failures'], 0)
+        self.assertTrue(run.get('ok'))
+        self.assertTrue(isinstance(run['ok'], list))
+        self.assertTrue(run.get('nok'))
+        self.assertTrue(isinstance(run['nok'], list))
 
     def test_ar_market_scrape_data(self):
         print('\n[ TEST ]: Scrape market data...\n')

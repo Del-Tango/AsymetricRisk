@@ -11,10 +11,11 @@ import random
 import string
 import pysnooper
 
+from src.backpack.bp_fetchers import fetch_timestamp
+from src.backpack.bp_generators import generate_msg_id
 from src.backpack.bp_general import (
     stdout_msg, pretty_dict_print
 )
-from src.backpack.bp_generators import generate_msg_id
 from src.ar_exceptions import (
     ARInvalidStateException,
     ARPreconditionsException,
@@ -55,6 +56,7 @@ class Trade():
     STATUS_EXPIRED = 'EXPIRED'
     SIDE_BUY = 'BUY'
     SIDE_SELL = 'SELL'
+    STOP_ORDER_TIME_IN_FORCE = 'GTC'
 
 #   @pysnooper.snoop()
     def __init__(self, **context) -> None:
@@ -77,8 +79,10 @@ class Trade():
         self.current_price = float()
         self.stop_loss_price = float()
         self.take_profit_price = float()
+        self.min_price_step = float()
         self.trade_fee = float()
         self.expires_on = None
+        self.result = dict()
 
     # MAGIK
 
@@ -110,10 +114,13 @@ class Trade():
         [ NOTE ]:
         '''
         log.debug('')
-        return False if not self.check_preconditions() \
-            else self.set_state(self.STATUS_DONE)
+        if not self.check_preconditions():
+            return False
+        self.expires_on = None
+        return self.set_state(self.STATUS_DONE)
 
     def set_state(self, state: str) -> bool:
+        log.debug('')
         valid_states = (
             self.STATUS_DRAFT, self.STATUS_EVALUATED, self.STATUS_COMMITED,
             self.STATUS_DONE, self.STATUS_DISCARDED, self.STATUS_EXPIRED,
@@ -129,15 +136,24 @@ class Trade():
 
     # CHECKERS
 
-    # TODO
     def check_preconditions(self):
         '''
         [ NOTE ]: Checks all Trade data to be aligned to the constraints imposed
             by the Trade state. Results may differ when executed in different
             states with the same data set.
         '''
-        log.debug('TODO - Under construction, building...')
+        log.debug('')
         # Enforce ticker symbol trade rules
+        checkers = {
+            self.STATUS_DRAFT: self.check_preconditions_draft,
+            self.STATUS_EVALUATED: self.check_preconditions_evaluated,
+            self.STATUS_COMMITED: self.check_preconditions_commited,
+            self.STATUS_DONE: self.check_preconditions_done,
+        }
+        if self.status not in checkers.keys() \
+                or not self.check_preconditions_general():
+            return False
+        return checkers[self.status]()
 
     def check_time_until_expires(self) -> int:
         '''
@@ -161,6 +177,28 @@ class Trade():
         log.debug('')
         now = datetime.datetime.now()
         return now > self.expires_on
+
+    def check_preconditions_general(self):
+        log.debug('')
+        return False if not self.ticker_symbol or not self.side \
+            or not self.base_quantity or not self.current_price else True
+
+    def check_preconditions_draft(self):
+        log.debug('')
+        return False if not self.risk or not self.trade_fee else True
+
+    def check_preconditions_evaluated(self):
+        log.debug('')
+        return False if not self._signals or not self.stop_loss_price \
+            or not self.take_profit_price or not self.min_price_step else True
+
+    def check_preconditions_commited(self):
+        log.debug('')
+        return False if not self.result else True
+
+    def check_preconditions_done(self):
+        log.debug('')
+        return False if self.expires_on else True
 
     # UPDATES
 
@@ -220,6 +258,16 @@ class Trade():
         self._signals.extend(new_signals)
         return self._signals
 
+    def update_action_history(self, action: str, ok_flag: bool, **new_updates) -> dict:
+        log.debug('')
+        timestamp = fetch_timestamp()
+        self._history.update({timestamp: {
+            'action': action,
+            'succeeded': ok_flag,
+            'details': new_update,
+        }})
+        return self._history
+
     # ACTIONS
 
     def expire(self) -> bool:
@@ -250,8 +298,42 @@ class Trade():
         log.debug('')
         if not self.previous_status:
             return False
-        self.status, self.previous_status = self.previous_status, self.status
-        self.write_date = datetime.datetime.now()
-        return True
+        return self.set_state(self.previous_status)
+
+    def unpack(self, **context) -> dict:
+        '''
+        [ NOTE ]: Unpacks Trade instance data into kwargs for binance.create_oco_order():
+
+        [ RETURN ]: {
+            'symbol':               self.ticker_symbol,
+            'side':                 self.side,
+            'quantity':             self.base_quantity,
+            'stopLimitTimeInForce': self.STOP_ORDER_TIME_IN_FORCE,
+            'price':                self.current_price,
+            'stopPrice':            self.stop_loss_price,
+            'stopLimitPrice':       self.stop_limit_price,
+            'listClientOrderID':    self.trade_id,
+            'recvWindow':           context.get(
+                'recv-window', self._context.get('recv-window', 60000)
+            )
+        }
+        '''
+        log.debug('')
+        if not self.ticker_symbol or not self.side or not self.base_quantity \
+                or not self.current_price:
+            return False
+        return {
+            'symbol': self.ticker_symbol,
+            'side': self.side,
+            'quantity': self.base_quantity,
+            'stopLimitTimeInForce': self.STOP_ORDER_TIME_IN_FORCE,
+            'price': self.current_price,
+            'stopPrice': self.stop_loss_price,
+            'stopLimitPrice': self.stop_limit_price,
+            'listClientOrderID': self.trade_id,
+            'recvWindow': context.get(
+                'recv-window', self._context.get('recv-window', 60000)
+            ),
+        }
 
 

@@ -35,7 +35,7 @@ class TradingMarket(Client):
         * Execute trade objects
     '''
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def __init__(self, binance_key, binance_secret, *args, sync=True, **context):
         super().__init__(binance_key, binance_secret, *args)
         self.API_URL = context.get('binance-url', 'https://testnet.binance.vision/api')
@@ -53,7 +53,7 @@ class TradingMarket(Client):
 
     # FETCHERS
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def _fetch_time_offset(self):
         log.debug('')
         res = self.get_server_time()
@@ -71,22 +71,22 @@ class TradingMarket(Client):
     # SCANNERS
 
     # TODO
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def scan_indicator_data(self, **context):
         log.debug('TODO - Under construction, building...')
         # TODO - Fetch indicator data from indicator manager
         return {}
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def scan_account_data(self, **context):
         log.debug('')
         recv_window = context.get('recv-window', self._context.get('recv-window', 60000))
         ticker = context.get('ticker-symbol', self._context.get('ticker-symbol', str())).replace('/', '')
-        return {
+        scan = {
             'account': self.get_account(recvWindow=recv_window),
             'trading-orders': self.get_all_orders(symbol=ticker, recvWindow=recv_window),
         }
-        if context.get('extended')
+        if context.get('extended'):
             scan.update({
                 'deposit-history': self.get_deposit_history(recvWindow=recv_window),
                 'status': self.get_account_status(recvWindow=recv_window),
@@ -94,7 +94,7 @@ class TradingMarket(Client):
             })
         return scan
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def scan_api_data(self, **context):
         log.debug('')
         recv_window = context.get('recv-window', self._context.get('recv-window', 60000))
@@ -108,7 +108,7 @@ class TradingMarket(Client):
             })
         return scan
 
-    @pysnooper.snoop()
+#   @pysnooper.snoop()
     def scan_ticker_symbol_data(self, **context):
         log.debug('')
         recv_window = context.get('recv-window', self._context.get('recv-window', 60000))
@@ -128,13 +128,6 @@ class TradingMarket(Client):
 
     # GENERAL
 
-    # TODO - Unpack trade object into oco order kwargs
-    def unpack(self, trade, **context) -> dict:
-        log.debug('TODO - Under construction')
-        return {
-#           '': ,
-        }
-
     def update_cache(self, data, cache, **context):
         log.debug('')
         cache.update(data)
@@ -148,11 +141,11 @@ class TradingMarket(Client):
         [ NOTE ]: Validates API keys, executes a preliminary market scan to update
             the cache and run a short series of tests.
         '''
-        log.debug('')
+        log.debug('TODO - Under construction, building...')
         # Validate API keys
         # Run preliminary market scan
-        print(f'[ DEBUG ]: API_KEY {self.API_KEY}')
-        print(f'[ DEBUG ]: API_SECRET {self.API_SECRET}')
+#       print(f'[ DEBUG ]: API_KEY {self.API_KEY}')
+#       print(f'[ DEBUG ]: API_SECRET {self.API_SECRET}')
         # Add scan results to cache
         # Run sanity tests
 
@@ -185,7 +178,7 @@ class TradingMarket(Client):
         [ NOTE ]: Takes in any number of Trade() instances and executes them as
             SPOT account OCO trades.
 
-        [ RESPONSE ]: {
+        [ RESPONSE ]: create_oco_order() -> {
             "orderListId": 0,
             "contingencyType": "OCO",
             "listStatusType": "EXEC_STARTED",
@@ -244,11 +237,17 @@ class TradingMarket(Client):
             ]
         }
 
+        [ RETURN ]: {
+            'failures': 0,
+            'ok': [Trade(), Trade(), ...],
+            'nok': [],
+        }
+
         '''
         log.debug('')
         failures, ok, nok = 0, [], []
         for trade in trades:
-            order_kwargs = self.unpack(trade, **context)
+            order_kwargs = trade.unpack()
             if not order_kwargs:
                 stdout_msg(f'Failed to unpack Trade() instance!', err=True)
                 nok.append(trade)
