@@ -5,7 +5,7 @@
 # FlowCTRL Setup Procedure
 
 PROCEDURE_SKETCH="dta/fc_setup_procedure.json"
-CONF_FILE='conf/flow-ctrl.conf.json'
+CONF_FILE='conf/flow_ctrl.conf.json'
 LOG_FILE='log/asymetric_risk.log'
 CMD="./src/FlowCTRL/flow-init --start --sketch-file=${PROCEDURE_SKETCH} --config-file=${CONF_FILE} --log-file=${LOG_FILE}"
 
