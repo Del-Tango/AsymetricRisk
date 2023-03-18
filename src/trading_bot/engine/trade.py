@@ -63,13 +63,13 @@ class Trade():
         log.debug('')
         self._signals = list()
         self._context = context
-        self._history = {} # <timestamp>: {action: '', context: {}, result: {}, failed=False}
+        self._history = {} # {<timestamp>: {action: '', context: {}, failed: False, details: {}}}
         self.create_date = datetime.datetime.now()
         self.write_date = self.create_date
         self.trade_id = context.get('trade-id', generate_msg_id(
             random.randint(4, 12), id_characters=list(string.digits)
         ))
-        self.ticker_symbol = context.get('ticker-symbol', str())
+        self.ticker_symbol = context.get('ticker-symbol', str()).replace('/', '')
         self.status = self.STATUS_DRAFT
         self.previous_status = None
         self.risk = int()
@@ -79,10 +79,10 @@ class Trade():
         self.current_price = float()
         self.stop_loss_price = float()
         self.take_profit_price = float()
-        self.min_price_step = float()
         self.trade_fee = float()
         self.expires_on = None
         self.result = dict()
+        self.filters = dict()
 
     # MAGIK
 
@@ -136,6 +136,509 @@ class Trade():
 
     # CHECKERS
 
+    def check_filter_price(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'PRICE_FILTER',
+            'minPrice': '0.00010000',
+            'maxPrice': '1000.00000000',
+            'tickSize': '0.00010000'
+        }, ...]
+
+        [ NOTE ]: PRICE_FILTER is a filter parameter in the Binance API that
+            sets the allowable price range for a given trading pair. This filter
+            is designed to prevent users from placing orders that are too far
+            outside of the current market price, which could potentially disrupt
+            the market.
+
+        [ NOTE ]: The PRICE_FILTER filter takes three values: "minPrice",
+            "maxPrice", and "tickSize". The "minPrice" value sets the minimum
+            allowable price for an order, the "maxPrice" value sets the maximum
+            allowable price, and the "tickSize" value sets the allowable price
+            increments.
+
+        [ NOTE ]: Enforcing the PRICE_FILTER can be done through the Binance API
+            when placing orders. When making an order request, the user can specify
+            the "newOrderRespType" parameter as "FULL" to receive a detailed
+            response from the API, including any error messages if the order is
+            rejected due to the filter. If the user attempts to place an order
+            at a price outside of the allowable range or in a price increment
+            that is not allowed, the API will return an error indicating that
+            the order is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the PRICE_FILTER filter is enforced
+            on the server-side, meaning that if a user attempts to place an order
+            at a price outside of the allowable range through other means (such
+            as the Binance website or mobile app), the order will still be rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('PRICE_FILTER')
+        if not trade_filter:
+            log.error(f'No data found on trade filter PRICE_FILTER!')
+            return False
+        # We enforce the PRICE_FILTER filter settings by rounding the price,
+        # stop_price, and stop_limit_price values to the appropriate precision
+        # based on the tickSize value from the PRICE_FILTER filter settings.
+        price_precision = int(trade_filter['tickSize'])
+        if self.current_price:
+            self.current_price = round(self.current_price, price_precision)
+        if self.stop_loss_price:
+            self.stop_loss_price = round(self.stop_loss_price, price_precision)
+        if self.take_profit_price:
+            self.take_profit_price = round(self.take_profit_price, price_precision)
+        prices = [
+            item for item in (
+                self.current_price, self.stop_loss_price, self.take_profit_price
+            ) if item
+        ]
+        below_min = [item for item in prices if item < trade_filter['minPrice']]
+        above_max = [item for item in prices if item > trade_filter['maxPrice']]
+        return False if below_min or above_max else True
+
+    def check_filter_lot_size(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'LOT_SIZE',
+            'minQty': '0.10000000',
+            'maxQty': '90000.00000000',
+            'stepSize': '0.10000000'
+        }, ...]
+
+        [ NOTE ]: LOT_SIZE is a filter parameter in the Binance API that sets
+            the minimum and maximum allowable quantity for an order on a given
+            trading pair. This filter is designed to prevent users from placing
+            orders that are too small or too large, which could potentially
+            disrupt the market.
+
+        [ NOTE ]: The LOT_SIZE filter takes three values: "minQty", "maxQty",
+            and "stepSize". The "minQty" value sets the minimum allowable quantity
+            for an order, the "maxQty" value sets the maximum allowable quantity,
+            and the "stepSize" value sets the allowable quantity increments.
+
+        [ NOTE ]: Enforcing the LOT_SIZE filter can be done through the Binance
+            API when placing orders. When making an order request, the user can
+            specify the "newOrderRespType" parameter as "FULL" to receive a
+            detailed response from the API, including any error messages if the
+            order is rejected due to the filter. If the user attempts to place
+            an order with a quantity outside of the allowable range or in a
+            quantity increment that is not allowed, the API will return an error
+            indicating that the order is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the LOT_SIZE filter is enforced
+            on the server-side, meaning that if a user attempts to place an order
+            outside of the allowable range through other means (such as the Binance
+            website or mobile app), the order will still be rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('LOT_SIZE')
+        if not trade_filter:
+            log.error(f'No data found on trade filter LOT_SIZE!')
+            return False
+        # We enforce the LOT_SIZE filter settings by rounding the quantity value
+        # to the appropriate precision based on the stepSize value from the
+        # LOT_SIZE filter settings.
+        step_size = float(trade_filter['stepSize'])
+        quantity_precision = int(round(-1 * math.log(step_size, 10)))
+        if self.base_quantity:
+            self.base_quantity = round(self.base_quantity, quantity_precision)
+        if self.quote_quantity:
+            self.quote_quantity = round(self.quote_quantity, quantity_precision)
+        quants = [
+            item for item in (self.base_quantity, self.quote_quantity) if item
+        ]
+        under_step = [item for item in quants if item < trade_filter['minQty']]
+        over_step = [item for item in quants if item > trade_filter['maxQty']]
+        return False if under_step or over_step else True
+
+    def check_filter_min_notional(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'MIN_NOTIONAL',
+            'minNotional': '10.00000000',
+            'applyToMarket': True,
+            'avgPriceMins': 1
+        }, ...]
+
+        [ NOTE ]: MIN_NOTIONAL is a filter parameter in the Binance API that sets
+            the minimum value of an order for a given trading pair. This filter
+            is designed to prevent users from placing orders that are too small
+            and potentially ineffective or disruptive to the market.
+
+        [ NOTE ]: The MIN_NOTIONAL filter takes a single value that represents
+            the minimum notional value of an order in the base asset of the trading
+            pair. The notional value is calculated by multiplying the order quantity
+            by the price of the trading pair. For example, if the trading pair
+            is BTC/USDT, the notional value would be calculated by multiplying
+            the quantity of BTC by the current price of BTC/USDT in USDT.
+
+        [ NOTE ]: Enforcing the MIN_NOTIONAL filter can be done through the
+            Binance API when placing orders. When making an order request, the
+            user can specify the "newOrderRespType" parameter as "FULL" to receive
+            a detailed response from the API, including any error messages if the
+            order is rejected due to the filter. If the user attempts to place an
+            order with a notional value below the minimum allowable amount, the
+            API will return an error indicating that the order is not within the
+            allowed range.
+
+        [ NOTE ]: It is important to note that the MIN_NOTIONAL filter is enforced
+            on the server-side, meaning that if a user attempts to place an order
+            with a notional value below the minimum allowable amount through other
+            means (such as the Binance website or mobile app), the order will still
+            be rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('MIN_NOTIONAL')
+        if not trade_filter:
+            log.error(f'No data found on trade filter MIN_NOTIONAL!')
+            return False
+        # We enforce the MIN_NOTIONAL filter settings by calculating the notional
+        # value of the order (price * quantity), and comparing it to the minNotional
+        # value from the filter settings. If the notional value is less than the
+        # minNotional value, we calculate the minimum quantity required to meet
+        # the minNotional value and update the quantity value accordingly.
+        min_notional = float(trade_filter['minNotional'])
+        notional = round(self.current_price * self.base_quantity, 8)
+        if notional < min_notional:
+            self.base_quantity = math.ceil(
+                min_notional / self.current_price * 10**8
+            ) / 10**8
+        return True
+
+    # WARNING - Unused
+    def check_filter_iceberg_parts(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'ICEBERG_PARTS',
+            'limit': 10
+        }, ...]
+
+        [ NOTE ]: ICEBERG_PARTS is a filter parameter in the Binance API that
+            sets the maximum number of "iceberg" orders that can be placed for
+            a single symbol. An iceberg order is a type of order that allows a
+            large order to be split into smaller, hidden orders, which are then
+            executed over time. The ICEBERG_PARTS filter is designed to prevent
+            users from placing too many iceberg orders for a single symbol,
+            which could potentially disrupt the market.
+
+        [ NOTE ]: The ICEBERG_PARTS filter takes a single integer value that
+            represents the maximum number of iceberg orders that can be placed
+            for a single symbol. This value ranges from 1 to 10,000, and is
+            enforced on a per-account basis.
+
+        [ NOTE ]: Enforcing the ICEBERG_PARTS filter can be done through the
+            Binance API when placing iceberg orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. If the user attempts to
+            place an iceberg order that exceeds the allowable number of parts for
+            the symbol, the API will return an error indicating that the order is
+            not within the allowed range.
+
+        [ NOTE ]: It is important to note that the ICEBERG_PARTS filter is enforced
+            on the server-side, meaning that if a user attempts to place iceberg
+            orders that exceed the allowable number of parts through other means
+            (such as the Binance website or mobile app), the orders will still
+            be rejected.
+        '''
+        log.debug('[ WARNING ]: Excluded from filter checks.')
+        trade_filter = self.filters.get('ICEBERG_PARTS')
+        if not trade_filter:
+            log.error(f'No data found on trade filter ICEBERG_PARTS!')
+            return False
+        # We enforce the ICEBERG_PARTS filter settings by calculating the maximum
+        # quantity per part based on the total quantity of the order, and comparing
+        # it to the maxQtyPerPart value from the filter settings. If the calculated
+        # value is greater than the maxQtyPerPart value, we adjust the icebergQty
+        # parameter to the maximum allowed value, and update the quantity parameter
+        # accordingly.
+        max_iceberg_parts = int(trade_filter['limit'])
+        max_qty_per_part = self.iceberg_quantity / max_iceberg_parts
+        if self.iceberg_quantity > max_iceberg_parts:
+            self.iceberg_quantity = max_iceberg_parts
+            self.base_quantity = max_qty_per_part * self.iceberg_qty
+        return True
+
+    def check_filter_market_lot_size(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'MARKET_LOT_SIZE',
+            'minQty': '0.00000000',
+            'maxQty': '10000.00000000',
+            'stepSize': '0.00000000'
+        }, ...]
+
+        [ NOTE ]: MARKET_LOT_SIZE is a filter parameter in the Binance API that
+            sets the minimum and maximum allowable quantity for a market order.
+            This filter is designed to prevent users from placing orders that
+            are too small or too large, which could potentially disrupt the market.
+
+        [ NOTE ]: The MARKET_LOT_SIZE filter takes three values: "minQty",
+            "maxQty", and "stepSize". The "minQty" value sets the minimum allowable
+            quantity for a market order, the "maxQty" value sets the maximum
+            allowable quantity, and the "stepSize" value sets the allowable
+            quantity increments.
+
+        [ NOTE ]: Enforcing the MARKET_LOT_SIZE filter can be done through the
+            Binance API when placing market orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. If the user attempts to
+            place a market order with a quantity outside of the allowable range
+            or in a quantity increment that is not allowed, the API will return
+            an error indicating that the order is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the MARKET_LOT_SIZE filter is
+            enforced on the server-side, meaning that if a user attempts to place
+            a market order outside of the allowable range through other means
+            (such as the Binance website or mobile app), the order will still be
+            rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('MARKET_LOT_SIZE')
+        if not trade_filter:
+            log.error(f'No data found on trade filter MARKET_LOT_SIZE!')
+            return False
+        # We then enforce the MARKET_LOT_SIZE filter settings by rounding the
+        # order quantity down to the nearest stepSize value, and adjusting it
+        # to the minimum or maximum allowed quantity if it falls outside the
+        # allowed range. We then calculate the order quantity in the base asset
+        # using the current price of the trading pair.
+        min_qty = float(trade_filter['minQty'])
+        max_qty = float(trade_filter['maxQty'])
+        step_size = float(trade_filter['stepSize'])
+        rounded_qty = self.quote_quantity - (self.quote_quantity % step_size)
+        if rounded_qty < min_qty:
+            rounded_qty = min_qty
+        elif rounded_qty > max_qty:
+            rounded_qty = max_qty
+        # Calculate order quantity in base asset
+        self.base_quantity = rounded_qty / self.current_price
+        return True
+
+    # WARNING - Unused
+    def check_filter_trailing_delta(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'TRAILING_DELTA',
+            'minTrailingAboveDelta': 10,
+            'maxTrailingAboveDelta': 2000,
+            'minTrailingBelowDelta': 10,
+            'maxTrailingBelowDelta': 2000
+        }, ...]
+
+        [ NOTE ]: TRAILING_DELTA is a filter parameter in the Binance API that
+            is used to set the allowable price range for a trailing stop order.
+            A trailing stop order is a type of order that is designed to
+            automatically adjust the stop loss price as the market price moves
+            in a favorable direction. The TRAILING_DELTA filter is designed to
+            prevent users from placing trailing stop orders with a too wide
+            range of price variation.
+
+        [ NOTE ]: The TRAILING_DELTA filter takes a floating-point value that
+            represents the allowable price range for the trailing stop order.
+            This value is expressed as a percentage of the market price at the
+            time the order is placed. For example, if the TRAILING_DELTA value
+            is set to 0.05 (5%), and the market price is $100, the trailing stop
+            order will be adjusted as the market price moves, but the new stop
+            loss price will not be more than 5% away from the current market price.
+
+        [ NOTE ]: Enforcing the TRAILING_DELTA filter can be done through the
+            Binance API when placing a trailing stop order. When making an order
+            request, the user can specify the "newOrderRespType" parameter as
+            "FULL" to receive a detailed response from the API, including any
+            error messages if the order is rejected due to the filter. If the
+            user attempts to place a trailing stop order with a TRAILING_DELTA
+            value outside of the allowable range, the API will return an error
+            indicating that the order is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the TRAILING_DELTA filter is
+            enforced on the server-side, meaning that if a user attempts to place
+            a trailing stop order with a TRAILING_DELTA value outside of the
+            allowable range through other means (such as the Binance website or
+            mobile app), the order will still be rejected.
+
+        [ NOTE ]: The TRAILING_DELTA filter is a useful tool for managing risk
+            and maintaining stability in the market, and users should ensure they
+            are aware of the filter settings for any trailing stop orders they
+            are working with to avoid any potential errors or disruptions.
+        '''
+        log.debug('[ WARNING ]: Excluded from filter checks.')
+        trade_filter = self.filters.get('TRAILING_DELTA')
+        if not trade_filter:
+            log.error(f'No data found on trade filter TRAILING_DELTA!')
+            return False
+        # We extract the minimum and maximum values for this filter, and define
+        # the trailing delta value for the order.
+        trailing_delta_min = float(trade_filter['minQty'])
+        trailing_delta_max = float(trade_filter['maxQty'])
+        # Finally, we enforce the filter by checking if the trailing delta is
+        # within the allowed range, and adjust it if necessary before placing
+        # the OCO order. Get the minimum and maximum values for the
+        # TRAILING_STOP_MARKET filter
+        if self.trailing_delta < trailing_delta_min:
+            self.trailing_delta = trailing_delta_min
+        elif self.trailing_delta > trailing_delta_max:
+            self.trailing_delta = trailing_delta_max
+        return True
+
+    def check_filter_percent_price_by_side(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'PERCENT_PRICE_BY_SIDE',
+            'bidMultiplierUp': '5',
+            'bidMultiplierDown': '0.2',
+            'askMultiplierUp': '5',
+            'askMultiplierDown': '0.2',
+            'avgPriceMins': 1
+        }, ...]
+
+        [ NOTE ]: PERCENT_PRICE_BY_SIDE is a filter parameter in the Binance API
+            that sets the allowed range of price variation for a user's order
+            based on the order side (buy or sell) and the market price at the
+            time the order is placed. This filter is designed to prevent users
+            from placing orders that are too far away from the current market
+            price, which could potentially disrupt the market.
+
+        [ NOTE ]: The PERCENT_PRICE_BY_SIDE filter takes two arrays of values,
+            one for the buy side and one for the sell side. Each array contains
+            two percentage values: "multiplierUp" and "multiplierDown". These
+            values define the upper and lower bounds for the allowable price
+            range as a percentage of the current market price.
+
+            [ Ex ]: If the current market price for a trading pair is $100, and
+                the "multiplierUp" value is set to 1.05 and the "multiplierDown"
+                value is set to 0.95 for the buy side, a user can only place a
+                buy order with a price between $95 and $105.
+
+        [ NOTE ]: Enforcing the PERCENT_PRICE_BY_SIDE filter can be done through
+            the Binance API when placing orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. If the user attempts to
+            place an order with a price that falls outside of the allowable range
+            defined by the filter, the API will return an error indicating that
+            the price is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the PERCENT_PRICE_BY_SIDE filter
+            is enforced on the server-side, meaning that if a user attempts to
+            place an order with a price outside of the allowable range through
+            other means (such as the Binance website or mobile app), the order
+            will still be rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('PERCENT_PRICE_BY_SIDE')
+        if not trade_filter:
+            log.error(f'No data found on trade filter PERCENT_PRICE_BY_SIDE!')
+            return False
+        #  We extract the allowed percentage change for the order based on the
+        #  side, and enforce the filter by checking if the specified percentage
+        #  change is within the allowed range. Finally, we adjust the
+        #  percentage change if necessary before placing the OCO order.
+        if side == 'BUY':
+            percent_change_allowed = float(percent_price_filter['multiplierUp'])
+        elif side == 'SELL':
+            percent_change_allowed = float(percent_price_filter['multiplierDown'])
+        # Enforce the PERCENT_PRICE_BY_SIDE filter by checking if the
+        # percentage change is within the allowed range
+        if self.percent_change > percent_change_allowed:
+            self.percent_change = percent_change_allowed
+        # Calculate the stop price and limit price based on the percent change
+        if side == 'BUY':
+            self.stop_loss_price = round(self.current_price * (1 - percent_change), 2)
+            self.take_profit_price = round(self.stop_loss_price * (1 + percent_change), 2)
+        elif side == 'SELL':
+            self.stop_loss_price = round(self.current_price * (1 + percent_change), 2)
+            self.take_profit_price = round(self.stop_loss_price * (1 - percent_change), 2)
+        return True
+
+    # TODO
+    def check_filter_max_num_orders(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'MAX_NUM_ORDERS',
+            'maxNumOrders': 200
+        }, ...]
+
+        [ NOTE ]: MAX_NUM_ORDERS is a filter parameter in the Binance API that
+            sets the maximum number of open orders that can be placed by a user
+            for a specific trading pair. This filter is designed to prevent users
+            from placing an excessive number of orders and potentially disrupting
+            the market.
+
+        [ NOTE ]: The MAX_NUM_ORDERS filter takes an integer value and can be set
+            on a per-symbol basis. For example, if the filter is set to 100 for a
+            particular trading pair, a user can only have up to 100 open orders
+            for that pair at any given time. If the user attempts to place additional
+            orders, the API will return an error indicating that the maximum number
+            of orders has been exceeded.
+
+        [ NOTE ]: Enforcing the MAX_NUM_ORDERS filter can be done through the
+            Binance API when placing orders. When making an order request, the
+            user can specify the "newOrderRespType" parameter as "FULL" to receive
+            a detailed response from the API, including any error messages if the
+            order is rejected due to the filter. It is important to note that the
+            MAX_NUM_ORDERS filter is enforced on the server-side, meaning that if
+            a user has open orders through other means (such as the Binance website
+            or mobile app), those orders will also be counted towards the maximum
+            number allowed.
+
+        [ NOTE ]: Additionally, the MAX_NUM_ORDERS filter can be set in combination
+            with the MAX_NUM_ALGO_ORDERS filter to further limit the number of
+            open orders a user can have for a specific trading pair. This can
+            help prevent excessive market activity and reduce the risk of unintended
+            consequences from large numbers of open orders.
+        '''
+        log.debug('TODO - Unimplemented')
+        trade_filter = self.filters.get('MAX_NUM_ORDERS')
+        if not trade_filter:
+            log.error(f'No data found on trade filter MAX_NUM_ORDERS!')
+            return False
+        return True
+
+    # TODO
+    def check_filters_max_num_algo_orders(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'MAX_NUM_ALGO_ORDERS',
+            'maxNumAlgoOrders': 5
+        }, ...]
+
+        [ NOTE ]: MAX_NUM_ALGO_ORDERS is a filter parameter in the Binance API
+            that sets the maximum number of open stop-loss, take-profit, and
+            other algorithmic orders that can be placed by a user for a specific
+            trading pair. This filter is designed to prevent users from placing
+            an excessive number of orders and potentially disrupting the market.
+
+        [ NOTE ]: The MAX_NUM_ALGO_ORDERS filter takes an integer value and can
+            be set on a per-symbol basis. For example, if the filter is set to
+            10 for a particular trading pair, a user can only have up to 10 open
+            algorithmic orders for that pair at any given time. If the user attempts
+            to place additional orders, the API will return an error indicating
+            that the maximum number of orders has been exceeded.
+
+        [ NOTE ]: Enforcing the MAX_NUM_ALGO_ORDERS filter can be done through
+            the Binance API when placing orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. It is important to note
+            that the MAX_NUM_ALGO_ORDERS filter is enforced on the server-side,
+            meaning that if a user has open algorithmic orders through other
+            means (such as the Binance website or mobile app), those orders will
+            also be counted towards the maximum number allowed.
+
+        [ NOTE ]: The MAX_NUM_ALGO_ORDERS filter is a useful tool for maintaining
+            order and stability in the market, and users should ensure they are
+            aware of the filter settings for any trading pairs they are working
+            with to avoid any potential errors or disruptions.
+        '''
+        log.debug('TODO - Unimplemented')
+        trade_filter = self.filters.get('MAX_NUM_ALGO_ORDERS')
+        if not trade_filter:
+            log.error(f'No data found on trade filter MAX_NUM_ALGO_ORDERS!')
+            return False
+        return True
+
+#   @pysnooper.snoop()
     def check_preconditions(self):
         '''
         [ NOTE ]: Checks all Trade data to be aligned to the constraints imposed
@@ -143,7 +646,6 @@ class Trade():
             states with the same data set.
         '''
         log.debug('')
-        # Enforce ticker symbol trade rules
         checkers = {
             self.STATUS_DRAFT: self.check_preconditions_draft,
             self.STATUS_EVALUATED: self.check_preconditions_evaluated,
@@ -190,7 +692,7 @@ class Trade():
     def check_preconditions_evaluated(self):
         log.debug('')
         return False if not self._signals or not self.stop_loss_price \
-            or not self.take_profit_price or not self.min_price_step else True
+            or not self.take_profit_price or not self.filter_check() else True
 
     def check_preconditions_commited(self):
         log.debug('')
@@ -223,21 +725,22 @@ class Trade():
             return False
         state = self.status
         self.__dict__.update({
-            'trade_id': new_data.get('trade-id', self.trade_id),
-            'ticker_symbol': new_data.get('ticker-symbol', self.ticker_symbol),
-            'status': new_data.get('status', self.status),
-            'risk': new_data.get('risk', self.risk),
-            'base_quantity': new_data.get('base_quantity', self.base_quantity),
-            'quote_quantity': new_data.get('quote_quantity', self.quote_quantity),
-            'side': new_data.get('side', self.side),
-            'current_price': new_data.get('current_price', self.current_price),
-            'stop_loss_price': new_data.get('stop_loss_price', self.stop_loss_price),
-            'take_profit_price': new_data.get('take_profit_price', self.take_profit_price),
-            'trade_fee': new_data.get('trade_fee', self.trade_fee),
+            'trade_id': str(new_data.get('trade-id', self.trade_id)),
+            'ticker_symbol': str(new_data.get('ticker-symbol', self.ticker_symbol)).replace('/', ''),
+            'status': str(new_data.get('status', self.status)),
+            'risk': int(new_data.get('risk', self.risk)),
+            'base_quantity': new_data.get('base_quantity', self.base_quantity) or float(),
+            'quote_quantity': new_data.get('quote_quantity', self.quote_quantity) or float(),
+            'side': str(new_data.get('side', self.side)),
+            'current_price': float(new_data.get('current_price', self.current_price)),
+            'stop_loss_price': float(new_data.get('stop_loss_price', self.stop_loss_price)),
+            'take_profit_price': float(new_data.get('take_profit_price', self.take_profit_price)),
+            'trade_fee': float(new_data.get('trade_fee', self.trade_fee)),
         })
         if self.status != state:
             self.previous_status = state
         self.write_date = datetime.datetime.now()
+        log.debug(f'Updated Trade instance: {self.__dict__}')
         return True
 
     def update_context(self, **new_updates) -> dict:
@@ -247,6 +750,7 @@ class Trade():
         '''
         log.debug('')
         self._context.update(new_updates)
+        log.debug(f'Trade context updated: {self._context}')
         return self._context
 
     def update_signals(self, *new_signals) -> list:
@@ -256,17 +760,75 @@ class Trade():
         '''
         log.debug('')
         self._signals.extend(new_signals)
+        log.debug(f'Trade signals updated: {self._signals}')
         return self._signals
 
-    def update_action_history(self, action: str, ok_flag: bool, **new_updates) -> dict:
+    def update_action_history(self, action: str, failed: bool = False, **new_updates) -> dict:
         log.debug('')
         timestamp = fetch_timestamp()
         self._history.update({timestamp: {
             'action': action,
-            'succeeded': ok_flag,
+            'failed': failed,
             'details': new_update,
+            'context': self._context,
         }})
+        log.debug(f'Trade action history updated: {self._history}')
         return self._history
+
+    def update_filters(self, *filters):
+        log.debug('')
+        if not filters:
+            return False
+        self.filters = {
+            item['filterType']: item for item in filters if item.get('filterType')
+        }
+        log.debug(f'Trade filters updated: {self.filters}')
+        return self.filters
+
+    # GENERAL
+
+    def filter_check(self, *filters) -> bool:
+        '''
+        [ INPUT ]: *filters - [
+            {'filterType': 'PRICE_FILTER', 'minPrice': '0.00010000', 'maxPrice': '1000.00000000', 'tickSize': '0.00010000'},
+            {'filterType': 'LOT_SIZE', 'minQty': '0.10000000', 'maxQty': '90000.00000000', 'stepSize': '0.10000000'},
+            {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.00000000', 'applyToMarket': True, 'avgPriceMins': 1},
+            {'filterType': 'ICEBERG_PARTS', 'limit': 10},
+            {'filterType': 'MARKET_LOT_SIZE', 'minQty': '0.00000000', 'maxQty': '10000.00000000', 'stepSize': '0.00000000'},
+            {'filterType': 'TRAILING_DELTA', 'minTrailingAboveDelta': 10, 'maxTrailingAboveDelta': 2000, 'minTrailingBelowDelta': 10, 'maxTrailingBelowDelta': 2000},
+            {'filterType': 'PERCENT_PRICE_BY_SIDE', 'bidMultiplierUp': '5', 'bidMultiplierDown': '0.2', 'askMultiplierUp': '5', 'askMultiplierDown': '0.2', 'avgPriceMins': 1},
+            {'filterType': 'MAX_NUM_ORDERS', 'maxNumOrders': 200},
+            {'filterType': 'MAX_NUM_ALGO_ORDERS', 'maxNumAlgoOrders': 5}
+        ]
+
+        [ NOTE ]: Called on preconditions check when current state is EVALUATED
+
+        [ WARNING ]: The following filters are currently ignored -
+            * ICEBERG_PARTS
+            * TRAILING_DELTA
+        '''
+        log.debug('')
+        filters = self.update_filters(*filters)
+        if not filters:
+            return False
+        failures, checkers = 0, {
+            'PRICE_FILTERS': self.check_filter_price,
+            'LOT_SIZE': self.check_filter_lot_size,
+            'MIN_NOTIONAL': self.check_filter_min_notional,
+            'MARKET_LOT_SIZE': self.check_filter_market_lot_size,
+            'PERCENT_PRICE_BY_SIDE': self.check_filter_percent_price_by_side,
+#           'ICEBERG_PARTS': self.check_filter_iceberg_parts,
+#           'TRAILING_DELTA': self.check_filter_trailing_delta,
+#           'MAX_NUM_ORDERS': self.check_filter_max_num_orders,
+#           'MAX_NUM_ALGO_ORDERS': self.check_filters_max_num_algo_orders,
+        }
+        for check in checkers:
+            result = checkers[check](filters)
+            if not result:
+                failures += 1
+        if failures:
+            log.debug(f'{failures} errors detected during Trade filter check!')
+        return False if failures else True
 
     # ACTIONS
 
@@ -311,7 +873,7 @@ class Trade():
             'stopLimitTimeInForce': self.STOP_ORDER_TIME_IN_FORCE,
             'price':                self.current_price,
             'stopPrice':            self.stop_loss_price,
-            'stopLimitPrice':       self.stop_limit_price,
+            'stopLimitPrice':       self.take_profit_price,
             'listClientOrderID':    self.trade_id,
             'recvWindow':           context.get(
                 'recv-window', self._context.get('recv-window', 60000)
@@ -325,12 +887,12 @@ class Trade():
         return {
             'symbol': self.ticker_symbol,
             'side': self.side,
-            'quantity': self.base_quantity,
+            'quantity': round(self.base_quantity, 4),
             'stopLimitTimeInForce': self.STOP_ORDER_TIME_IN_FORCE,
-            'price': self.current_price,
-            'stopPrice': self.stop_loss_price,
-            'stopLimitPrice': self.stop_limit_price,
-            'listClientOrderID': self.trade_id,
+            'price': round(float(self.current_price), 4),
+            'stopPrice': round(self.stop_loss_price, 4),
+            'stopLimitPrice': round(self.take_profit_price, 4),
+            'listClientOrderId': self.trade_id,
             'recvWindow': context.get(
                 'recv-window', self._context.get('recv-window', 60000)
             ),
