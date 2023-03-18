@@ -1,5 +1,6 @@
 import unittest
 import os
+import pysnooper
 
 from src.ar_bot import TradingMarket, Trade, Signal
 from src.backpack.bp_convertors import json2dict
@@ -46,36 +47,52 @@ class TestARMarket(unittest.TestCase):
     # MOCK
 
     # TODO
+#   @pysnooper.snoop()
     def generate_mock_trade_instance(self):
         new_trade = Trade(**self.context)
         data = self.trading_market.scan('all', **self.context)
 
-        print(f'[ DEBUG ]: Market Scan Data: {data}')
-        pretty_dict_print(data)
+
+        # TODO - Remove 1 down
+#       stdout_msg('[ DEBUG ]: Market Scan Data: \n{}'.format(pretty_dict_print(data)), red=True)
 
         if not data['ticker']['info']['ocoAllowed']:
             print(
                 f"[ WARNING ]: Ticker symbol {data['ticker']['info']['ocoAllowed']} "
                 "does not support OCO orders!"
             )
-            self.assertTrue(False)
+            raise
+
+        # TODO - Remove 1 down
+#       stdout_msg(f"[ DEBUG ]: Last Price {data['ticker']['symbol']['lastPrice']}")
+
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
-            'base_quantity': 100,
-            'quote_quantity': None,
+            'base_quantity': 1000,
             'side': new_trade.SIDE_BUY,
-            'current_price': data['ticker']['symbol']['lastPrice'],
+            'current_price': float(data['ticker']['symbol']['lastPrice']),
             'stop_loss_price': compute_percentage(
-                data['ticker']['symbol']['lastPrice'], 10, operation='subtract'
+                float(data['ticker']['symbol']['lastPrice']), 10, operation='subtract'
             ),
             'take_profit_price': compute_percentage(
-                data['ticker']['symbol']['lastPrice'], 30, operation='add'
+                float(data['ticker']['symbol']['lastPrice']), 30, operation='add'
             ),
             'trade_fee': 0.1,
         })
-        new_trade.filter_check(data['ticker']['info']['filters'])
+        new_trade.update(**{
+            'quote_quantity': round(float(
+                new_trade.base_quantity * new_trade.current_price
+            ), 8),
+        })
+        new_trade.filter_check(*data['ticker']['info']['filters'])
         new_trade._signals = [Signal(), Signal()]
+
+
+        # TODO - REmove 1 down
+        stdout_msg('[ DEBUG ]: Trade().__dict__ - {}'.format(pretty_dict_print(new_trade.pickle_me_rick())), red=True)
+
+
         return new_trade
 
     # TESTERS

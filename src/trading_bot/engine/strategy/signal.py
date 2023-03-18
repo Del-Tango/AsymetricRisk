@@ -42,7 +42,8 @@ class Signal():
     # MAGIK
 
     def __str__(self):
-        return f'Trade Signal: {self}'
+        return f'Trade Signal - Symbol: {self.ticker_symbol}, Side: {self.side}, '\
+            f'Risk: {self.risk}, Strategy: ' + ','.join(self.source_strategy.keys())
 
     # TODO
     def __add__(self, other):

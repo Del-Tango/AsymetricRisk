@@ -9,6 +9,7 @@ import time
 import datetime
 import random
 import string
+import math
 import pysnooper
 
 from src.backpack.bp_fetchers import fetch_timestamp
@@ -79,6 +80,8 @@ class Trade():
         self.current_price = float()
         self.stop_loss_price = float()
         self.take_profit_price = float()
+        self.price_percent_change = float()
+        self.trailing_delta = float()
         self.trade_fee = float()
         self.expires_on = None
         self.result = dict()
@@ -136,6 +139,66 @@ class Trade():
 
     # CHECKERS
 
+#   @pysnooper.snoop()
+    def check_preconditions_evaluated(self):
+        log.debug('')
+        if not self.stop_loss_price or not self.take_profit_price:
+            log.warning(
+                f'Trade take_profit ({self.take_profit_price}), stop_loss '
+                f'({self.stop_loss_price}) not set up properly! '
+                'Neither can be zero.'
+            )
+        elif not self._signals:
+            log.warning(
+                f'Trade Signals ({self._signals}) not set up properly! '
+                'Must have at least one.'
+            )
+        return False if not self._signals or not self.stop_loss_price \
+            or not self.take_profit_price \
+            or not self.filter_check(*list(self.filters.values())) else True
+
+#   @pysnooper.snoop()
+    def check_preconditions(self):
+        '''
+        [ NOTE ]: Checks all Trade data to be aligned to the constraints imposed
+            by the Trade state. Results may differ when executed in different
+            states with the same data set.
+        '''
+        log.debug('')
+        if not self.status:
+            log.error(
+                'Trade status not set! Cannot check preconditions for unknown '
+                'state transition.'
+            )
+            return False
+        checkers = {
+            self.STATUS_DRAFT: self.check_preconditions_draft,
+            self.STATUS_EVALUATED: self.check_preconditions_evaluated,
+            self.STATUS_COMMITED: self.check_preconditions_commited,
+            self.STATUS_DONE: self.check_preconditions_done,
+        }
+        if self.status not in checkers.keys() \
+                or not self.check_preconditions_general():
+            return False
+        return checkers[self.status]()
+
+#   @pysnooper.snoop()
+    def check_preconditions_general(self):
+        log.debug('')
+        if not self.ticker_symbol or not self.side:
+            log.warning(
+                f'Trade ticker_symbol ({self.ticker_symbol}) or trade side '
+                f'({self.side}) not set up properly! Both must be set.'
+            )
+        elif not self.current_price or not self.base_quantity:
+            log.warning(
+                f'Trade current_price ({self.current_price}) or base_quantity '
+                f'({self.base_quantity}) not set up properly! Neither can be zero.'
+            )
+        return False if not self.ticker_symbol or not self.side \
+            or not self.base_quantity or not self.current_price else True
+
+#   @pysnooper.snoop()
     def check_filter_price(self, filters: dict) -> bool:
         '''
         [ INPUT ]: *filters - [{
@@ -179,22 +242,27 @@ class Trade():
         # We enforce the PRICE_FILTER filter settings by rounding the price,
         # stop_price, and stop_limit_price values to the appropriate precision
         # based on the tickSize value from the PRICE_FILTER filter settings.
-        price_precision = int(trade_filter['tickSize'])
-        if self.current_price:
-            self.current_price = round(self.current_price, price_precision)
-        if self.stop_loss_price:
-            self.stop_loss_price = round(self.stop_loss_price, price_precision)
-        if self.take_profit_price:
-            self.take_profit_price = round(self.take_profit_price, price_precision)
+        price_precision = int(float(trade_filter['tickSize']))
+#       if self.current_price:
+#           self.current_price = round(self.current_price, price_precision)
+#       if self.stop_loss_price:
+#           self.stop_loss_price = round(self.stop_loss_price, price_precision)
+#       if self.take_profit_price:
+#           self.take_profit_price = round(self.take_profit_price, price_precision)
         prices = [
             item for item in (
                 self.current_price, self.stop_loss_price, self.take_profit_price
             ) if item
         ]
-        below_min = [item for item in prices if item < trade_filter['minPrice']]
-        above_max = [item for item in prices if item > trade_filter['maxPrice']]
+        below_min = [
+            item for item in prices if item < float(trade_filter['minPrice'])
+        ]
+        above_max = [
+            item for item in prices if item > float(trade_filter['maxPrice'])
+        ]
         return False if below_min or above_max else True
 
+#   @pysnooper.snoop()
     def check_filter_lot_size(self, filters: dict) -> bool:
         '''
         [ INPUT ]: *filters - [{
@@ -244,12 +312,17 @@ class Trade():
         if self.quote_quantity:
             self.quote_quantity = round(self.quote_quantity, quantity_precision)
         quants = [
-            item for item in (self.base_quantity, self.quote_quantity) if item
+            float(item) for item in (self.base_quantity, self.quote_quantity) if item
         ]
-        under_step = [item for item in quants if item < trade_filter['minQty']]
-        over_step = [item for item in quants if item > trade_filter['maxQty']]
+        under_step = [
+            item for item in quants if item < float(trade_filter['minQty'])
+        ]
+        over_step = [
+            item for item in quants if item > float(trade_filter['maxQty'])
+        ]
         return False if under_step or over_step else True
 
+#   @pysnooper.snoop()
     def check_filter_min_notional(self, filters: dict) -> bool:
         '''
         [ INPUT ]: *filters - [{
@@ -291,6 +364,13 @@ class Trade():
         if not trade_filter:
             log.error(f'No data found on trade filter MIN_NOTIONAL!')
             return False
+        elif not self.current_price or not self.base_quantity:
+            log.error(
+                f'Trade parameters current_price ({self.current_price}) or '
+                f'base_quantity ({self.base_quantity}) not set up properly! '
+                'Neither can be zero.'
+            )
+            return False
         # We enforce the MIN_NOTIONAL filter settings by calculating the notional
         # value of the order (price * quantity), and comparing it to the minNotional
         # value from the filter settings. If the notional value is less than the
@@ -302,6 +382,194 @@ class Trade():
             self.base_quantity = math.ceil(
                 min_notional / self.current_price * 10**8
             ) / 10**8
+        return True
+
+#   @pysnooper.snoop()
+    def check_filter_market_lot_size(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'MARKET_LOT_SIZE',
+            'minQty': '0.00000000',
+            'maxQty': '10000.00000000',
+            'stepSize': '0.00000000'
+        }, ...]
+
+        [ NOTE ]: MARKET_LOT_SIZE is a filter parameter in the Binance API that
+            sets the minimum and maximum allowable quantity for a market order.
+            This filter is designed to prevent users from placing orders that
+            are too small or too large, which could potentially disrupt the market.
+
+        [ NOTE ]: The MARKET_LOT_SIZE filter takes three values: "minQty",
+            "maxQty", and "stepSize". The "minQty" value sets the minimum allowable
+            quantity for a market order, the "maxQty" value sets the maximum
+            allowable quantity, and the "stepSize" value sets the allowable
+            quantity increments.
+
+        [ NOTE ]: Enforcing the MARKET_LOT_SIZE filter can be done through the
+            Binance API when placing market orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. If the user attempts to
+            place a market order with a quantity outside of the allowable range
+            or in a quantity increment that is not allowed, the API will return
+            an error indicating that the order is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the MARKET_LOT_SIZE filter is
+            enforced on the server-side, meaning that if a user attempts to place
+            a market order outside of the allowable range through other means
+            (such as the Binance website or mobile app), the order will still be
+            rejected.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('MARKET_LOT_SIZE')
+        if not trade_filter:
+            log.error(f'No data found on trade filter MARKET_LOT_SIZE!')
+            return False
+        elif not self.current_price or not self.quote_quantity:
+            log.error(
+                f'Trade parameters current_price ({self.current_price}) or '
+                f'base_quantity ({self.quote_quantity}) not set up properly! '
+                'Neither can be zero.'
+            )
+            return False
+        # We then enforce the MARKET_LOT_SIZE filter settings by rounding the
+        # order quantity down to the nearest stepSize value, and adjusting it
+        # to the minimum or maximum allowed quantity if it falls outside the
+        # allowed range. We then calculate the order quantity in the base asset
+        # using the current price of the trading pair.
+        min_qty = float(trade_filter['minQty'])
+        max_qty = float(trade_filter['maxQty'])
+        step_size = float(trade_filter['stepSize'])
+        if step_size <= 0:
+            rounded_qty = self.quote_quantity
+        else:
+            rounded_qty = self.quote_quantity - (self.quote_quantity % step_size)
+        if rounded_qty < min_qty:
+            rounded_qty = min_qty
+        elif rounded_qty > max_qty:
+            rounded_qty = max_qty
+        # Calculate order quantity in base asset
+        self.quote_quantity = rounded_qty / self.current_price
+        return True
+
+#   @pysnooper.snoop()
+    def check_filter_percent_price_by_side(self, filters: dict) -> bool:
+        '''
+        [ INPUT ]: *filters - [{
+            'filterType': 'PERCENT_PRICE_BY_SIDE',
+            'bidMultiplierUp': '5',
+            'bidMultiplierDown': '0.2',
+            'askMultiplierUp': '5',
+            'askMultiplierDown': '0.2',
+            'avgPriceMins': 1
+        }, ...]
+
+        [ NOTE ]: PERCENT_PRICE_BY_SIDE is a filter parameter in the Binance API
+            that sets the allowed range of price variation for a user's order
+            based on the order side (buy or sell) and the market price at the
+            time the order is placed. This filter is designed to prevent users
+            from placing orders that are too far away from the current market
+            price, which could potentially disrupt the market.
+
+        [ NOTE ]: The PERCENT_PRICE_BY_SIDE filter takes two arrays of values,
+            one for the buy side and one for the sell side. Each array contains
+            two percentage values: "multiplierUp" and "multiplierDown". These
+            values define the upper and lower bounds for the allowable price
+            range as a percentage of the current market price.
+
+            [ Ex ]: If the current market price for a trading pair is $100, and
+                the "multiplierUp" value is set to 1.05 and the "multiplierDown"
+                value is set to 0.95 for the buy side, a user can only place a
+                buy order with a price between $95 and $105.
+
+        [ NOTE ]: Enforcing the PERCENT_PRICE_BY_SIDE filter can be done through
+            the Binance API when placing orders. When making an order request,
+            the user can specify the "newOrderRespType" parameter as "FULL" to
+            receive a detailed response from the API, including any error messages
+            if the order is rejected due to the filter. If the user attempts to
+            place an order with a price that falls outside of the allowable range
+            defined by the filter, the API will return an error indicating that
+            the price is not within the allowed range.
+
+        [ NOTE ]: It is important to note that the PERCENT_PRICE_BY_SIDE filter
+            is enforced on the server-side, meaning that if a user attempts to
+            place an order with a price outside of the allowable range through
+            other means (such as the Binance website or mobile app), the order
+            will still be rejected.
+
+        [ NOTE ]: "bid" and "ask" are two terms used to describe the different
+            prices at which a security can be bought and sold.
+
+        [ NOTE ]: The bid price is the highest price that a buyer is willing to
+            pay for a security at a given time. This is the price that a trader
+            would receive if they were to sell the security right away. On the
+            other hand, the ask price is the lowest price at which a seller is
+            willing to sell the security. This is the price that a trader would
+            pay if they were to buy the security right away.
+
+        [ NOTE ]: The difference between the bid and ask prices is known as the
+            spread, which represents the profit that the market maker earns for
+            facilitating the trade. The spread can vary depending on the liquidity
+            of the security, the volatility of the market, and other factors.
+
+            [ Ex ]: Let's say that a trader wants to buy 100 shares of XYZ stock.
+                The current bid price is $50.00, and the ask price is $50.10. If the
+                trader places a market order to buy the shares, they will pay the ask
+                price of $50.10 per share. Alternatively, if the trader places a limit
+                order to buy the shares at $50.05, they will only be filled if a seller
+                is willing to sell at that price or lower.
+
+            [ Ex ]: Suppose that a trader wants to sell 50 shares of ABC stock.
+                The current bid price is $25.50, and the ask price is $25.60. If the
+                trader places a market order to sell the shares, they will receive
+                the bid price of $25.50 per share. Alternatively, if the trader places
+                a limit order to sell the shares at $25.55, they will only be filled
+                if a buyer is willing to buy at that price or higher.
+        '''
+        log.debug('')
+        trade_filter = self.filters.get('PERCENT_PRICE_BY_SIDE')
+        if not trade_filter:
+            log.error(f'No data found on trade filter PERCENT_PRICE_BY_SIDE!')
+            return False
+        elif self.side.upper() not in ('BUY', 'SELL'):
+            log.error(
+                f'Trade side ({self.side}) not set up properly! '
+                'Valid values are (BUY | SELL)'
+            )
+            return False
+        elif not self.current_price:
+            log.error(
+                f'Trade current_price ({self.current_price}) not set up properly. '
+                'Cant be zero.'
+            )
+            return False
+        #  We extract the allowed percentage change for the order based on the
+        #  side, and enforce the filter by checking if the specified percentage
+        #  change is within the allowed range. Finally, we adjust the
+        #  percentage change if necessary before placing the OCO order.
+        if self.side == 'BUY':
+            percent_change_allowed = float(trade_filter['askMultiplierUp'])
+        elif self.side == 'SELL':
+            percent_change_allowed = float(trade_filter['askMultiplierDown'])
+        # Enforce the PERCENT_PRICE_BY_SIDE filter by checking if the
+        # percentage change is within the allowed range
+        if self.price_percent_change > percent_change_allowed:
+            self.price_percent_change = percent_change_allowed
+        # Calculate the stop price and limit price based on the percent change
+#       if self.side == 'BUY':
+#           self.stop_loss_price = round(
+#               self.current_price * (1 - self.price_percent_change), 8
+#           )
+#           self.take_profit_price = round(
+#               self.stop_loss_price * (1 + self.price_percent_change), 8
+#           )
+#       elif self.side == 'SELL':
+#           self.stop_loss_price = round(
+#               self.current_price * (1 + self.price_percent_change), 8
+#           )
+#           self.take_profit_price = round(
+#               self.stop_loss_price * (1 - self.price_percent_change), 8
+#           )
         return True
 
     # WARNING - Unused
@@ -356,63 +624,6 @@ class Trade():
         if self.iceberg_quantity > max_iceberg_parts:
             self.iceberg_quantity = max_iceberg_parts
             self.base_quantity = max_qty_per_part * self.iceberg_qty
-        return True
-
-    def check_filter_market_lot_size(self, filters: dict) -> bool:
-        '''
-        [ INPUT ]: *filters - [{
-            'filterType': 'MARKET_LOT_SIZE',
-            'minQty': '0.00000000',
-            'maxQty': '10000.00000000',
-            'stepSize': '0.00000000'
-        }, ...]
-
-        [ NOTE ]: MARKET_LOT_SIZE is a filter parameter in the Binance API that
-            sets the minimum and maximum allowable quantity for a market order.
-            This filter is designed to prevent users from placing orders that
-            are too small or too large, which could potentially disrupt the market.
-
-        [ NOTE ]: The MARKET_LOT_SIZE filter takes three values: "minQty",
-            "maxQty", and "stepSize". The "minQty" value sets the minimum allowable
-            quantity for a market order, the "maxQty" value sets the maximum
-            allowable quantity, and the "stepSize" value sets the allowable
-            quantity increments.
-
-        [ NOTE ]: Enforcing the MARKET_LOT_SIZE filter can be done through the
-            Binance API when placing market orders. When making an order request,
-            the user can specify the "newOrderRespType" parameter as "FULL" to
-            receive a detailed response from the API, including any error messages
-            if the order is rejected due to the filter. If the user attempts to
-            place a market order with a quantity outside of the allowable range
-            or in a quantity increment that is not allowed, the API will return
-            an error indicating that the order is not within the allowed range.
-
-        [ NOTE ]: It is important to note that the MARKET_LOT_SIZE filter is
-            enforced on the server-side, meaning that if a user attempts to place
-            a market order outside of the allowable range through other means
-            (such as the Binance website or mobile app), the order will still be
-            rejected.
-        '''
-        log.debug('')
-        trade_filter = self.filters.get('MARKET_LOT_SIZE')
-        if not trade_filter:
-            log.error(f'No data found on trade filter MARKET_LOT_SIZE!')
-            return False
-        # We then enforce the MARKET_LOT_SIZE filter settings by rounding the
-        # order quantity down to the nearest stepSize value, and adjusting it
-        # to the minimum or maximum allowed quantity if it falls outside the
-        # allowed range. We then calculate the order quantity in the base asset
-        # using the current price of the trading pair.
-        min_qty = float(trade_filter['minQty'])
-        max_qty = float(trade_filter['maxQty'])
-        step_size = float(trade_filter['stepSize'])
-        rounded_qty = self.quote_quantity - (self.quote_quantity % step_size)
-        if rounded_qty < min_qty:
-            rounded_qty = min_qty
-        elif rounded_qty > max_qty:
-            rounded_qty = max_qty
-        # Calculate order quantity in base asset
-        self.base_quantity = rounded_qty / self.current_price
         return True
 
     # WARNING - Unused
@@ -479,76 +690,6 @@ class Trade():
             self.trailing_delta = trailing_delta_min
         elif self.trailing_delta > trailing_delta_max:
             self.trailing_delta = trailing_delta_max
-        return True
-
-    def check_filter_percent_price_by_side(self, filters: dict) -> bool:
-        '''
-        [ INPUT ]: *filters - [{
-            'filterType': 'PERCENT_PRICE_BY_SIDE',
-            'bidMultiplierUp': '5',
-            'bidMultiplierDown': '0.2',
-            'askMultiplierUp': '5',
-            'askMultiplierDown': '0.2',
-            'avgPriceMins': 1
-        }, ...]
-
-        [ NOTE ]: PERCENT_PRICE_BY_SIDE is a filter parameter in the Binance API
-            that sets the allowed range of price variation for a user's order
-            based on the order side (buy or sell) and the market price at the
-            time the order is placed. This filter is designed to prevent users
-            from placing orders that are too far away from the current market
-            price, which could potentially disrupt the market.
-
-        [ NOTE ]: The PERCENT_PRICE_BY_SIDE filter takes two arrays of values,
-            one for the buy side and one for the sell side. Each array contains
-            two percentage values: "multiplierUp" and "multiplierDown". These
-            values define the upper and lower bounds for the allowable price
-            range as a percentage of the current market price.
-
-            [ Ex ]: If the current market price for a trading pair is $100, and
-                the "multiplierUp" value is set to 1.05 and the "multiplierDown"
-                value is set to 0.95 for the buy side, a user can only place a
-                buy order with a price between $95 and $105.
-
-        [ NOTE ]: Enforcing the PERCENT_PRICE_BY_SIDE filter can be done through
-            the Binance API when placing orders. When making an order request,
-            the user can specify the "newOrderRespType" parameter as "FULL" to
-            receive a detailed response from the API, including any error messages
-            if the order is rejected due to the filter. If the user attempts to
-            place an order with a price that falls outside of the allowable range
-            defined by the filter, the API will return an error indicating that
-            the price is not within the allowed range.
-
-        [ NOTE ]: It is important to note that the PERCENT_PRICE_BY_SIDE filter
-            is enforced on the server-side, meaning that if a user attempts to
-            place an order with a price outside of the allowable range through
-            other means (such as the Binance website or mobile app), the order
-            will still be rejected.
-        '''
-        log.debug('')
-        trade_filter = self.filters.get('PERCENT_PRICE_BY_SIDE')
-        if not trade_filter:
-            log.error(f'No data found on trade filter PERCENT_PRICE_BY_SIDE!')
-            return False
-        #  We extract the allowed percentage change for the order based on the
-        #  side, and enforce the filter by checking if the specified percentage
-        #  change is within the allowed range. Finally, we adjust the
-        #  percentage change if necessary before placing the OCO order.
-        if side == 'BUY':
-            percent_change_allowed = float(percent_price_filter['multiplierUp'])
-        elif side == 'SELL':
-            percent_change_allowed = float(percent_price_filter['multiplierDown'])
-        # Enforce the PERCENT_PRICE_BY_SIDE filter by checking if the
-        # percentage change is within the allowed range
-        if self.percent_change > percent_change_allowed:
-            self.percent_change = percent_change_allowed
-        # Calculate the stop price and limit price based on the percent change
-        if side == 'BUY':
-            self.stop_loss_price = round(self.current_price * (1 - percent_change), 2)
-            self.take_profit_price = round(self.stop_loss_price * (1 + percent_change), 2)
-        elif side == 'SELL':
-            self.stop_loss_price = round(self.current_price * (1 + percent_change), 2)
-            self.take_profit_price = round(self.stop_loss_price * (1 - percent_change), 2)
         return True
 
     # TODO
@@ -638,25 +779,6 @@ class Trade():
             return False
         return True
 
-#   @pysnooper.snoop()
-    def check_preconditions(self):
-        '''
-        [ NOTE ]: Checks all Trade data to be aligned to the constraints imposed
-            by the Trade state. Results may differ when executed in different
-            states with the same data set.
-        '''
-        log.debug('')
-        checkers = {
-            self.STATUS_DRAFT: self.check_preconditions_draft,
-            self.STATUS_EVALUATED: self.check_preconditions_evaluated,
-            self.STATUS_COMMITED: self.check_preconditions_commited,
-            self.STATUS_DONE: self.check_preconditions_done,
-        }
-        if self.status not in checkers.keys() \
-                or not self.check_preconditions_general():
-            return False
-        return checkers[self.status]()
-
     def check_time_until_expires(self) -> int:
         '''
         [ RETURN ]: Number of seconds until trade opportunity expires. If the
@@ -680,30 +802,37 @@ class Trade():
         now = datetime.datetime.now()
         return now > self.expires_on
 
-    def check_preconditions_general(self):
-        log.debug('')
-        return False if not self.ticker_symbol or not self.side \
-            or not self.base_quantity or not self.current_price else True
-
     def check_preconditions_draft(self):
         log.debug('')
+        if not self.risk or not self.trade_fee:
+            log.warning(
+                f'Trade risk index ({self.risk}) or trade_fee ({self.trade_fee}) '
+                'not set up properly! Neither can be zero.'
+            )
         return False if not self.risk or not self.trade_fee else True
-
-    def check_preconditions_evaluated(self):
-        log.debug('')
-        return False if not self._signals or not self.stop_loss_price \
-            or not self.take_profit_price or not self.filter_check() else True
 
     def check_preconditions_commited(self):
         log.debug('')
+        if not self.result:
+            log.warning(
+                f'Result ({self.result}) not set up properly! Must be set.'
+            )
         return False if not self.result else True
 
     def check_preconditions_done(self):
         log.debug('')
+        if self.expires_on:
+            log.warning(
+                f'Trade expiration date cannot be set in state {self.status}! '
+                'Currently set to ({})'.format(self.expires_on.strftime(
+                    self._context.get('timestamp-format', '%d-%m-%Y %H:%M:%S')
+                ))
+            )
         return False if self.expires_on else True
 
     # UPDATES
 
+#   @pysnooper.snoop()
     def update(self, **new_data) -> bool:
         '''
         [ NOTE ]: Updates the following Trade parameters in a single GO:
@@ -718,6 +847,8 @@ class Trade():
             * current_price
             * stop_loss_price
             * take_profit_price
+            * price_percent_change
+            * trailing_delta
             * trade_fee
         '''
         log.debug('')
@@ -736,6 +867,8 @@ class Trade():
             'stop_loss_price': float(new_data.get('stop_loss_price', self.stop_loss_price)),
             'take_profit_price': float(new_data.get('take_profit_price', self.take_profit_price)),
             'trade_fee': float(new_data.get('trade_fee', self.trade_fee)),
+            'price_percent_change': float(new_data.get('price_percent_change', self.price_percent_change)),
+            'trailing_delta': float(new_data.get('trailing_delta', self.trailing_delta)),
         })
         if self.status != state:
             self.previous_status = state
@@ -775,6 +908,7 @@ class Trade():
         log.debug(f'Trade action history updated: {self._history}')
         return self._history
 
+#   @pysnooper.snoop()
     def update_filters(self, *filters):
         log.debug('')
         if not filters:
@@ -787,6 +921,21 @@ class Trade():
 
     # GENERAL
 
+    def pickle_me_rick(self) -> dict:
+        log.debug('')
+        pickle_rick = self.__dict__.copy()
+        pickle_rick.update({
+            '_signals': [str(signal) for signal in pickle_rick['_signals']],
+            'create_date': pickle_rick['create_date'].strftime(
+                self._context.get('timestamp-format', '%d-%m-%Y %H:%M:%S')
+            ),
+            'write_date': pickle_rick['write_date'].strftime(
+                self._context.get('timestamp-format', '%d-%m-%Y %H:%M:%S')
+            ),
+        })
+        return pickle_rick
+
+#   @pysnooper.snoop()
     def filter_check(self, *filters) -> bool:
         '''
         [ INPUT ]: *filters - [
@@ -887,11 +1036,11 @@ class Trade():
         return {
             'symbol': self.ticker_symbol,
             'side': self.side,
-            'quantity': round(self.base_quantity, 4),
+            'quantity': round(self.base_quantity, 8),
             'stopLimitTimeInForce': self.STOP_ORDER_TIME_IN_FORCE,
-            'price': round(float(self.current_price), 4),
-            'stopPrice': round(self.stop_loss_price, 4),
-            'stopLimitPrice': round(self.take_profit_price, 4),
+            'price': round(float(self.current_price), 8),
+            'stopPrice': round(self.stop_loss_price, 8),
+            'stopLimitPrice': round(self.take_profit_price, 8),
             'listClientOrderId': self.trade_id,
             'recvWindow': context.get(
                 'recv-window', self._context.get('recv-window', 60000)
