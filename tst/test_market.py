@@ -1,9 +1,9 @@
 import unittest
 import os
 
-from src.ar_bot import TradingMarket, Trade
+from src.ar_bot import TradingMarket, Trade, Signal
 from src.backpack.bp_convertors import json2dict
-from src.backpack.bp_general import pretty_dict_print
+from src.backpack.bp_general import stdout_msg, pretty_dict_print
 from src.backpack.bp_computers import compute_percentage
 
 
@@ -62,7 +62,7 @@ class TestARMarket(unittest.TestCase):
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
-            'base_quantity': 0.1,
+            'base_quantity': 100,
             'quote_quantity': None,
             'side': new_trade.SIDE_BUY,
             'current_price': data['ticker']['symbol']['lastPrice'],
@@ -74,6 +74,8 @@ class TestARMarket(unittest.TestCase):
             ),
             'trade_fee': 0.1,
         })
+        new_trade.filter_check(data['ticker']['info']['filters'])
+        new_trade._signals = [Signal(), Signal()]
         return new_trade
 
     # TESTERS
@@ -81,6 +83,10 @@ class TestARMarket(unittest.TestCase):
     def test_ar_market_run_trade(self):
         print('\n[ TEST ]: Execute trade order...\n')
         trade_obj = self.generate_mock_trade_instance()
+        check = trade_obj.check_preconditions()
+        self.assertTrue(check)
+#       change_state = trade_obj.next_state()
+#       self.assertTrue(change_state)
         run = self.trading_market.run(trade_obj)
         self.assertTrue(run)
         self.assertTrue(isinstance(run, dict))
@@ -88,7 +94,7 @@ class TestARMarket(unittest.TestCase):
         self.assertEqual(run['failures'], 0)
         self.assertTrue(run.get('ok'))
         self.assertTrue(isinstance(run['ok'], list))
-        self.assertTrue(run.get('nok'))
+        self.assertFalse(run.get('nok'))
         self.assertTrue(isinstance(run['nok'], list))
 
     def test_ar_market_scrape_data(self):

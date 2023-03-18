@@ -14,6 +14,10 @@ import pandas
 import numpy
 
 from binance.client import Client
+from binance.exceptions import (
+    BinanceAPIException, BinanceOrderException, BinanceRequestException,
+    BinanceWebsocketUnableToConnect, NotImplementedException, UnknownDateFormat,
+)
 #from .indicators import TradingIndicator
 from src.backpack.bp_general import stdout_msg, pretty_dict_print
 
@@ -248,6 +252,12 @@ class TradingMarket(Client):
         failures, ok, nok = 0, [], []
         for trade in trades:
             order_kwargs = trade.unpack()
+            log.debug(f'Trade order kwargs: {order_kwargs}')
+
+            # TODO - Remove 1 down
+            stdout_msg(f'[ DEBUG ]: order_kwargs: {order_kwargs}', red=True)
+
+
             if not order_kwargs:
                 stdout_msg(f'Failed to unpack Trade() instance!', err=True)
                 nok.append(trade)
