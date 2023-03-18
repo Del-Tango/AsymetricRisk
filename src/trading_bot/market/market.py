@@ -116,7 +116,7 @@ class TradingMarket(Client):
         interval = context.get('interval', self._context.get('interval'))
         period = context.get('period', self._context.get('period'))
         scan = {
-            'ticker': self.get_ticker(symbol=ticker),
+            'symbol': self.get_ticker(symbol=ticker),
             'info': self.get_symbol_info(ticker),
             'historical-klines': self.get_historical_klines(ticker, interval, limit=period),
         }

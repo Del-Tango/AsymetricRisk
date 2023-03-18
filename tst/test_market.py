@@ -4,6 +4,7 @@ import os
 from src.ar_bot import TradingMarket, Trade
 from src.backpack.bp_convertors import json2dict
 from src.backpack.bp_general import pretty_dict_print
+from src.backpack.bp_computers import compute_percentage
 
 
 class TestARMarket(unittest.TestCase):
@@ -47,17 +48,30 @@ class TestARMarket(unittest.TestCase):
     # TODO
     def generate_mock_trade_instance(self):
         new_trade = Trade(**self.context)
-        data = self.market_data_scan_cache
-        # TODO - Fetch details from last market scan
+        data = self.trading_market.scan('all', **self.context)
+
+        print(f'[ DEBUG ]: Market Scan Data: {data}')
+        pretty_dict_print(data)
+
+        if not data['ticker']['info']['ocoAllowed']:
+            print(
+                f"[ WARNING ]: Ticker symbol {data['ticker']['info']['ocoAllowed']} "
+                "does not support OCO orders!"
+            )
+            self.assertTrue(False)
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
             'base_quantity': 0.1,
             'quote_quantity': None,
             'side': new_trade.SIDE_BUY,
-            'current_price': data['ticker'],
-            'stop_loss_price': data.get(''),
-            'take_profit_price': data.get(''),
+            'current_price': data['ticker']['symbol']['lastPrice'],
+            'stop_loss_price': compute_percentage(
+                data['ticker']['symbol']['lastPrice'], 10, operation='subtract'
+            ),
+            'take_profit_price': compute_percentage(
+                data['ticker']['symbol']['lastPrice'], 30, operation='add'
+            ),
             'trade_fee': 0.1,
         })
         return new_trade
@@ -65,6 +79,7 @@ class TestARMarket(unittest.TestCase):
     # TESTERS
 
     def test_ar_market_run_trade(self):
+        print('\n[ TEST ]: Execute trade order...\n')
         trade_obj = self.generate_mock_trade_instance()
         run = self.trading_market.run(trade_obj)
         self.assertTrue(run)
@@ -79,7 +94,9 @@ class TestARMarket(unittest.TestCase):
     def test_ar_market_scrape_data(self):
         print('\n[ TEST ]: Scrape market data...\n')
         data = self.trading_market.scan('all', **self.context)
-        self.market_data_scan_cache = data
+#       print(f'[ DEBUG ]: Market Scan Data: {data}')
+#       self.market_data_scan_cache = data
+#       print(f'[ DEBUG ]: Market Scan Data: {self.market_data_scan_cache}')
         pretty_dict_print(data)
         self.assertTrue(data)
         self.assertTrue(isinstance(data, dict))
