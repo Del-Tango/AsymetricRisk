@@ -67,20 +67,19 @@ class TestARMarket(unittest.TestCase):
                 "does not support OCO orders!", warn=True
             )
             raise
+        last_price = float(data['ticker']['symbol']['lastPrice'])
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
             'base_quantity': self.context.get('order-amount', 100),
             'side': new_trade.SIDE_BUY,
-            'current_price': float(data['ticker']['symbol']['lastPrice']),
-            'stop_loss_price': round(
-                float(data['ticker']['symbol']['lastPrice']) \
-                * (1 + self.context['stop-loss'] / 100), 4
-            ),
-            'take_profit_price': round(
-                float(data['ticker']['symbol']['lastPrice']) \
-                * (1 - self.context['take-profit'] / 100), 4
-            ),
+            'current_price': last_price,
+            'stop_loss_price': round(compute_percentage(
+                last_price, self.context['stop-loss'], operation='add'
+            ), 4),
+            'take_profit_price': round(compute_percentage(
+                last_price, self.context['take-profit'], operation='subtract'
+            ), 4),
             'trade_fee': 0.1, # Cannot be fetched by market using testnet API keys
         })
         new_trade.quote_quantity = round(float(
@@ -100,20 +99,19 @@ class TestARMarket(unittest.TestCase):
                 "does not support OCO orders!", warn=True
             )
             raise
+        last_price = float(data['ticker']['symbol']['lastPrice'])
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
             'base_quantity': self.context.get('order-amount', 100),
             'side': new_trade.SIDE_SELL,
             'current_price': float(data['ticker']['symbol']['lastPrice']),
-            'stop_loss_price': round(
-                float(data['ticker']['symbol']['lastPrice']) \
-                * (1 - self.context['stop-loss'] / 100), 4
-            ),
-            'take_profit_price': round(
-                float(data['ticker']['symbol']['lastPrice']) \
-                * (1 + self.context['take-profit'] / 100), 4
-            ),
+            'stop_loss_price': round(compute_percentage(
+                last_price, self.context['stop-loss'], operation='subtract'
+            ), 4),
+            'take_profit_price': round(compute_percentage(
+                last_price, self.context['take-profit'], operation='add'
+            ), 4),
             'trade_fee': 0.1, # Cannot be fetched by market using testnet API keys
         })
         new_trade.quote_quantity = round(float(
