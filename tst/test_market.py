@@ -36,74 +36,119 @@ class TestARMarket(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        print('\n[ TradingMarket ]: Functional test suit -\n')
+        stdout_msg('\n[ TradingMarket ]: Functional test suit -', bold=True)
         cls.trading_market = TradingMarket(cls.binance_key, cls.binance_secret)
         cls.trading_market.setup()
 
     @classmethod
     def tearDownClass(cls):
-        print('\n[ DONE ]: TradingMarket\n')
+        stdout_msg('\n[ CLEANUP ]: Closing trades...', bold=True)
+        order_ids = [item['orderId'] for item in cls.trading_market.get_open_orders()]
+        for order_id in order_ids:
+            stdout_msg(f"[ {cls.context['ticker-symbol']} ]: {order_id}")
+            try:
+                cls.trading_market.cancel_order(
+                    symbol=cls.context['ticker-symbol'].replace('/', ''),
+                    orderId=order_id
+                )
+            except Exception as e:
+                stdout_msg(f'{e}', warn=True)
+        stdout_msg('\n[ DONE ]: TradingMarket AutoTesters', bold=True)
 
     # MOCK
 
-    # TODO
 #   @pysnooper.snoop()
-    def generate_mock_trade_instance(self):
+    def generate_mock_buy_trade_instance(self):
         new_trade = Trade(**self.context)
         data = self.trading_market.scan('all', **self.context)
-
-
-        # TODO - Remove 1 down
-#       stdout_msg('[ DEBUG ]: Market Scan Data: \n{}'.format(pretty_dict_print(data)), red=True)
-
         if not data['ticker']['info']['ocoAllowed']:
-            print(
-                f"[ WARNING ]: Ticker symbol {data['ticker']['info']['ocoAllowed']} "
-                "does not support OCO orders!"
+            stdout_msg(
+                f"Ticker symbol {data['ticker']['info']['ocoAllowed']} "
+                "does not support OCO orders!", warn=True
             )
             raise
-
-        # TODO - Remove 1 down
-#       stdout_msg(f"[ DEBUG ]: Last Price {data['ticker']['symbol']['lastPrice']}")
-
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
-            'base_quantity': 1000,
+            'base_quantity': self.context.get('order-amount', 100),
             'side': new_trade.SIDE_BUY,
             'current_price': float(data['ticker']['symbol']['lastPrice']),
-            'stop_loss_price': compute_percentage(
-                float(data['ticker']['symbol']['lastPrice']), 10, operation='subtract'
+            'stop_loss_price': round(
+                float(data['ticker']['symbol']['lastPrice']) \
+                * (1 + self.context['stop-loss'] / 100), 4
             ),
-            'take_profit_price': compute_percentage(
-                float(data['ticker']['symbol']['lastPrice']), 30, operation='add'
+            'take_profit_price': round(
+                float(data['ticker']['symbol']['lastPrice']) \
+                * (1 - self.context['take-profit'] / 100), 4
             ),
-            'trade_fee': 0.1,
+            'trade_fee': 0.1, # Cannot be fetched by market using testnet API keys
         })
-        new_trade.update(**{
-            'quote_quantity': round(float(
-                new_trade.base_quantity * new_trade.current_price
-            ), 8),
-        })
+        new_trade.quote_quantity = round(float(
+            new_trade.base_quantity * new_trade.current_price
+        ), 8)
         new_trade.filter_check(*data['ticker']['info']['filters'])
         new_trade._signals = [Signal(), Signal()]
+        return new_trade
 
-
-        # TODO - REmove 1 down
-        stdout_msg('[ DEBUG ]: Trade().__dict__ - {}'.format(pretty_dict_print(new_trade.pickle_me_rick())), red=True)
-
-
+#   @pysnooper.snoop()
+    def generate_mock_sell_trade_instance(self):
+        new_trade = Trade(**self.context)
+        data = self.trading_market.scan('all', **self.context)
+        if not data['ticker']['info']['ocoAllowed']:
+            stdout_msg(
+                f"Ticker symbol {data['ticker']['info']['ocoAllowed']} "
+                "does not support OCO orders!", warn=True
+            )
+            raise
+        new_trade.update(**{
+            'status': new_trade.STATUS_EVALUATED,
+            'risk': 1,
+            'base_quantity': self.context.get('order-amount', 100),
+            'side': new_trade.SIDE_SELL,
+            'current_price': float(data['ticker']['symbol']['lastPrice']),
+            'stop_loss_price': round(
+                float(data['ticker']['symbol']['lastPrice']) \
+                * (1 - self.context['stop-loss'] / 100), 4
+            ),
+            'take_profit_price': round(
+                float(data['ticker']['symbol']['lastPrice']) \
+                * (1 + self.context['take-profit'] / 100), 4
+            ),
+            'trade_fee': 0.1, # Cannot be fetched by market using testnet API keys
+        })
+        new_trade.quote_quantity = round(float(
+            new_trade.base_quantity * new_trade.current_price
+        ), 8)
+        new_trade.filter_check(*data['ticker']['info']['filters'])
+        new_trade._signals = [Signal(), Signal()]
         return new_trade
 
     # TESTERS
 
-    def test_ar_market_run_trade(self):
-        print('\n[ TEST ]: Execute trade order...\n')
-        trade_obj = self.generate_mock_trade_instance()
+    def test_ar_market_run_sell_trade(self):
+        stdout_msg('\n[ TEST ]: Execute SELL trade order...', bold=True)
+        trade_obj = self.generate_mock_sell_trade_instance()
         check = trade_obj.check_preconditions()
         self.assertTrue(check)
-#       change_state = trade_obj.next_state()
-#       self.assertTrue(change_state)
+        change_state = trade_obj.next_state()
+        self.assertTrue(change_state)
+        run = self.trading_market.run(trade_obj)
+        self.assertTrue(run)
+        self.assertTrue(isinstance(run, dict))
+        self.assertTrue(isinstance(run.get('failures'), int))
+        self.assertEqual(run['failures'], 0)
+        self.assertTrue(run.get('ok'))
+        self.assertTrue(isinstance(run['ok'], list))
+        self.assertFalse(run.get('nok'))
+        self.assertTrue(isinstance(run['nok'], list))
+
+    def test_ar_market_run_buy_trade(self):
+        stdout_msg('\n[ TEST ]: Execute BUY trade order...', bold=True)
+        trade_obj = self.generate_mock_buy_trade_instance()
+        check = trade_obj.check_preconditions()
+        self.assertTrue(check)
+        change_state = trade_obj.next_state()
+        self.assertTrue(change_state)
         run = self.trading_market.run(trade_obj)
         self.assertTrue(run)
         self.assertTrue(isinstance(run, dict))
@@ -115,11 +160,8 @@ class TestARMarket(unittest.TestCase):
         self.assertTrue(isinstance(run['nok'], list))
 
     def test_ar_market_scrape_data(self):
-        print('\n[ TEST ]: Scrape market data...\n')
+        stdout_msg('\n[ TEST ]: Scrape market data...', bold=True)
         data = self.trading_market.scan('all', **self.context)
-#       print(f'[ DEBUG ]: Market Scan Data: {data}')
-#       self.market_data_scan_cache = data
-#       print(f'[ DEBUG ]: Market Scan Data: {self.market_data_scan_cache}')
         pretty_dict_print(data)
         self.assertTrue(data)
         self.assertTrue(isinstance(data, dict))

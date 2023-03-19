@@ -123,6 +123,7 @@ class TradingMarket(Client):
             'symbol': self.get_ticker(symbol=ticker),
             'info': self.get_symbol_info(ticker),
             'historical-klines': self.get_historical_klines(ticker, interval, limit=period),
+            'exchange': self.get_exchange_info(),
         }
         if context.get('extended'):
             scan.update({
@@ -253,16 +254,11 @@ class TradingMarket(Client):
         for trade in trades:
             order_kwargs = trade.unpack()
             log.debug(f'Trade order kwargs: {order_kwargs}')
-
-            # TODO - Remove 1 down
-            stdout_msg(f'[ DEBUG ]: order_kwargs: {order_kwargs}', red=True)
-
-
             if not order_kwargs:
                 stdout_msg(f'Failed to unpack Trade() instance!', err=True)
                 nok.append(trade)
             try:
-                order = self.create_oco_order(**order_kwargs)
+                order = self.create_order(**order_kwargs)
             except BinanceAPIException as e:
                 stdout_msg(f'Binance API: {e}', err=True)
                 nok.append(trade)
@@ -290,7 +286,7 @@ class TradingMarket(Client):
             except Exception as e:
                 nok.append(trade)
                 continue
-            trade.update(order)
+            trade.update(**order)
             ok.append(trade)
         return {
             'failures': failures,
@@ -306,9 +302,4 @@ class TradingMarket(Client):
 #       sanitized = ''.join(list(raw_value)[1:]).replace("'", '')
 #       return json.loads(sanitized)
 
-# TODO - DEPRECATED
-#   def synced(self, func_name, **kwargs):
-#       log.debug('')
-#       kwargs['timestamp'] = int(time.time() - self.time_offset)
-#       return getattr(self, func_name)(**kwargs)
 
