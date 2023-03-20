@@ -123,6 +123,24 @@ class TestARMarket(unittest.TestCase):
 
     # TESTERS
 
+    # TODO - Fetch indicator data
+    def test_ar_market_scrape_data(self):
+        stdout_msg('\n[ TEST ]: Scrape market data...', bold=True)
+        stdout_msg('[ TODO ]: Check indicator data')
+        data = self.trading_market.scan('all', **self.context)
+        pretty_dict_print(data)
+        self.assertTrue(data)
+        self.assertTrue(isinstance(data, dict))
+        self.assertEqual(data.get('failures'), 0)
+        self.assertTrue(data.get('account'))
+        self.assertTrue(isinstance(data['account'], dict))
+        self.assertTrue(data.get('ticker'))
+        self.assertTrue(isinstance(data['ticker'], dict))
+        self.assertTrue(data.get('api'))
+        self.assertTrue(isinstance(data['api'], dict))
+        self.assertTrue(data.get('indicators'))
+        self.assertTrue(isinstance(data['indicators'], dict))
+
     def test_ar_market_run_sell_trade(self):
         stdout_msg('\n[ TEST ]: Execute SELL trade order...', bold=True)
         trade_obj = self.generate_mock_sell_trade_instance()
@@ -156,22 +174,6 @@ class TestARMarket(unittest.TestCase):
         self.assertTrue(isinstance(run['ok'], list))
         self.assertFalse(run.get('nok'))
         self.assertTrue(isinstance(run['nok'], list))
-
-    def test_ar_market_scrape_data(self):
-        stdout_msg('\n[ TEST ]: Scrape market data...', bold=True)
-        data = self.trading_market.scan('all', **self.context)
-        pretty_dict_print(data)
-        self.assertTrue(data)
-        self.assertTrue(isinstance(data, dict))
-        self.assertEqual(data.get('failures'), 0)
-        self.assertTrue(data.get('account'))
-        self.assertTrue(isinstance(data['account'], dict))
-        self.assertTrue(data.get('ticker'))
-        self.assertTrue(isinstance(data['ticker'], dict))
-        self.assertTrue(data.get('api'))
-        self.assertTrue(isinstance(data['api'], dict))
-        self.assertTrue(data.get('indicators'))
-        self.assertTrue(isinstance(data['indicators'], dict))
 
 # CODE DUMP
 

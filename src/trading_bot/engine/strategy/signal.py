@@ -39,35 +39,174 @@ class Signal():
         self.risk = int()
         self.source_strategy = dict()
 
+    # FREE LOADERS
+
+    def load_strategy(self, strategy_eval, **context):
+        log.debug('')
+        if not strategy_eval or not isinstance(strategy_eval, dict):
+            return False
+        self.source_strategy = strategy_eval
+        buy_signals = {
+            label: strategy_eval[label] for label in strategy_eval
+            if strategy_eval[label]['trade'] and strategy_eval[label]['side']
+            in ('buy', 'Buy', 'BUY')
+        }
+        sell_signals = {
+            label: strategy_eval[label] for label in strategy_eval
+            if strategy_eval[label]['trade'] and strategy_eval[label]['side']
+            in ('sell', 'Sell', 'SELL')
+        }
+        if len(buy_signals) > len(sell_signals):
+            self.side = 'BUY'
+            self.risk = sum([buy_signals[label]['risk'] for label in buy_signals])\
+                / len(buy_signals)
+        elif len(sell_signals) > len(buy_signals):
+            self.side = 'SELL'
+            self.risk = sum([sell_signals[label]['risk'] for label in sell_signals])\
+                / len(sell_signals)
+        elif len(buy_signals) == len(sell_signals):
+            log.error(
+                'Signal could not conclude trade side from strategy evaluation! '
+                f'{strategy_eval}'
+            )
+            return False
+        return True
+
     # MAGIK
 
     def __str__(self):
         return f'Trade Signal - Symbol: {self.ticker_symbol}, Side: {self.side}, '\
             f'Risk: {self.risk}, Strategy: ' + ','.join(self.source_strategy.keys())
 
-    # TODO
     def __add__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk + other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk + other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for +: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __sub__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk - other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk - other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for -: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __mul__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk * other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk * other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for *: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __truediv__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk / other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk / other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for /: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __floordiv__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk // other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk // other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for //: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __mod__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk % other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk % other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for %: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __pow__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk ** other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk ** other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for **: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __lt__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk < other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk < other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for <: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __gt__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk > other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk > other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for >: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __le__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk <= other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk <= other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for <=: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __ge__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk >= other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk >= other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for >=: {} and {}'
+                .format(type(self), type(other))
+            )
+
     def __eq__(self, other):
-        pass
+        if isinstance(other, Signal):
+            return Signal(self.risk == other.risk)
+        elif isinstance(other, int) or isinstance(other, float):
+            return Signal(self.risk == other)
+        else:
+            raise TypeError(
+                'Unsupported operand type(s) for >=: {} and {}'
+                .format(type(self), type(other))
+            )
 
