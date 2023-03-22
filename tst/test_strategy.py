@@ -37,6 +37,9 @@ class TestARStrategy(unittest.TestCase):
     trading_market = None
     market_data = {}
     strategy = None
+    mock_evaluation_base_keys = [
+        "interval", "period", "value", "risk", "side", "trade", "description",
+    ]
 
     # PREREQUISITS
 
@@ -56,14 +59,7 @@ class TestARStrategy(unittest.TestCase):
         stdout_msg('\n[ DONE ]: TradingStrategy AutoTesters', bold=True)
 
     # MOCK
-
     # TODO - Mock market data
-
-    def mock_evaluation_base_keys(self):
-        return (
-            "price-movement", "interval", "period", "value", "risk", "side",
-            "trade", "description",
-        )
 
     # TESTERS
 
@@ -84,15 +80,31 @@ class TestARStrategy(unittest.TestCase):
         self.assertTrue(isinstance(evaluation, dict))
         self.assertTrue(evaluation.get('price-movement'))
         self.assertTrue(isinstance(evaluation['price-movement'], dict))
-        for key in self.mock_evaluation_base_keys():
+        for key in self.mock_evaluation_base_keys:
             if key not in evaluation:
-                raise
+                msg = f'Key not found! ({key})\nEvaluation: ' \
+                    + str(pretty_dict_print(evaluation))
+                stdout_msg(msg, nok=True)
+                self.assertTrue(evaluation.get(key))
+        stdout_msg('Evaluation: ' + str(pretty_dict_print(evaluation)), ok=True)
+
+    def test_ar_strategy_volume(self):
+        stdout_msg('\n[ TEST ]: Trading Volume Strategy Evaluator', bold=True)
+        obj = VolumeEvaluator(**self.context)
+        evaluation = obj.evaluate(self.market_data, **self.context)
+        self.assertTrue(evaluation)
+        self.assertTrue(isinstance(evaluation, dict))
+        self.assertTrue(evaluation.get('volume-movement'))
+        self.assertTrue(isinstance(evaluation['volume-movement'], dict))
+        for key in self.mock_evaluation_base_keys:
+            if key not in evaluation:
+                msg = f'Key not found! ({key})\nEvaluation: ' \
+                    + str(pretty_dict_print(evaluation))
+                stdout_msg(msg, nok=True)
+                self.assertTrue(evaluation.get(key))
+        stdout_msg('Evaluation: ' + str(pretty_dict_print(evaluation)), ok=True)
 
     # TODO
-    def test_ar_strategy_volume(self):
-        stdout_msg('\n[ TEST ]: ...', bold=True)
-        obj = VolumeEvaluator(**self.context)
-#       evaluation = obj.evaluate(**self.market_data)
     def test_ar_strategy_rsi(self):
         stdout_msg('\n[ TEST ]: ...', bold=True)
         obj = RSIEvaluator(**self.context)

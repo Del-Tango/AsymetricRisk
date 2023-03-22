@@ -15,8 +15,8 @@ class PriceEvaluator(AbstractEvaluator):
 
     [ NOTE ]: Generates weak buy signal when it detects a large price movement
         up, and a sell signal when it detects a large price movement down. The
-        signal is strengthened when the price movement is confirmed by a large
-        volume movement up.
+        signal is strengthened at the strategy manager level when the price
+        movement is confirmed by a large volume movement up.
     '''
 
 #   @pysnooper.snoop()
@@ -143,17 +143,19 @@ class PriceEvaluator(AbstractEvaluator):
         }
         '''
         log.debug('')
-        price_trigger_percentage = int(
+        price_trigger_percentage = float(
             context.get('price-movement', self.context.get('price-movement', 0))
         )
         if not price_trigger_percentage:
             return False
-        closing_prices = [item[4] for item in market_data['ticker']['historical-klines']]
+        closing_prices = [
+            float(item[4]) for item in market_data['ticker']['historical-klines']
+        ]
         evaluation = {
             'flag':               False,                                               #True if moved_percentage >= trigger_percentage else False,
             'price-direction':    str(),                                               #UP|DOWN
-            'start-value':        market_data['ticker']['historical-klines'][-1][4],   #price_values[-1],
-            'stop-value':         market_data['ticker']['historical-klines'][0][4],    #price_values[0],
+            'start-value':        float(market_data['ticker']['historical-klines'][-1][4]),   #price_values[-1],
+            'stop-value':         float(market_data['ticker']['historical-klines'][0][4]),    #price_values[0],
             'min-value':          min(closing_prices),                                 #min_val,
             'max-value':          max(closing_prices),                                 #max_val,
             'moved':              float(),                                             #price movement in quote currency,
