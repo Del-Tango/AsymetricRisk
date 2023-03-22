@@ -114,6 +114,178 @@ class TradingMarket(Client):
 
 #   @pysnooper.snoop()
     def scan_ticker_symbol_data(self, **context):
+        '''
+        get_ticker(**params)
+            24 hour price change statistics.
+
+            https://binance-docs.github.io/apidocs/spot/en/#24hr-ticker-price-change-statistics
+
+            :param symbol:
+            :type symbol: str
+            :returns: API response {
+                "priceChange": "-94.99999800",
+                "priceChangePercent": "-95.960",
+                "weightedAvgPrice": "0.29628482",
+                "prevClosePrice": "0.10002000",
+                "lastPrice": "4.00000200",
+                "bidPrice": "4.00000000",
+                "askPrice": "4.00000200",
+                "openPrice": "99.00000000",
+                "highPrice": "100.00000000",
+                "lowPrice": "0.10000000",
+                "volume": "8913.30000000",
+                "openTime": 1499783499040,
+                "closeTime": 1499869899040,
+                "fristId": 28385,   # First tradeId
+                "lastId": 28460,    # Last tradeId
+                "count": 76         # Trade count
+            }
+            OR
+            [
+                {
+                    "priceChange": "-94.99999800",
+                    "priceChangePercent": "-95.960",
+                    "weightedAvgPrice": "0.29628482",
+                    "prevClosePrice": "0.10002000",
+                    "lastPrice": "4.00000200",
+                    "bidPrice": "4.00000000",
+                    "askPrice": "4.00000200",
+                    "openPrice": "99.00000000",
+                    "highPrice": "100.00000000",
+                    "lowPrice": "0.10000000",
+                    "volume": "8913.30000000",
+                    "openTime": 1499783499040,
+                    "closeTime": 1499869899040,
+                    "fristId": 28385,   # First tradeId
+                    "lastId": 28460,    # Last tradeId
+                    "count": 76         # Trade count
+                }
+            ]
+            :raises: BinanceRequestException, BinanceAPIException
+
+        get_symbol_info(symbol) -> Optional[Dict]
+            Return information about a symbol
+            :param symbol: required e.g BNBBTC
+            :type symbol: str
+            :returns: Dict if found, None if not {
+                "symbol": "ETHBTC",
+                "status": "TRADING",
+                "baseAsset": "ETH",
+                "baseAssetPrecision": 8,
+                "quoteAsset": "BTC",
+                "quotePrecision": 8,
+                "orderTypes": ["LIMIT", "MARKET"],
+                "icebergAllowed": false,
+                "filters": [
+                    {
+                        "filterType": "PRICE_FILTER",
+                        "minPrice": "0.00000100",
+                        "maxPrice": "100000.00000000",
+                        "tickSize": "0.00000100"
+                    }, {
+                        "filterType": "LOT_SIZE",
+                        "minQty": "0.00100000",
+                        "maxQty": "100000.00000000",
+                        "stepSize": "0.00100000"
+                    }, {
+                        "filterType": "MIN_NOTIONAL",
+                        "minNotional": "0.00100000"
+                    }
+                ]
+            }
+            :raises: BinanceRequestException, BinanceAPIException
+
+        get_historical_klines(
+                symbol, interval, start_str=None, end_str=None, limit=1000,
+                klines_type: binance.enums.HistoricalKlinesType = <HistoricalKlinesType.SPOT: 1>)
+            Get Historical Klines from Binance
+            :param symbol: Name of symbol pair e.g BNBBTC
+            :type symbol: str
+            :param interval: Binance Kline interval
+            :type interval: str
+            :param start_str: optional - start date string in UTC format or timestamp
+                in milliseconds
+            :type start_str: str|int
+            :param end_str: optional - end date string in UTC format or timestamp in
+                milliseconds (default will fetch everything up to now)
+            :type end_str: str|int
+            :param limit: Default 1000; max 1000.
+            :type limit: int
+            :param klines_type: Historical klines type: SPOT or FUTURES
+            :type klines_type: HistoricalKlinesType
+            :return: list of OHLCV values (Open time, Open, High, Low, Close, Volume,
+                Close time, Quote asset volume, Number of trades, Taker buy base asset
+                volume, Taker buy quote asset volume, Ignore)
+
+        get_exchange_info() -> Dict
+            Return rate limits and list of symbols
+            :returns: list - List of product dictionaries {
+                "timezone": "UTC",
+                "serverTime": 1508631584636,
+                "rateLimits": [
+                    {
+                        "rateLimitType": "REQUESTS",
+                        "interval": "MINUTE",
+                        "limit": 1200
+                    }, {
+                        "rateLimitType": "ORDERS",
+                        "interval": "SECOND",
+                        "limit": 10
+                    }, {
+                    "rateLimitType": "ORDERS",
+                    "interval": "DAY",
+                    "limit": 100000
+                    }
+                ],
+                "exchangeFilters": [],
+                "symbols": [{
+                    "symbol": "ETHBTC",
+                    "status": "TRADING",
+                    "baseAsset": "ETH",
+                    "baseAssetPrecision": 8,
+                    "quoteAsset": "BTC",
+                    "quotePrecision": 8,
+                    "orderTypes": ["LIMIT", "MARKET"],
+                    "icebergAllowed": false,
+                    "filters": [
+                        {
+                            "filterType": "PRICE_FILTER",
+                            "minPrice": "0.00000100",
+                            "maxPrice": "100000.00000000",
+                            "tickSize": "0.00000100"
+                        }, {
+                            "filterType": "LOT_SIZE",
+                            "minQty": "0.00100000",
+                            "maxQty": "100000.00000000",
+                            "stepSize": "0.00100000"
+                        }, {
+                            "filterType": "MIN_NOTIONAL",
+                            "minNotional": "0.00100000"
+                        }
+                    ]
+                ]}
+            }
+            :raises: BinanceRequestException, BinanceAPIException
+
+        get_trade_fee(**params)
+            Get trade fee.
+            https://binance-docs.github.io/apidocs/spot/en/#trade-fee-sapi-user_data
+            :param symbol: optional
+            :type symbol: str
+            :param recvWindow: the number of milliseconds the request is valid for
+            :type recvWindow: int
+            :returns: API response [
+                {
+                    "symbol": "ADABNB",
+                    "makerCommission": "0.001",
+                    "takerCommission": "0.001"
+                }, {
+                    "symbol": "BNBBTC",
+                    "makerCommission": "0.001",
+                    "takerCommission": "0.001"
+                }
+            ]
+        '''
         log.debug('')
         recv_window = context.get('recv-window', self._context.get('recv-window', 60000))
         ticker = context.get('ticker-symbol', self._context.get('ticker-symbol', str())).replace('/', '')

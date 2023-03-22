@@ -6,5 +6,6 @@ from . import ema_evaluator
 from . import macd_evaluator
 from . import vwap_evaluator
 from . import adx_evaluator
+from . import ir_evaluator
 from . import signal
 from . import strategy

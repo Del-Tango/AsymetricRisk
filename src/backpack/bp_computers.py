@@ -5,8 +5,23 @@
 # COMPUTERS
 
 import logging
+import pysnooper
 
 log = logging.getLogger('AsymetricRisk')
+
+
+#@pysnooper.snoop()
+def compute_value_threshold(value, percentage):
+    """
+    [ DESCRIPTION ]: Convert a percentage value to a value threshold.
+
+    [ INPUT ]:
+        * value (float): The value to use as a basis for the calculation.
+        * percentage (float): The percentage value to convert.
+
+    [ RETURN ]: float: The value threshold.
+    """
+    return float(value) * (1 + float(percentage) / 100)
 
 
 def compute_percentage(whole, part, operation=None):

@@ -11,6 +11,9 @@ class RSIEvaluator(AbstractEvaluator):
     [ STRATEGY ]:  Strategy Evaluator
     '''
     # TODO
+    def analyze_risk(self, evaluation: dict, market_data: dict, **context) -> dict:
+        log.debug('TODO - Under construction, building...')
+        return {}
     def evaluate(self, market_data: dict, **context) -> dict:
         '''
         '''

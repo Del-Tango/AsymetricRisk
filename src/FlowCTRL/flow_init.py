@@ -10,11 +10,11 @@ import os
 import optparse
 #import pysnooper
 
-from .src.procedure_handler import ProcedureHandler as Procedure
-from .src.backpack.bp_log import log_init
-from .src.backpack.bp_convertors import json2dict
-from .src.backpack.bp_general import write2file, clear_screen, stdout_msg
-from .src.backpack.bp_shell import shell_cmd as shell
+from src.procedure_handler import ProcedureHandler as Procedure
+from src.backpack.bp_log import log_init
+from src.backpack.bp_convertors import json2dict
+from src.backpack.bp_general import write2file, clear_screen, stdout_msg
+from src.backpack.bp_shell import shell_cmd as shell
 
 CONFIG_FILE_PATH = os.path.dirname(os.path.realpath(__file__)) \
     + '/conf/flow-ctrl.conf.json'
@@ -23,7 +23,6 @@ PROCEDURE_HANDLER = Procedure()
 PROCEDURE_SKETCH_FILES = list()
 ACTION='' # start, stop, pause, purge, resume
 log = logging.getLogger(CONFIG['log-name'])
-
 
 # GENERAL
 

@@ -6,15 +6,15 @@ from .abstract_evaluator import AbstractEvaluator
 log = logging.getLogger('AsymetricRisk')
 
 # TODO
-class MAEvaluator(AbstractEvaluator):
+class IREvaluator(AbstractEvaluator):
     '''
-    [ STRATEGY ]:  Strategy Evaluator
+    [ STRATEGY ]: Intuition Reversal Strategy Evaluator
     '''
     # TODO
     def analyze_risk(self, evaluation: dict, market_data: dict, **context) -> dict:
         log.debug('TODO - Under construction, building...')
         return {}
-    def evaluate(self, market_data: dict, **context) -> dict:
+    def evaluate(self, evaluation: dict, **context) -> dict:
         '''
         '''
         log.debug('TODO - Under construction, building...')
