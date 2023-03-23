@@ -28,6 +28,7 @@ class TestARStrategy(unittest.TestCase):
             'binance-key': os.environ.get('BINANCE_KEY'),
             'binance-secret': os.environ.get('BINANCE_SECRET'),
             'taapi-key': os.environ.get('TAAPI_KET'),
+            'strategy': 'price,volume',
         }
     else:
         context = AR_DEFAULT
@@ -63,14 +64,16 @@ class TestARStrategy(unittest.TestCase):
 
     # TESTERS
 
-    # TODO
     def test_ar_strategy_evaluation_of_market_data(self):
         stdout_msg(
             '\n[ TEST ]: Evaluate market data and generate Signals...', bold=True
         )
-#       evaluation = self.strategy.evaluate(self.market_data)
-#       self.assertTrue(isinstance(evaluation, list))
-#       self.assertTrue(evaluation)
+        evaluation = self.strategy.evaluate(self.market_data, **self.context)
+        self.assertTrue(isinstance(evaluation, list))
+        self.assertTrue(evaluation)
+        stdout_msg(f'Trading Signals: {evaluation}', ok=True)
+        for signal in evaluation:
+            stdout_msg('* ' + str(signal), green=True)
 
     def test_ar_strategy_price(self):
         stdout_msg('\n[ TEST ]: Price Action Strategy Evaluator...', bold=True)

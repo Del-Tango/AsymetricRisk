@@ -100,25 +100,16 @@ class Trade():
     # SETTERS
 
     def set_evaluated(self) -> bool:
-        '''
-        [ NOTE ]:
-        '''
         log.debug('')
         return False if not self.check_preconditions() \
             else self.set_state(self.STATUS_EVALUATED)
 
     def set_commited(self) -> bool:
-        '''
-        [ NOTE ]:
-        '''
         log.debug('')
         return False if not self.check_preconditions() \
             else self.set_state(self.STATUS_COMMITED)
 
     def set_done(self) -> bool:
-        '''
-        [ NOTE ]:
-        '''
         log.debug('')
         if not self.check_preconditions():
             return False

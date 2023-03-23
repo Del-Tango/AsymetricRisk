@@ -5,5 +5,5 @@ from .trading_bot.engine.strategy.strategy import (
     TradingStrategy, PriceEvaluator, VolumeEvaluator, RSIEvaluator, MACDEvaluator,
     MAEvaluator, EMAEvaluator, ADXEvaluator, VWAPEvaluator
 )
-#   from .trading_bot.engine.engine import TradingEngine
+from .trading_bot.engine.engine import TradingEngine
 #   from .trading_bot.reporter.reporter import TradeReporter

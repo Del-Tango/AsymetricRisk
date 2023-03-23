@@ -41,6 +41,7 @@ class Signal():
 
     # FREE LOADERS
 
+#   @pysnooper.snoop()
     def load_strategy(self, strategy_eval, **context):
         log.debug('')
         if not strategy_eval or not isinstance(strategy_eval, dict):
