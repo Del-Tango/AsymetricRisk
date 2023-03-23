@@ -32,9 +32,20 @@ class TradingEngine():
     def evaluate(self, market_data: dict, **context) -> list:
         log.debug('TODO')
         trades, signals = [], self.strategy.evaluate(market_data, **context)
+        buy_signals = [signal for signal in signals if signal.side == 'BUY']
+        sell_signals = [signal for signal in signals if signal.side == 'SELL']
+        if buy_signals:
+            trade = Trade(**context)
+            trade.load_signals(*buy_signals, **context)
+            trades.append(trade)
+        if sell_signals:
+            trade = Trade(**context)
+            trade.load_signals(*sell_signals, **context)
+            trades.append(trade)
 
         # TODO - Remove 1 down
-        stdout_msg(f'[ DEBUG ]: SIGNALS?? {signals}', red=True)
+        stdout_msg(f'[ DEBUG ]: SIGNALS: {signals}', red=True)
+        stdout_msg(f'[ DEBUG ]: TRADES: {trades}', red=True)
 
         return trades
 

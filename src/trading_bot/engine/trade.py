@@ -93,9 +93,9 @@ class Trade():
     # MAGIK
 
     def __str__(self):
-        return f'Symbol: {self.ticker_symbol}, Side: {self.sided}, '\
+        return f'Symbol: {self.ticker_symbol}, Side: {self.side}, '\
             f'Quantity: {self.base_quantity}, Status: {self.status}, '\
-            f'Risk: {self.risk}'
+            f'Risk: {self.risk}, Expires On: {self.expires_on}'
 
     # SETTERS
 
@@ -1020,6 +1020,10 @@ class Trade():
         return self.filters
 
     # GENERAL
+
+    # TODO
+    def load_signals(self, *signals, **context):
+        log.debug('TODO')
 
     def pickle_me_rick(self) -> dict:
         log.debug('')
