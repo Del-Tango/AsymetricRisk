@@ -59,9 +59,6 @@ class TestARStrategy(unittest.TestCase):
     def tearDownClass(cls):
         stdout_msg('\n[ DONE ]: TradingStrategy AutoTesters', bold=True)
 
-    # MOCK
-    # TODO - Mock market data
-
     # TESTERS
 
     def test_ar_strategy_evaluation_of_market_data(self):

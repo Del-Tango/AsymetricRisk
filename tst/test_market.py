@@ -71,7 +71,7 @@ class TestARMarket(unittest.TestCase):
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
-            'base_quantity': self.context.get('order-amount', 100),
+            'base_quantity': 100,
             'side': new_trade.SIDE_BUY,
             'current_price': last_price,
             'stop_loss_price': round(compute_percentage(
@@ -103,7 +103,7 @@ class TestARMarket(unittest.TestCase):
         new_trade.update(**{
             'status': new_trade.STATUS_EVALUATED,
             'risk': 1,
-            'base_quantity': self.context.get('order-amount', 100),
+            'base_quantity': 100,
             'side': new_trade.SIDE_SELL,
             'current_price': float(data['ticker']['symbol']['lastPrice']),
             'stop_loss_price': round(compute_percentage(

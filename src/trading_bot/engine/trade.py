@@ -18,6 +18,10 @@ from src.backpack.bp_generators import generate_msg_id
 from src.backpack.bp_general import (
     stdout_msg, pretty_dict_print
 )
+from src.backpack.bp_computers import (
+    compute_value_threshold, compute_percentage, compute_base_quantity,
+    compute_quote_quantity
+)
 from src.ar_exceptions import (
     ARInvalidStateException,
     ARPreconditionsException,
@@ -49,6 +53,7 @@ class Trade():
         Trade() instance. If the Trade already exists and is not yet commited,
         new signals of the same side will also be associated with this instance.
     '''
+    _context: dict
 
     STATUS_DRAFT = 'DRAFT'
     STATUS_EVALUATED = 'EVALUATED'
@@ -94,8 +99,9 @@ class Trade():
 
     def __str__(self):
         return f'Symbol: {self.ticker_symbol}, Side: {self.side}, '\
-            f'Quantity: {self.base_quantity}, Status: {self.status}, '\
-            f'Risk: {self.risk}, Expires On: {self.expires_on}'
+            f'Quantity: {self.base_quantity}, Price: {self.current_price}, '\
+            f'Stop Loss: {self.stop_loss_price}, Take Profit: {self.take_profit_price}, '\
+            f'Status: {self.status}, Risk: {self.risk}, Expires On: {self.expires_on}'
 
     # SETTERS
 
@@ -505,9 +511,11 @@ class Trade():
                 f'Trade Signals ({self._signals}) not set up properly! '
                 'Must have at least one.'
             )
+        filter_check = self.filter_check(*list(self.filters.values()))
+        if not filter_check:
+            log.error('Trade data (Binance) filter check failure!')
         return False if not self._signals or not self.stop_loss_price \
-            or not self.take_profit_price \
-            or not self.filter_check(*list(self.filters.values())) else True
+            or not self.take_profit_price or not filter_check else True
 
 #   @pysnooper.snoop()
     def check_preconditions(self):
@@ -529,8 +537,13 @@ class Trade():
             self.STATUS_COMMITED: self.check_preconditions_commited,
             self.STATUS_DONE: self.check_preconditions_done,
         }
-        if self.status not in checkers.keys() \
-                or not self.check_preconditions_general():
+        general_check = self.check_preconditions_general()
+        if self.status not in checkers.keys() or not general_check:
+            log.error(
+                'Trade preconditions failure! Either invalid status '
+                f'({self.status}) or general preconditions ({general_check}) '
+                'not met.'
+            )
             return False
         return checkers[self.status]()
 
@@ -956,19 +969,19 @@ class Trade():
             return False
         state = self.status
         self.__dict__.update({
-            'trade_id': str(new_data.get('trade-id', self.trade_id)),
-            'ticker_symbol': str(new_data.get('ticker-symbol', self.ticker_symbol)).replace('/', ''),
-            'status': str(new_data.get('status', self.status)),
-            'risk': int(new_data.get('risk', self.risk)),
-            'base_quantity': new_data.get('base_quantity', self.base_quantity) or float(),
-            'quote_quantity': new_data.get('quote_quantity', self.quote_quantity) or float(),
-            'side': str(new_data.get('side', self.side)),
-            'current_price': float(new_data.get('current_price', self.current_price)),
-            'stop_loss_price': float(new_data.get('stop_loss_price', self.stop_loss_price)),
-            'take_profit_price': float(new_data.get('take_profit_price', self.take_profit_price)),
-            'trade_fee': float(new_data.get('trade_fee', self.trade_fee)),
+            'trade_id':             str(new_data.get('trade-id', self.trade_id)),
+            'ticker_symbol':        str(new_data.get('ticker-symbol', self.ticker_symbol)).replace('/', ''),
+            'status':               str(new_data.get('status', self.status)),
+            'risk':                 int(new_data.get('risk', self.risk)),
+            'base_quantity':        new_data.get('base_quantity', self.base_quantity) or float(),
+            'quote_quantity':       new_data.get('quote_quantity', self.quote_quantity) or float(),
+            'side':                 str(new_data.get('side', self.side)),
+            'current_price':        float(new_data.get('current_price', self.current_price)),
+            'stop_loss_price':      float(new_data.get('stop_loss_price', self.stop_loss_price)),
+            'take_profit_price':    float(new_data.get('take_profit_price', self.take_profit_price)),
+            'trade_fee':            float(new_data.get('trade_fee', self.trade_fee)),
             'price_percent_change': float(new_data.get('price_percent_change', self.price_percent_change)),
-            'trailing_delta': float(new_data.get('trailing_delta', self.trailing_delta)),
+            'trailing_delta':       float(new_data.get('trailing_delta', self.trailing_delta)),
         })
         if self.status != state:
             self.previous_status = state
@@ -1021,9 +1034,80 @@ class Trade():
 
     # GENERAL
 
-    # TODO
-    def load_signals(self, *signals, **context):
-        log.debug('TODO')
+#   @pysnooper.snoop()
+    def load_market_data(self, market_data: dict, **context) -> bool:
+        log.debug('')
+        self.current_price = float(market_data['ticker']['symbol']['lastPrice'])
+        quote_account_value = [
+            float(item['free']) for item in market_data['account']['account']['balances']
+            if item.get('asset') == context.get(
+                'quote-currency', self._context.get('quote-currency')
+            )]
+        if quote_account_value:
+            account_value_percentage = float(context.get(
+                'order-amount', self._context.get('order-amount', float())
+            ))
+            self.base_quantity = round(compute_base_quantity(
+                self.current_price, quote_account_value[0], float(context.get(
+                    'order-amount', self._context.get('order-amount')
+                ))
+            ), 8)
+            self.quote_quantity = round(compute_quote_quantity(
+                self.base_quantity, self.current_price
+            ), 8)
+        self.update(**{
+            'price_change_percent': round(float(
+                market_data['ticker']['symbol']['priceChangePercent']
+            ), 8),
+            'stop_loss_price': round(compute_percentage(
+                self.current_price, float(context.get(
+                    'stop-loss', self._context.get('stop-loss')
+                )), operation='add' if self.side == 'SELL' else 'subtract',
+            ), 8),
+            'take_profit_price': round(compute_percentage(
+                self.current_price, float(context.get(
+                    'take-profit', self._context.get('take-profit')
+                )), operation='add' if self.side == 'BUY' else 'subtract'
+            ), 8),
+        })
+        if market_data['ticker'].get('trade-fee'):
+            self.trade_fee = market_data['ticker']['trade-fee']['takerCommission']
+        return True
+
+#   @pysnooper.snoop()
+    def load_signals(self, market_data: dict, *signals, **context) -> bool:
+        log.debug('')
+        if not signals:
+            return False
+        buy_signals = [signal for signal in signals if signal.side == 'BUY']
+        sell_signals = [signal for signal in signals if signal.side == 'SELL']
+        if len(buy_signals) > len(sell_signals):
+            update = self.update(**{
+                'side': 'BUY',
+                'risk': sum([signal.risk for signal in buy_signals])\
+                    / len(buy_signals),
+            })
+            self.update_signals(*buy_signals)
+        elif len(sell_signals) > len(buy_signals):
+            update = self.update(**{
+                'side': 'SELL',
+                'risk': sum([signal.risk for signal in sell_signals])\
+                    / len(sell_signals),
+            })
+            self.update_signals(*sell_signals)
+        elif len(buy_signals) == len(sell_signals):
+            log.error(
+                'Signal could not conclude trade side from given signals! '
+                f'{signals}'
+            )
+            return False
+        market_data = self.load_market_data(market_data, **context)
+        if not market_data:
+            log.error(
+                f'Trade object could not load scraped market data! {market_data}'
+            )
+            return False
+        return True
 
     def pickle_me_rick(self) -> dict:
         log.debug('')
@@ -1066,7 +1150,7 @@ class Trade():
         log.debug('')
         filters = self.update_filters(*filters)
         if not filters:
-            return False
+            return True
         failures, checkers = 0, {
             'PRICE_FILTERS': self.check_filter_price,
             'LOT_SIZE': self.check_filter_lot_size,
@@ -1084,7 +1168,7 @@ class Trade():
             if not result:
                 failures += 1
         if failures:
-            log.debug(f'{failures} errors detected during Trade filter check!')
+            log.error(f'{failures} errors detected during Trade filter check!')
         return False if failures else True
 
     # ACTIONS
